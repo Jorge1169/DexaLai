@@ -1141,14 +1141,16 @@ if (isset($_POST['guardar_factura_flete'])) {
             </div>
             <form method="post" action="">
                 <div class="modal-body">
+                    <div id="modalAlert" class="mb-3"></div>
+
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        Los números no se pueden repetir con el mismo proveedor para productos activos (status = 1)
+                        Los números no se pueden repetir con el mismo proveedor para productos activos (status = 1). La validación es en tiempo real.
                     </div>
-                    
+
                     <input type="hidden" name="id_captacion" value="<?= $id_captacion ?>">
                     <input type="hidden" name="guardar_numeros_productos" value="1">
-                    
+
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead class="table-light">
@@ -1170,33 +1172,45 @@ if (isset($_POST['guardar_factura_flete'])) {
                                             <input type="hidden" name="productos[<?= $index ?>][id_detalle]" value="<?= $producto['id_detalle'] ?>">
                                         </td>
                                         <td>
-                                            <input type="text" 
-                                            class="form-control form-control-sm numero-input" 
-                                            name="productos[<?= $index ?>][numero_ticket]" 
-                                            value="<?= htmlspecialchars($producto['numero_ticket'] ?? '') ?>"
-                                            data-id-detalle="<?= $producto['id_detalle'] ?>"
-                                            data-tipo="ticket"
-                                            onblur="validarNumero(this)">
+                                            <input type="text"
+                                                   class="form-control form-control-sm numero-input"
+                                                   name="productos[<?= $index ?>][numero_ticket]"
+                                                   value="<?= htmlspecialchars($producto['numero_ticket'] ?? '') ?>"
+                                                   data-id-detalle="<?= $producto['id_detalle'] ?>"
+                                                   data-tipo="ticket"
+                                                   autocomplete="off"
+                                                   placeholder="Ej: 12345"
+                                                   oninput="void(0)"
+                                                   onblur="void(0)">
+                                            <div class="form-text small text-muted">Presiona fuera del campo o espera para validar.</div>
                                         </td>
                                         <td>
-                                            <input type="text" 
-                                            class="form-control form-control-sm numero-input" 
-                                            name="productos[<?= $index ?>][numero_bascula]" 
-                                            value="<?= htmlspecialchars($producto['numero_bascula'] ?? '') ?>"
-                                            data-id-detalle="<?= $producto['id_detalle'] ?>"
-                                            data-tipo="bascula"
-                                            onblur="validarNumero(this)">
+                                            <input type="text"
+                                                   class="form-control form-control-sm numero-input"
+                                                   name="productos[<?= $index ?>][numero_bascula]"
+                                                   value="<?= htmlspecialchars($producto['numero_bascula'] ?? '') ?>"
+                                                   data-id-detalle="<?= $producto['id_detalle'] ?>"
+                                                   data-tipo="bascula"
+                                                   autocomplete="off"
+                                                   placeholder="Ej: B-9876"
+                                                   oninput="void(0)"
+                                                   onblur="void(0)">
+                                            <div class="form-text small text-muted">Puede estar vacío si no aplica.</div>
                                         </td>
                                         <td>
-                                            <input type="text" 
-                                            class="form-control form-control-sm numero-input" 
-                                            name="productos[<?= $index ?>][numero_factura]" 
-                                            value="<?= htmlspecialchars($producto['numero_factura'] ?? '') ?>"
-                                            data-id-detalle="<?= $producto['id_detalle'] ?>"
-                                            data-tipo="factura"
-                                            onblur="validarNumero(this)">
+                                            <input type="text"
+                                                   class="form-control form-control-sm numero-input"
+                                                   name="productos[<?= $index ?>][numero_factura]"
+                                                   value="<?= htmlspecialchars($producto['numero_factura'] ?? '') ?>"
+                                                   data-id-detalle="<?= $producto['id_detalle'] ?>"
+                                                   data-tipo="factura"
+                                                   autocomplete="off"
+                                                   placeholder="Ej: F-2023-01"
+                                                   oninput="void(0)"
+                                                   onblur="void(0)">
+                                            <div class="form-text small text-muted">Formato libre; se validará contra el proveedor.</div>
                                         </td>
-                                        <td class="text-center">
+                                        <td class="text-center align-middle">
                                             <div class="validacion-icon" id="validacion_<?= $producto['id_detalle'] ?>">
                                                 <i class="bi bi-question-circle text-muted" title="Sin validar"></i>
                                             </div>
@@ -1205,6 +1219,10 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                    </div>
+
+                    <div class="mt-3">
+                        <small class="text-muted">Consejos: los campos se validan en segundo plano. Números repetidos se marcarán en rojo y no podrás guardar hasta resolverlos.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1217,6 +1235,140 @@ if (isset($_POST['guardar_factura_flete'])) {
         </div>
     </div>
 </div>
+
+<script>
+/* Validación más amigable: debounce, validación local y servidor, mensajes y bloqueo del submit */
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('modalNumerosProductos');
+    if (!modal) return;
+
+    const form = modal.querySelector('form');
+    const inputs = Array.from(modal.querySelectorAll('.numero-input'));
+    const saveBtn = form.querySelector('button[type="submit"]');
+    const alertBox = document.getElementById('modalAlert');
+    const ID_CAPT = <?= $id_captacion ?>;
+    const ID_PROV = <?= $captacion['id_prov'] ?? 0 ?>;
+
+    // debounce timers per input+tipo
+    const timers = {};
+
+    function setValidationState(input, state, message = '') {
+        const icon = document.getElementById('validacion_' + input.dataset.idDetalle);
+        input.classList.remove('duplicado', 'valido');
+        if (state === 'ok') {
+            input.classList.add('valido');
+            icon.innerHTML = '<i class="bi bi-check-circle text-success" title="' + escapeHtml(message || 'Válido') + '"></i>';
+        } else if (state === 'dup') {
+            input.classList.add('duplicado');
+            icon.innerHTML = '<i class="bi bi-x-circle text-danger" title="' + escapeHtml(message || 'Duplicado') + '"></i>';
+        } else if (state === 'loading') {
+            icon.innerHTML = '<i class="bi bi-hourglass text-warning" title="Validando..."></i>';
+        } else {
+            icon.innerHTML = '<i class="bi bi-question-circle text-muted" title="' + escapeHtml(message || 'Sin validar') + '"></i>';
+        }
+        updateSaveState();
+    }
+
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function checkLocalDuplicates() {
+        const map = {};
+        const duplicates = new Set();
+        inputs.forEach(i => {
+            const val = i.value.trim();
+            if (!val) return;
+            const key = i.dataset.tipo + '::' + val;
+            map[key] = (map[key] || 0) + 1;
+            if (map[key] > 1) duplicates.add(val);
+        });
+        return Array.from(duplicates);
+    }
+
+    function updateSaveState() {
+        const anyServerDup = modal.querySelectorAll('.numero-input.duplicado').length > 0;
+        const localDups = checkLocalDuplicates();
+        if (anyServerDup || localDups.length > 0) {
+            saveBtn.disabled = true;
+            const msgs = [];
+            if (anyServerDup) msgs.push('Hay números duplicados en el sistema.');
+            if (localDups.length > 0) msgs.push('Números repetidos dentro del formulario: ' + localDups.map(x => escapeHtml(x)).join(', '));
+            alertBox.innerHTML = '<div class="alert alert-danger mb-0">' + msgs.join('<br>') + '</div>';
+        } else {
+            saveBtn.disabled = false;
+            alertBox.innerHTML = '';
+        }
+    }
+
+    function validateServer(input) {
+        const val = input.value.trim();
+        const idDetalle = input.dataset.idDetalle;
+        const tipo = input.dataset.tipo;
+        if (!val) {
+            setValidationState(input, 'none', 'Vacío');
+            return;
+        }
+
+        setValidationState(input, 'loading');
+
+        const fd = new FormData();
+        fd.append('id_captacion', ID_CAPT);
+        fd.append('id_detalle', idDetalle);
+        fd.append('tipo', tipo);
+        fd.append('numero', val);
+        fd.append('id_proveedor', ID_PROV);
+
+        fetch('AJAX/validar_numero.php', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.existe) {
+                    const msg = data.message || 'Número duplicado';
+                    setValidationState(input, 'dup', msg);
+                } else {
+                    // If the same value is duplicated locally, prefer local dup mark
+                    const localDups = checkLocalDuplicates();
+                    if (localDups.indexOf(val) !== -1) {
+                        setValidationState(input, 'dup', 'Repetido dentro del formulario');
+                    } else {
+                        setValidationState(input, 'ok', 'Válido');
+                    }
+                }
+            })
+            .catch(() => {
+                setValidationState(input, 'none', 'Error al validar');
+            });
+    }
+
+    // Attach handlers with debounce
+    inputs.forEach(input => {
+        const key = input.dataset.idDetalle + '_' + input.dataset.tipo;
+        input.addEventListener('input', function () {
+            // immediate local duplicate check (friendly feedback)
+            const localDups = checkLocalDuplicates();
+            if (localDups.indexOf(this.value.trim()) !== -1 && this.value.trim() !== '') {
+                setValidationState(this, 'dup', 'Repetido dentro del formulario');
+            } else {
+                setValidationState(this, 'none', 'Pendiente');
+            }
+
+            clearTimeout(timers[key]);
+            timers[key] = setTimeout(() => validateServer(this), 550);
+        });
+
+        // also validate on blur (immediate)
+        input.addEventListener('blur', function () {
+            clearTimeout(timers[key]);
+            validateServer(this);
+        });
+    });
+
+    // Reset states each time modal opens
+    modal.addEventListener('show.bs.modal', function () {
+        inputs.forEach(i => setValidationState(i, 'none', 'Sin validar'));
+        updateSaveState();
+    });
+
+});
+</script>
 <!-- Modal para Factura de Flete -->
 <?php if ($flete): ?>
     <div class="modal fade" id="modalFacturaFlete" tabindex="-1" aria-hidden="true">
@@ -1277,54 +1429,7 @@ if (isset($_POST['guardar_factura_flete'])) {
     </div>
 <?php endif; ?>
 <script>
-// Función para validar números en tiempo real
-    function validarNumero(input) {
-        var valor = input.value.trim();
-        var idDetalle = input.getAttribute('data-id-detalle');
-        var tipo = input.getAttribute('data-tipo');
-        var idCaptacion = <?= $id_captacion ?>;
-        var idProveedor = <?= $captacion['id_prov'] ?? 0 ?>;
 
-        if (valor === '') {
-            input.classList.remove('duplicado', 'valido');
-            document.getElementById('validacion_' + idDetalle).innerHTML = '<i class="bi bi-question-circle text-muted" title="Sin validar"></i>';
-            return;
-        }
-
-    // Mostrar loading
-        document.getElementById('validacion_' + idDetalle).innerHTML = '<i class="bi bi-hourglass text-warning" title="Validando..."></i>';
-
-    // Crear objeto FormData
-        var formData = new FormData();
-        formData.append('id_captacion', idCaptacion);
-        formData.append('id_detalle', idDetalle);
-        formData.append('tipo', tipo);
-        formData.append('numero', valor);
-        formData.append('id_proveedor', idProveedor);
-
-    // Enviar validación vía AJAX
-        fetch('AJAX/validar_numero.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.existe) {
-                input.classList.add('duplicado');
-                input.classList.remove('valido');
-                document.getElementById('validacion_' + idDetalle).innerHTML = '<i class="bi bi-x-circle text-danger" title="Número duplicado"></i>';
-            } else {
-                input.classList.add('valido');
-                input.classList.remove('duplicado');
-                document.getElementById('validacion_' + idDetalle).innerHTML = '<i class="bi bi-check-circle text-success" title="Válido"></i>';
-            }
-        })
-        .catch(error => {
-            console.error('Error en validación:', error);
-            input.classList.remove('duplicado', 'valido');
-            document.getElementById('validacion_' + idDetalle).innerHTML = '<i class="bi bi-exclamation-triangle text-warning" title="Error en validación"></i>';
-        });
-    }
 // Validar formulario antes de enviar
     document.addEventListener('DOMContentLoaded', function() {
         var formNumerosProductos = document.querySelector('form[action=""]');
