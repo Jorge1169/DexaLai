@@ -859,7 +859,7 @@ if (isset($_POST['guardar_factura_flete'])) {
             <div class="card finance-card border-0 shadow h-100">
                 <div class="card-header card-header-custom">
                     <h6 class="mb-0 d-flex align-items-center">
-                        <i class="bi bi-calculator text-success me-2" aria-hidden="true"></i> Resumen Financiero
+                        <i class="bi bi-calculator text-success me-2" aria-hidden="true"></i> Resumen Financiero prueba
                     </h6>
                 </div>
                 <div class="card-body">
