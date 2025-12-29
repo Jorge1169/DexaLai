@@ -1,7 +1,157 @@
 <?php
 // Obtener el ID de la captación desde la URL
 $id_captacion = isset($_GET['id']) ? intval($_GET['id']) : 0;
+// ============================================
+// CONFIGURACIÓN PARA SUBIDA Y OPTIMIZACIÓN
+// ============================================
+// Aumentar límites para procesar imágenes grandes
+ini_set('upload_max_filesize', '10M');
+ini_set('post_max_size', '12M');
+ini_set('memory_limit', '256M');
+ini_set('max_execution_time', '300');
 
+// Función para optimizar imágenes automáticamente
+function optimizarImagenParaHosting($ruta_temporal, $ruta_destino, $tipo_mime) {
+    $tamaño_original = filesize($ruta_temporal);
+    
+    // Si ya es menor a 1MB y no es imagen, no hacer nada
+    if ($tamaño_original <= 1024 * 1024 && !in_array($tipo_mime, ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'])) {
+        return move_uploaded_file($ruta_temporal, $ruta_destino);
+    }
+    
+    // Determinar tipo de imagen
+    switch ($tipo_mime) {
+        case 'image/jpeg':
+        case 'image/jpg':
+            $imagen = imagecreatefromjpeg($ruta_temporal);
+            $es_jpeg = true;
+            break;
+            
+        case 'image/png':
+            $imagen = imagecreatefrompng($ruta_temporal);
+            imagesavealpha($imagen, true);
+            $es_jpeg = false;
+            break;
+            
+        case 'image/webp':
+            $imagen = imagecreatefromwebp($ruta_temporal);
+            $es_jpeg = true;
+            break;
+            
+        case 'image/gif':
+            $imagen = imagecreatefromgif($ruta_temporal);
+            $es_jpeg = true;
+            break;
+            
+        default:
+            throw new Exception("Tipo de imagen no soportado: $tipo_mime");
+    }
+    
+    if (!$imagen) {
+        throw new Exception("No se pudo cargar la imagen para optimización");
+    }
+    
+    // Redimensionar si es muy grande (máximo 1920x1080)
+    $ancho_original = imagesx($imagen);
+    $alto_original = imagesy($imagen);
+    $max_ancho = 1920;
+    $max_alto = 1080;
+    
+    if ($ancho_original > $max_ancho || $alto_original > $max_alto) {
+        $ratio = $ancho_original / $alto_original;
+        
+        if ($ancho_original > $max_ancho) {
+            $nuevo_ancho = $max_ancho;
+            $nuevo_alto = intval($max_ancho / $ratio);
+        } else {
+            $nuevo_alto = $max_alto;
+            $nuevo_ancho = intval($max_alto * $ratio);
+        }
+        
+        // Si después de ajustar por ancho, el alto sigue siendo muy grande
+        if ($nuevo_alto > $max_alto) {
+            $nuevo_alto = $max_alto;
+            $nuevo_ancho = intval($max_alto * $ratio);
+        }
+        
+        $imagen_redimensionada = imagecreatetruecolor($nuevo_ancho, $nuevo_alto);
+        
+        // Mantener transparencia para PNG
+        if (!$es_jpeg) {
+            imagealphablending($imagen_redimensionada, false);
+            imagesavealpha($imagen_redimensionada, true);
+            $transparente = imagecolorallocatealpha($imagen_redimensionada, 255, 255, 255, 127);
+            imagefilledrectangle($imagen_redimensionada, 0, 0, $nuevo_ancho, $nuevo_alto, $transparente);
+        }
+        
+        imagecopyresampled(
+            $imagen_redimensionada, $imagen, 
+            0, 0, 0, 0, 
+            $nuevo_ancho, $nuevo_alto, 
+            $ancho_original, $alto_original
+        );
+        
+        imagedestroy($imagen);
+        $imagen = $imagen_redimensionada;
+        $ancho_original = $nuevo_ancho;
+        $alto_original = $nuevo_alto;
+    }
+    
+    // Intentar diferentes calidades para lograr <1MB
+    $calidades = [90, 80, 70, 60, 50, 40];
+    $tamaño_objetivo = 900 * 1024; // ~900KB
+    
+    foreach ($calidades as $calidad) {
+        if ($es_jpeg) {
+            imagejpeg($imagen, $ruta_destino, $calidad);
+        } else {
+            $nivel_png = floor((100 - $calidad) / 10);
+            imagepng($imagen, $ruta_destino, $nivel_png);
+        }
+        
+        $tamaño_actual = filesize($ruta_destino);
+        
+        if ($tamaño_actual <= $tamaño_objetivo) {
+            imagedestroy($imagen);
+            return true;
+        }
+        
+        unlink($ruta_destino);
+    }
+    
+    // Último intento: tamaño fijo pequeño
+    $ultima_oportunidad = imagecreatetruecolor(1200, 800);
+    imagecopyresampled($ultima_oportunidad, $imagen, 0, 0, 0, 0, 1200, 800, $ancho_original, $alto_original);
+    
+    if ($es_jpeg) {
+        imagejpeg($ultima_oportunidad, $ruta_destino, 40);
+    } else {
+        imagepng($ultima_oportunidad, $ruta_destino, 9);
+    }
+    
+    imagedestroy($imagen);
+    imagedestroy($ultima_oportunidad);
+    
+    $tamaño_final = filesize($ruta_destino);
+    
+    if ($tamaño_final > 1024 * 1024) {
+        unlink($ruta_destino);
+        throw new Exception("No se pudo optimizar la imagen a menos de 1MB");
+    }
+    
+    return true;
+}
+
+// Función para formatear bytes
+function formatBytes($bytes, $precision = 2) {
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= pow(1024, $pow);
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+// ============================================
 if ($id_captacion <= 0) {
     alert("ID de captación no válido", 0, "captacion");
     exit;
@@ -62,7 +212,11 @@ p.nom_pro as nombre_producto,
 pc.precio as precio_compra_por_kilo,
 cd.numero_ticket,
 cd.numero_bascula,
-cd.numero_factura
+cd.numero_factura,
+cd.comprobante_ticket,
+cd.tipo_comprobante,
+cd.tamano_comprobante,
+cd.fecha_subida_comprobante
 FROM captacion_detalle cd
 LEFT JOIN productos p ON cd.id_prod = p.id_prod
 LEFT JOIN precios pc ON cd.id_pre_compra = pc.id_precio
@@ -124,10 +278,7 @@ $tiene_pacas = $total_pacas_cantidad > 0;
 $tiene_ambos = $tiene_granel && $tiene_pacas;
 
 // ============================================
-// PROCESAR GUARDADO DE NÚMEROS DE PRODUCTOS
-// ============================================
-// ============================================
-// PROCESAR GUARDADO DE NÚMEROS DE PRODUCTOS
+// PROCESAR GUARDADO DE NÚMEROS Y COMPROBANTES DE PRODUCTOS
 // ============================================
 if (isset($_POST['guardar_numeros_productos'])) {
     try {
@@ -141,6 +292,22 @@ if (isset($_POST['guardar_numeros_productos'])) {
         if (empty($productos_actualizar) || !is_array($productos_actualizar)) {
             throw new Exception("No hay datos de productos para actualizar");
         }
+        
+        // Configuración para subida de archivos
+        $upload_dir = __DIR__ . '/../uploads/comprobantes/';
+        if (!file_exists($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        
+        // Tipos de archivo permitidos
+        $allowed_types = [
+            'image/jpeg' => 'jpg',
+            'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            'application/pdf' => 'pdf'
+        ];
         
         // ============================================
         // VALIDAR DUPLICADOS ANTES DE GUARDAR
@@ -258,20 +425,110 @@ if (isset($_POST['guardar_numeros_productos'])) {
             $bascula_sql = ($numero_bascula === '') ? null : $numero_bascula;
             $factura_sql = ($numero_factura === '') ? null : $numero_factura;
             
-            // Actualizar el registro
-            $sql = "UPDATE captacion_detalle 
-            SET numero_ticket = ?, 
-            numero_bascula = ?, 
-            numero_factura = ? 
-            WHERE id_detalle = ? AND id_captacion = ? AND status = 1";
+            // Manejar la subida del archivo si existe
+            $comprobante_file = null;
+            $tipo_comprobante = null;
+            $tamano_comprobante = null;
             
-            $stmt = $conn_mysql->prepare($sql);
-            if (!$stmt) {
-                $errores[] = "Error al preparar consulta para ID $id_detalle: " . $conn_mysql->error;
-                continue;
+            if (isset($_FILES['productos']['tmp_name'][$index]['comprobante']) 
+                && $_FILES['productos']['tmp_name'][$index]['comprobante'] != '') {
+                
+                $file = $_FILES['productos'];
+                $tmp_name = $file['tmp_name'][$index]['comprobante'];
+                $file_name = $file['name'][$index]['comprobante'];
+                $file_size = $file['size'][$index]['comprobante'];
+                $file_error = $file['error'][$index]['comprobante'];
+                
+                // Determinar tipo MIME real
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $file_type = finfo_file($finfo, $tmp_name);
+                finfo_close($finfo);
+                
+                // Validar tipo
+                if (!array_key_exists($file_type, $allowed_types)) {
+                    throw new Exception("Tipo de archivo '$file_type' no permitido para '$file_name'");
+                }
+                
+                // Validar errores de subida
+                if ($file_error !== UPLOAD_ERR_OK) {
+                    throw new Exception("Error al subir el archivo '$file_name' (código: $file_error)");
+                }
+                
+                // Generar nombre único para el archivo
+                $extension = $allowed_types[$file_type];
+                $new_filename = 'comprobante_' . $id_captacion . '_' . $id_detalle . '_' . time() . '.' . $extension;
+                $upload_path = $upload_dir . $new_filename;
+                
+                try {
+                    // Si es PDF, solo verificar tamaño (no podemos optimizar PDFs)
+                    if ($file_type === 'application/pdf') {
+                        if ($file_size > 1024 * 1024) {
+                            throw new Exception("El PDF es demasiado grande (" . formatBytes($file_size) . "). Máximo 1MB.");
+                        }
+                        move_uploaded_file($tmp_name, $upload_path);
+                        $tamano_comprobante = $file_size;
+                    } 
+                    // Si es imagen, optimizarla
+                    elseif (strpos($file_type, 'image/') === 0) {
+                        optimizarImagenParaHosting($tmp_name, $upload_path, $file_type);
+                        $tamano_comprobante = filesize($upload_path);
+                    }
+                    
+                    $comprobante_file = $new_filename;
+                    $tipo_comprobante = $file_type;
+                    
+                    // Eliminar archivo anterior si existe
+                    $sql_old = "SELECT comprobante_ticket FROM captacion_detalle WHERE id_detalle = ?";
+                    $stmt_old = $conn_mysql->prepare($sql_old);
+                    $stmt_old->bind_param('i', $id_detalle);
+                    $stmt_old->execute();
+                    $result_old = $stmt_old->get_result();
+                    
+                    if ($row_old = $result_old->fetch_assoc()) {
+                        $old_file = $row_old['comprobante_ticket'];
+                        if ($old_file && file_exists($upload_dir . $old_file)) {
+                            unlink($upload_dir . $old_file);
+                        }
+                    }
+                    
+                } catch (Exception $e) {
+                    throw new Exception("Error procesando '$file_name': " . $e->getMessage());
+                }
             }
             
-            $stmt->bind_param('sssii', $ticket_sql, $bascula_sql, $factura_sql, $id_detalle, $id_captacion);
+            // Construir consulta SQL dinámicamente
+            if ($comprobante_file) {
+                $sql = "UPDATE captacion_detalle 
+                SET numero_ticket = ?, 
+                numero_bascula = ?, 
+                numero_factura = ?,
+                comprobante_ticket = ?,
+                tipo_comprobante = ?,
+                tamano_comprobante = ?,
+                fecha_subida_comprobante = NOW()
+                WHERE id_detalle = ? AND id_captacion = ? AND status = 1";
+                
+                $stmt = $conn_mysql->prepare($sql);
+                if (!$stmt) {
+                    $errores[] = "Error al preparar consulta para ID $id_detalle: " . $conn_mysql->error;
+                    continue;
+                }
+                $stmt->bind_param('sssssiii', $ticket_sql, $bascula_sql, $factura_sql, 
+                    $comprobante_file, $tipo_comprobante, $tamano_comprobante, $id_detalle, $id_captacion);
+            } else {
+                $sql = "UPDATE captacion_detalle 
+                SET numero_ticket = ?, 
+                numero_bascula = ?, 
+                numero_factura = ? 
+                WHERE id_detalle = ? AND id_captacion = ? AND status = 1";
+                
+                $stmt = $conn_mysql->prepare($sql);
+                if (!$stmt) {
+                    $errores[] = "Error al preparar consulta para ID $id_detalle: " . $conn_mysql->error;
+                    continue;
+                }
+                $stmt->bind_param('sssii', $ticket_sql, $bascula_sql, $factura_sql, $id_detalle, $id_captacion);
+            }
             
             if (!$stmt->execute()) {
                 $errores[] = "Error al ejecutar para ID $id_detalle: " . $stmt->error;
@@ -298,7 +555,6 @@ if (isset($_POST['guardar_numeros_productos'])) {
         alert("Error: " . $e->getMessage(), 0, "V_captacion&id=$id_captacion");
     }
 }
-
 // ============================================
 // PROCESAR GUARDADO DE FACTURA DE FLETE
 // ============================================
@@ -1127,25 +1383,97 @@ if (isset($_POST['guardar_factura_flete'])) {
         </div>
     </div>
 </div>
-<!-- Modal para Números de Productos -->
-<!-- Modal para Números de Productos -->
-<div class="modal fade" id="modalNumerosProductos" tabindex="-1" aria-hidden="true">
+
+<!-- Modal para visualizar comprobantes -->
+<div class="modal fade" id="modalViewComprobante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalViewComprobanteTitle">
+                    <i class="bi bi-file-earmark me-2"></i>
+                    Comprobante
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalViewComprobanteBody">
+                <!-- Contenido dinámico -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btnDownloadComprobante">
+                    <i class="bi bi-download me-1"></i> Descargar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de ayuda para comprimir -->
+<div class="modal fade" id="modalAyudaComprimir" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
-                    <i class="bi bi-card-checklist me-2"></i>
-                    Actualizar Números - Productos
+                    <i class="bi bi-question-circle me-2"></i>
+                    Cómo comprimir imágenes grandes
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" action="">
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-laptop text-primary"></i> En computadora:</h6>
+                        <ul>
+                            <li><strong>Windows:</strong> Paint 3D → Cambiar tamaño (70%)</li>
+                            <li><strong>Mac:</strong> Vista Previa → Herramientas → Ajustar tamaño</li>
+                            <li><strong>Todos:</strong> <a href="https://tinypng.com" target="_blank">TinyPNG.com</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-phone text-success"></i> En teléfono:</h6>
+                        <ul>
+                            <li><strong>Android:</strong> Google Fotos → Editar → Recortar</li>
+                            <li><strong>iPhone:</strong> Fotos → Editar → Ajustar</li>
+                            <li><strong>App:</strong> "Photo Compress 2.0"</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-lightbulb"></i>
+                    <strong>Consejo:</strong> El sistema optimizará automáticamente las imágenes a menos de 1MB, 
+                    pero si subes imágenes ya comprimidas, el proceso será más rápido.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <a href="https://tinypng.com" target="_blank" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-up-right"></i> Ir a TinyPNG
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Números y Comprobantes de Productos -->
+<div class="modal fade" id="modalNumerosProductos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-card-checklist me-2"></i>
+                    Actualizar Números y Comprobantes - Productos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="" enctype="multipart/form-data">
                 <div class="modal-body">
                     <div id="modalAlert" class="mb-3"></div>
 
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        Los números no se pueden repetir con el mismo proveedor para productos activos (status = 1). La validación es en tiempo real.
+                        <strong>Números:</strong> No se pueden repetir con el mismo proveedor.<br>
+                        <strong>Comprobantes:</strong> Máximo 1MB por archivo. Formatos: JPG, PNG, PDF, WebP, GIF.
+                        Las imágenes grandes se optimizarán automáticamente.
                     </div>
 
                     <input type="hidden" name="id_captacion" value="<?= $id_captacion ?>">
@@ -1155,15 +1483,24 @@ if (isset($_POST['guardar_factura_flete'])) {
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Producto</th>
-                                    <th>N° Ticket</th>
-                                    <th>N° Báscula</th>
-                                    <th>N° Factura</th>
-                                    <th>Validación</th>
+                                    <th width="15%">Producto</th>
+                                    <th width="10%">N° Ticket</th>
+                                    <th width="10%">N° Báscula</th>
+                                    <th width="10%">N° Factura</th>
+                                    <th width="20%">Comprobante</th>
+                                    <th width="5%">Validación</th>
+                                    <th width="15%">Archivo Actual</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($productos as $index => $producto): ?>
+                                    <?php
+                                    $comprobante = $producto['comprobante_ticket'] ?? '';
+                                    $tipo_comprobante = $producto['tipo_comprobante'] ?? '';
+                                    $tamano_comprobante = $producto['tamano_comprobante'] ?? 0;
+                                    $has_comprobante = !empty($comprobante);
+                                    $is_pdf = strpos($tipo_comprobante, 'pdf') !== false;
+                                    ?>
                                     <tr>
                                         <td>
                                             <strong><?= htmlspecialchars($producto['cod_producto']) ?></strong>
@@ -1179,10 +1516,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                                    data-id-detalle="<?= $producto['id_detalle'] ?>"
                                                    data-tipo="ticket"
                                                    autocomplete="off"
-                                                   placeholder="Ej: 12345"
-                                                   oninput="void(0)"
-                                                   onblur="void(0)">
-                                            <div class="form-text small text-muted">Presiona fuera del campo o espera para validar.</div>
+                                                   placeholder="Ej: 12345">
                                         </td>
                                         <td>
                                             <input type="text"
@@ -1192,10 +1526,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                                    data-id-detalle="<?= $producto['id_detalle'] ?>"
                                                    data-tipo="bascula"
                                                    autocomplete="off"
-                                                   placeholder="Ej: B-9876"
-                                                   oninput="void(0)"
-                                                   onblur="void(0)">
-                                            <div class="form-text small text-muted">Puede estar vacío si no aplica.</div>
+                                                   placeholder="Ej: B-9876">
                                         </td>
                                         <td>
                                             <input type="text"
@@ -1205,14 +1536,58 @@ if (isset($_POST['guardar_factura_flete'])) {
                                                    data-id-detalle="<?= $producto['id_detalle'] ?>"
                                                    data-tipo="factura"
                                                    autocomplete="off"
-                                                   placeholder="Ej: F-2023-01"
-                                                   oninput="void(0)"
-                                                   onblur="void(0)">
-                                            <div class="form-text small text-muted">Formato libre; se validará contra el proveedor.</div>
+                                                   placeholder="Ej: F-2023-01">
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <input type="file"
+                                                       class="form-control form-control-sm file-input"
+                                                       name="productos[<?= $index ?>][comprobante]"
+                                                       id="comprobante_<?= $index ?>"
+                                                       accept=".jpg,.jpeg,.png,.pdf,.webp,.gif"
+                                                       onchange="previewFile(this, <?= $index ?>)">
+                                            </div>
+                                            <div class="form-text small">
+                                                <?php if ($has_comprobante): ?>
+                                                    <span class="text-success">
+                                                        <i class="bi bi-check-circle"></i> Actual: 
+                                                        <?= $is_pdf ? 'PDF' : 'Imagen' ?> 
+                                                        (<?= $tamano_comprobante > 0 ? formatBytes($tamano_comprobante) : 'N/A' ?>)
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">Opcional - Se optimizará a 1MB</span>
+                                                <?php endif; ?>
+                                            </div>
                                         </td>
                                         <td class="text-center align-middle">
                                             <div class="validacion-icon" id="validacion_<?= $producto['id_detalle'] ?>">
                                                 <i class="bi bi-question-circle text-muted" title="Sin validar"></i>
+                                            </div>
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <div id="preview_<?= $index ?>">
+                                                <?php if ($has_comprobante): ?>
+                                                    <div class="d-flex flex-column align-items-center">
+                                                        <?php if ($is_pdf): ?>
+                                                            <i class="bi bi-file-earmark-pdf text-danger fs-4"></i>
+                                                            <small class="text-truncate" style="max-width: 100px;">
+                                                                <?= htmlspecialchars($comprobante) ?>
+                                                            </small>
+                                                        <?php else: ?>
+                                                            <img src="uploads/comprobantes/<?= htmlspecialchars($comprobante) ?>" 
+                                                                 class="img-thumbnail" 
+                                                                 style="max-width: 80px; max-height: 60px;"
+                                                                 alt="Comprobante actual">
+                                                        <?php endif; ?>
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-outline-primary mt-1"
+                                                                onclick="viewComprobante('<?= htmlspecialchars($comprobante) ?>', '<?= $tipo_comprobante ?>', '<?= htmlspecialchars($producto['nombre_producto']) ?>')">
+                                                            <i class="bi bi-eye"></i> Ver
+                                                        </button>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">Sin archivo</span>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>
@@ -1222,7 +1597,11 @@ if (isset($_POST['guardar_factura_flete'])) {
                     </div>
 
                     <div class="mt-3">
-                        <small class="text-muted">Consejos: los campos se validan en segundo plano. Números repetidos se marcarán en rojo y no podrás guardar hasta resolverlos.</small>
+                        <div class="alert alert-warning small">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Nota:</strong> Si subes un nuevo archivo, reemplazará el existente.
+                            Los archivos se guardan en: <code>uploads/comprobantes/</code>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1542,7 +1921,180 @@ function alert(type, message) {
         $('.alert').alert('close');
     }, 5000);
 }
+// Función para previsualizar archivos antes de subir
+function previewFile(input, index) {
+    const preview = document.getElementById('preview_' + index);
+    const file = input.files[0];
+    
+    preview.innerHTML = '';
+    
+    if (file) {
+        const reader = new FileReader();
+        const fileType = file.type;
+        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+        
+        reader.onload = function(e) {
+            if (fileType.startsWith('image/')) {
+                // Para imágenes: mostrar miniatura
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.maxWidth = '80px';
+                img.style.maxHeight = '60px';
+                img.style.objectFit = 'contain';
+                img.className = 'img-thumbnail';
+                preview.appendChild(img);
+                
+                // Información de tamaño
+                const info = document.createElement('div');
+                info.className = 'small mt-1';
+                if (file.size > 1024 * 1024) {
+                    info.innerHTML = `<span class="text-warning">${fileSizeMB} MB (se optimizará)</span>`;
+                } else {
+                    info.innerHTML = `<span class="text-success">${fileSizeMB} MB</span>`;
+                }
+                preview.appendChild(info);
+                
+            } else if (fileType === 'application/pdf') {
+                // Para PDF: mostrar icono
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-file-earmark-pdf text-danger fs-4';
+                icon.title = file.name;
+                preview.appendChild(icon);
+                
+                const name = document.createElement('div');
+                name.className = 'small text-truncate mt-1';
+                name.textContent = file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name;
+                preview.appendChild(name);
+                
+                const size = document.createElement('div');
+                size.className = 'small';
+                if (file.size > 1024 * 1024) {
+                    size.innerHTML = `<span class="text-danger">${fileSizeMB} MB (muy grande)</span>`;
+                } else {
+                    size.innerHTML = `<span class="text-success">${fileSizeMB} MB</span>`;
+                }
+                preview.appendChild(size);
+            }
+        }
+        
+        reader.readAsDataURL(file);
+    }
+}
 
+// Función para ver comprobantes existentes
+function viewComprobante(filename, filetype, productName) {
+    const modal = new bootstrap.Modal(document.getElementById('modalViewComprobante'));
+    const modalBody = document.getElementById('modalViewComprobanteBody');
+    const modalTitle = document.getElementById('modalViewComprobanteTitle');
+    const btnDownload = document.getElementById('btnDownloadComprobante');
+    
+    modalTitle.innerHTML = `<i class="bi bi-file-earmark me-2"></i> Comprobante: ${productName}`;
+    
+    // Configurar enlace de descarga
+    btnDownload.onclick = function() {
+        window.location.href = 'uploads/comprobantes/' + filename;
+    };
+    
+    if (filetype.includes('pdf')) {
+        // Para PDF: usar iframe
+        modalBody.innerHTML = `
+            <div class="text-center">
+                <h6>${productName}</h6>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Archivo PDF: ${filename}
+                </div>
+                <iframe src="uploads/comprobantes/${filename}" 
+                        width="100%" 
+                        height="500px" 
+                        style="border: 1px solid #ddd; border-radius: 5px;"></iframe>
+            </div>
+        `;
+    } else {
+        // Para imágenes: mostrar directamente
+        modalBody.innerHTML = `
+            <div class="text-center">
+                <h6>${productName}</h6>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Archivo de imagen: ${filename}
+                </div>
+                <img src="uploads/comprobantes/${filename}" 
+                     class="img-fluid rounded" 
+                     alt="Comprobante" 
+                     style="max-height: 500px; border: 1px solid #ddd;">
+                <div class="mt-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="rotateImage('${filename}')">
+                        <i class="bi bi-arrow-clockwise"></i> Rotar
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    modal.show();
+}
+
+// Función para rotar imágenes (opcional)
+function rotateImage(filename) {
+    const img = document.querySelector('#modalViewComprobanteBody img');
+    if (img) {
+        const currentRotation = parseInt(img.style.transform.replace('rotate(', '').replace('deg)', '')) || 0;
+        const newRotation = currentRotation + 90;
+        img.style.transform = `rotate(${newRotation}deg)`;
+        img.style.transition = 'transform 0.3s ease';
+    }
+}
+
+// Validar archivos en tiempo real
+function validateFileInput(input) {
+    const file = input.files[0];
+    if (!file) return true;
+    
+    const maxSize = 10 * 1024 * 1024; // 10MB máximo para entrada
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    
+    if (file.size > maxSize) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Archivo muy grande',
+            html: `El archivo pesa ${(file.size/1024/1024).toFixed(2)} MB.<br>
+                  <strong>Límite máximo: 10MB</strong><br><br>
+                  ¿Necesitas ayuda para comprimirlo?`,
+            showCancelButton: true,
+            confirmButtonText: 'Ver ayuda',
+            cancelButtonText: 'Elegir otro'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const modal = new bootstrap.Modal(document.getElementById('modalAyudaComprimir'));
+                modal.show();
+            }
+            input.value = '';
+        });
+        return false;
+    }
+    
+    if (!allowedTypes.includes(file.type)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Tipo de archivo no permitido',
+            text: 'Solo se permiten: JPG, PNG, PDF, WebP, GIF',
+            confirmButtonText: 'Entendido'
+        });
+        input.value = '';
+        return false;
+    }
+    
+    return true;
+}
+
+// Modificar el event listener para validar archivos
+document.addEventListener('DOMContentLoaded', function() {
+    // Agregar validación a todos los inputs de archivo
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function() {
+            validateFileInput(this);
+        });
+    });
+});
 $(document).ready(function() {
         // Inicializar tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
