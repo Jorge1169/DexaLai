@@ -667,176 +667,7 @@ if (isset($_POST['guardar_factura_flete'])) {
 // ============================================
 // CONTINÚA CON EL CÓDIGO ORIGINAL
 // ============================================
-
 ?>
-
-<style>
-    :root {
-        --primary-color: #4e73df;
-        --success-color: #1cc88a;
-        --warning-color: #f6c23e;
-        --info-color: #36b9cc;
-        --dark-color: #5a5c69;
-        --light-color: #f8f9fc;
-    }
-
-    
-    .info-card {
-        border-left: 4px solid var(--primary-color);
-        transition: transform 0.2s;
-        height: 100%;
-    }
-    
-    .info-card:hover {
-        transform: translateY(-2px);
-    }
-    
-    .finance-card {
-        border-left: 4px solid var(--success-color);
-        background: linear-gradient(135deg, rgba(28, 200, 138, 0.05) 0%, rgba(255, 255, 255, 0.1) 100%);
-    }
-    
-    [data-bs-theme="dark"] .finance-card {
-        background: linear-gradient(135deg, rgba(28, 200, 138, 0.1) 0%, rgba(33, 37, 41, 0.3) 100%);
-        border-color: var(--success-color);
-    }
-    
-    .stat-card {
-        border-radius: 0.5rem;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-    }
-    
-    .stat-icon {
-        width: 3rem;
-        height: 3rem;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-    
-    .product-type-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 1rem;
-    }
-    
-    .table-custom th {
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
-        border-bottom-width: 2px;
-    }
-    
-    .table-custom tbody tr {
-        transition: background-color 0.15s;
-    }
-    
-    .table-custom tbody tr:hover {
-        background-color: rgba(var(--primary-color-rgb), 0.05);
-    }
-    
-    [data-bs-theme="dark"] .table-custom tbody tr:hover {
-        background-color: rgba(255, 255, 255, 0.05);
-    }
-    
-    .cost-display {
-        font-family: 'SF Mono', 'Roboto Mono', monospace;
-        font-weight: 600;
-    }
-    
-    .section-title {
-        position: relative;
-        padding-bottom: 0.75rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .section-title::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 3rem;
-        height: 3px;
-        background: var(--primary-color);
-        border-radius: 2px;
-    }
-    
-    .folio-badge {
-        font-family: 'SF Mono', 'Roboto Mono', monospace;
-        letter-spacing: 1px;
-        font-weight: 600;
-    }
-    
-    .status-badge {
-        padding: 0.35rem 1rem;
-        border-radius: 2rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-    
-    .card-header-custom {
-        background-color: rgba(var(--primary-color-rgb), 0.05);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    }
-    
-    [data-bs-theme="dark"] .card-header-custom {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .quantity-badge {
-        background-color: rgba(var(--primary-color-rgb), 0.1);
-        color: var(--primary-color);
-        padding: 0.25rem 0.75rem;
-        border-radius: 0.375rem;
-        font-weight: 600;
-    }
-    
-    [data-bs-theme="dark"] .quantity-badge {
-        background-color: rgba(var(--primary-color-rgb), 0.2);
-    }
-    /* Estilos para los modales y validaciones */
-    .numero-input {
-        min-width: 120px;
-    }
-
-    .numero-input.duplicado {
-        border-color: #dc3545;
-        background-color: rgba(220, 53, 69, 0.05);
-    }
-
-    .numero-input.valido {
-        border-color: #198754;
-        background-color: rgba(25, 135, 84, 0.05);
-    }
-
-    .validacion-icon .bi-check-circle {
-        color: #198754;
-    }
-
-    .validacion-icon .bi-x-circle {
-        color: #dc3545;
-    }
-
-    .validacion-icon .bi-question-circle {
-        color: #6c757d;
-    }
-
-/* Estilo para mostrar números en la tabla principal */
-.numero-badge {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.5rem;
-    margin: 0.1rem;
-    display: inline-block;
-    background-color: rgba(var(--primary-color-rgb), 0.1);
-    border-radius: 0.25rem;
-}
-</style>
-
 <div class="container py-3 px-lg-4">
     <!-- Header Principal -->
     <div class="card border-0 shadow-lg mb-4 overflow-hidden">
@@ -1109,8 +940,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                 <?php endif; ?>
             </div>
         </div>
-
-        <!-- Resumen Financiero -->
+<!-- Resumen Financiero -->
         <div class="col-lg-4">
             <div class="card finance-card border-0 shadow h-100">
                 <div class="card-header card-header-custom">
@@ -1156,7 +986,7 @@ if (isset($_POST['guardar_factura_flete'])) {
         </div> <!-- /.col-lg-4 -->
     </div>
 
-    <!-- Detalle de Productos -->
+    <!-- Detalle de Productos (Ticket + Comprobante combinados en una sola columna) -->
     <div class="card border-0 shadow mb-4">
         <div class="card-header card-header-custom d-flex justify-content-between align-items-center py-3">
             <h5 class="mb-0 d-flex align-items-center">
@@ -1191,7 +1021,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 <th class="text-end">Total Kilos</th>
                                 <th class="text-end">Precio/kg</th>
                                 <th class="text-end">Subtotal</th>
-                                <th>N° Ticket</th>
+                                <th>N° Ticket / Comprobante</th>
                                 <th>N° Báscula</th>
                                 <th>N° Factura</th>
                                 <th>Observaciones</th>
@@ -1209,6 +1039,10 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     'pacas' => ['bg' => 'bg-indigo bg-opacity-25', 'text' => 'text-indigo']
                                 ];
                                 $color = $type_colors[$tipo_almacen] ?? ['bg' => 'bg-secondary bg-opacity-25', 'text' => 'text-secondary'];
+
+                                $has_comprobante = !empty($producto['comprobante_ticket']);
+                                $nombre_archivo = $has_comprobante ? htmlspecialchars($producto['comprobante_ticket']) : '';
+                                $tipo_comprobante = $has_comprobante ? htmlspecialchars($producto['tipo_comprobante'] ?? '') : '';
                                 ?>
                                 <tr>
                                     <td class="fw-semibold text-muted"><?= $contador++ ?></td>
@@ -1270,15 +1104,33 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     <td class="text-end">
                                         <div class="cost-display text-success">$<?= number_format($subtotal_producto, 2) ?></div>
                                     </td>
+
+                                    <!-- Ticket + Comprobante en una sola columna -->
                                     <td>
                                         <?php if (!empty($producto['numero_ticket'])): ?>
-                                            <span class="numero-badge" data-bs-toggle="tooltip" title="Ticket">
-                                                <i class="bi bi-ticket-detailed me-1"></i><?= htmlspecialchars($producto['numero_ticket']) ?>
-                                            </span>
+                                            <?php if ($has_comprobante): ?>
+                                                <button type="button" class="btn btn-link p-0 d-inline-flex align-items-center" 
+                                                        onclick="viewComprobante('<?= $nombre_archivo ?>', '<?= $tipo_comprobante ?>', '<?= htmlspecialchars($producto['nombre_producto']) ?>')"
+                                                        data-bs-toggle="tooltip" title="Ver comprobante">
+                                                    <i class="bi bi-ticket-detailed me-1"></i>
+                                                    <?= htmlspecialchars($producto['numero_ticket']) ?>
+                                                    <span class="badge bg-success ms-2" title="Tiene comprobante">
+                                                        <i class="bi bi-paperclip"></i>
+                                                    </span>
+                                                </button>
+                                            <?php else: ?>
+                                                <span class="text-muted small cursor-pointer" onclick="document.querySelector('#modalNumerosProductos button[type=submit]').scrollIntoView(); $('#modalNumerosProductos').modal('show')">
+                                                    <i class="bi bi-ticket-detailed me-1"></i> <?= htmlspecialchars($producto['numero_ticket']) ?>
+                                                    <span class="text-muted ms-2 small">(sin comprobante)</span>
+                                                </span>
+                                            <?php endif; ?>
                                         <?php else: ?>
-                                            <span class="text-muted small">-</span>
+                                            <span class="text-muted small cursor-pointer" onclick="document.querySelector('#modalNumerosProductos button[type=submit]').scrollIntoView(); $('#modalNumerosProductos').modal('show')">
+                                                <i class="bi bi-plus-circle me-1"></i> Agregar
+                                            </span>
                                         <?php endif; ?>
                                     </td>
+
                                     <td>
                                         <?php if (!empty($producto['numero_bascula'])): ?>
                                             <span class="numero-badge" data-bs-toggle="tooltip" title="Báscula">
@@ -1350,6 +1202,11 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 <td class="text-end">
                                     <span class="text-success">$<?= number_format($costo_total_productos, 2) ?></span>
                                 </td>
+
+                                <!-- Espacios para columnas: Ticket/Comprobante, Báscula, Factura, Observaciones -->
+                                <td></td>
+                                <td></td>
+                                <td></td>
                                 <td></td>
                             </tr>
                         </tbody>
@@ -1934,107 +1791,232 @@ function previewFile(input, index) {
         const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
         
         reader.onload = function(e) {
+            const container = document.createElement('div');
+            container.className = 'd-flex flex-column align-items-center';
+            
             if (fileType.startsWith('image/')) {
-                // Para imágenes: mostrar miniatura
+                // Para imágenes: mostrar miniatura con botón de vista previa
                 const img = document.createElement('img');
                 img.src = e.target.result;
-                img.style.maxWidth = '80px';
-                img.style.maxHeight = '60px';
-                img.style.objectFit = 'contain';
-                img.className = 'img-thumbnail';
-                preview.appendChild(img);
-                
-                // Información de tamaño
-                const info = document.createElement('div');
-                info.className = 'small mt-1';
-                if (file.size > 1024 * 1024) {
-                    info.innerHTML = `<span class="text-warning">${fileSizeMB} MB (se optimizará)</span>`;
-                } else {
-                    info.innerHTML = `<span class="text-success">${fileSizeMB} MB</span>`;
-                }
-                preview.appendChild(info);
+                img.className = 'file-input-preview mb-1';
+                img.style.cursor = 'pointer';
+                img.onclick = function() {
+                    // Crear un blob temporal para previsualizar
+                    const blob = new Blob([file], { type: fileType });
+                    const url = URL.createObjectURL(blob);
+                    
+                    Swal.fire({
+                        title: 'Vista previa',
+                        html: `<img src="${url}" class="img-fluid" alt="Vista previa">`,
+                        showConfirmButton: false,
+                        showCloseButton: true,
+                        width: '80%'
+                    }).then(() => {
+                        URL.revokeObjectURL(url);
+                    });
+                };
+                container.appendChild(img);
                 
             } else if (fileType === 'application/pdf') {
-                // Para PDF: mostrar icono
                 const icon = document.createElement('i');
-                icon.className = 'bi bi-file-earmark-pdf text-danger fs-4';
-                icon.title = file.name;
-                preview.appendChild(icon);
-                
-                const name = document.createElement('div');
-                name.className = 'small text-truncate mt-1';
-                name.textContent = file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name;
-                preview.appendChild(name);
-                
-                const size = document.createElement('div');
-                size.className = 'small';
-                if (file.size > 1024 * 1024) {
-                    size.innerHTML = `<span class="text-danger">${fileSizeMB} MB (muy grande)</span>`;
-                } else {
-                    size.innerHTML = `<span class="text-success">${fileSizeMB} MB</span>`;
-                }
-                preview.appendChild(size);
+                icon.className = 'bi bi-file-earmark-pdf text-danger fs-3';
+                container.appendChild(icon);
             }
-        }
+            
+            // Nombre del archivo
+            const name = document.createElement('div');
+            name.className = 'small text-truncate text-center';
+            name.style.maxWidth = '100px';
+            name.textContent = file.name.length > 20 ? 
+                file.name.substring(0, 17) + '...' : file.name;
+            name.title = file.name;
+            container.appendChild(name);
+            
+            // Tamaño del archivo
+            const size = document.createElement('div');
+            size.className = 'small';
+            if (file.size > 1024 * 1024) {
+                size.innerHTML = `<span class="text-warning">${fileSizeMB} MB</span>`;
+            } else {
+                size.innerHTML = `<span class="text-success">${fileSizeMB} MB</span>`;
+            }
+            container.appendChild(size);
+            
+            preview.appendChild(container);
+        };
         
         reader.readAsDataURL(file);
     }
 }
 
-// Función para ver comprobantes existentes
+// Función para descargar el comprobante
+function downloadComprobante() {
+    if (currentFilename) {
+        window.location.href = 'uploads/comprobantes/' + currentFilename;
+    }
+}
+
+// Función mejorada para ver comprobante (para PDF)
 function viewComprobante(filename, filetype, productName) {
     const modal = new bootstrap.Modal(document.getElementById('modalViewComprobante'));
     const modalBody = document.getElementById('modalViewComprobanteBody');
     const modalTitle = document.getElementById('modalViewComprobanteTitle');
     const btnDownload = document.getElementById('btnDownloadComprobante');
     
-    modalTitle.innerHTML = `<i class="bi bi-file-earmark me-2"></i> Comprobante: ${productName}`;
+    modalTitle.innerHTML = `<i class="bi bi-file-earmark me-2"></i> ${productName}`;
     
     // Configurar enlace de descarga
     btnDownload.onclick = function() {
-        window.location.href = 'uploads/comprobantes/' + filename;
+        downloadComprobante();
     };
     
-    if (filetype.includes('pdf')) {
-        // Para PDF: usar iframe
+    if (filetype && filetype.includes('pdf')) {
         modalBody.innerHTML = `
             <div class="text-center">
-                <h6>${productName}</h6>
+                <h5>${productName}</h5>
                 <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i> Archivo PDF: ${filename}
+                    <i class="bi bi-info-circle"></i> Documento PDF
                 </div>
-                <iframe src="uploads/comprobantes/${filename}" 
-                        width="100%" 
-                        height="500px" 
-                        style="border: 1px solid #ddd; border-radius: 5px;"></iframe>
+                <div class="border rounded" style="height: 70vh;">
+                    <iframe src="uploads/comprobantes/${filename}#toolbar=0&navpanes=0" 
+                            width="100%" height="100%" style="border: none;"></iframe>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">Usa Ctrl+Scroll para hacer zoom en el PDF</small>
+                </div>
             </div>
         `;
     } else {
-        // Para imágenes: mostrar directamente
         modalBody.innerHTML = `
             <div class="text-center">
-                <h6>${productName}</h6>
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i> Archivo de imagen: ${filename}
+            <h5>${productName}</h5>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Haz doble clic para restablecer, usa la rueda (o gesto) para hacer zoom y arrastra para mover
+            </div>
+            <div id="viewerContainer" style="width:100%;height:70vh;overflow:hidden;touch-action:none;border-radius:.25rem;background:#f8f9fa;display:flex;align-items:center;justify-content:center;">
+                <img id="viewerImage" src="uploads/comprobantes/${filename}" 
+                 class="img-fluid" 
+                 alt="Comprobante" 
+                 style="will-change:transform;transform-origin:0 0;cursor:grab;max-width:none;max-height:none;"
+                 onload="(function(img){ 
+                     var container = document.getElementById('viewerContainer');
+                     img.style.maxWidth = 'none';
+                     img.style.maxHeight = 'none';
+                     img.style.transform = 'translate(0px,0px) scale(1)';
+                     img.style.transition = 'transform 0s';
+                     img.style.touchAction = 'none';
+                     var scale = 1, minScale = 1, maxScale = 5;
+                     var posX = 0, posY = 0;
+                     var startX = 0, startY = 0, panning = false;
+
+                     function apply() {
+                     img.style.transform = 'translate(' + posX + 'px,' + posY + 'px) scale(' + scale + ')';
+                     }
+
+                     // Wheel zoom
+                     container.addEventListener('wheel', function(e){
+                     e.preventDefault();
+                     var rect = img.getBoundingClientRect();
+                     var cx = e.clientX - rect.left;
+                     var cy = e.clientY - rect.top;
+                     var delta = e.deltaY < 0 ? 1.12 : 0.88;
+                     var prevScale = scale;
+                     scale = Math.min(maxScale, Math.max(minScale, scale * delta));
+                     // adjust position to keep pointer focus
+                     posX = (posX - cx) * (scale / prevScale) + cx;
+                     posY = (posY - cy) * (scale / prevScale) + cy;
+                     apply();
+                     }, { passive: false });
+
+                     // Pointer (mouse & touch) pan
+                     img.addEventListener('pointerdown', function(e){
+                     img.setPointerCapture(e.pointerId);
+                     panning = true;
+                     img.style.cursor = 'grabbing';
+                     startX = e.clientX - posX;
+                     startY = e.clientY - posY;
+                     });
+
+                     window.addEventListener('pointermove', function(e){
+                     if(!panning) return;
+                     posX = e.clientX - startX;
+                     posY = e.clientY - startY;
+                     apply();
+                     });
+
+                     img.addEventListener('pointerup', function(e){
+                     panning = false;
+                     img.style.cursor = 'grab';
+                     try { img.releasePointerCapture(e.pointerId); } catch(e){}
+                     });
+                     img.addEventListener('pointercancel', function(e){
+                     panning = false;
+                     img.style.cursor = 'grab';
+                     try { img.releasePointerCapture(e.pointerId); } catch(e){}
+                     });
+
+                     // Double click to reset
+                     img.addEventListener('dblclick', function(e){
+                     scale = 1; posX = 0; posY = 0; apply();
+                     });
+
+                     // Prevent image dragging default
+                     img.addEventListener('dragstart', function(e){ e.preventDefault(); });
+
+                     // Optional: simple pinch-to-zoom (touch) using two pointers
+                     var pointers = {};
+                     container.addEventListener('pointerdown', function(e){ pointers[e.pointerId] = e; });
+                     container.addEventListener('pointerup', function(e){ delete pointers[e.pointerId]; });
+                     container.addEventListener('pointercancel', function(e){ delete pointers[e.pointerId]; });
+                     container.addEventListener('pointermove', function(e){
+                     if(Object.keys(pointers).length === 2){
+                         // compute distance
+                         pointers[e.pointerId] = e;
+                         var keys = Object.keys(pointers);
+                         var p1 = pointers[keys[0]], p2 = pointers[keys[1]];
+                         if(!p1 || !p2) return;
+                         var dx = p2.clientX - p1.clientX;
+                         var dy = p2.clientY - p1.clientY;
+                         var dist = Math.sqrt(dx*dx + dy*dy);
+                         if(!container._lastDist){ container._lastDist = dist; return; }
+                         var last = container._lastDist;
+                         var ratio = dist / last;
+                         var prevScale = scale;
+                         scale = Math.min(maxScale, Math.max(minScale, scale * ratio));
+                         // center between pointers
+                         var cx = (p1.clientX + p2.clientX)/2 - img.getBoundingClientRect().left;
+                         var cy = (p1.clientY + p2.clientY)/2 - img.getBoundingClientRect().top;
+                         posX = (posX - cx) * (scale / prevScale) + cx;
+                         posY = (posY - cy) * (scale / prevScale) + cy;
+                         apply();
+                         container._lastDist = dist;
+                     }
+                     });
+                     container.addEventListener('pointerup', function(){ container._lastDist = null; });
+                     container.addEventListener('pointercancel', function(){ container._lastDist = null; });
+                 })(this)">
+            </div>
+            <div class="mt-3">
+                <div class="btn-group">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="rotateImageInViewer('${filename}')">
+                    <i class="bi bi-arrow-clockwise"></i> Rotar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="downloadComprobante()">
+                    <i class="bi bi-download"></i> Descargar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="(function(){ var img=document.getElementById('viewerImage'); if(img){ img.style.transform='translate(0px,0px) scale(1)'; } })()">
+                    <i class="bi bi-x-circle"></i> Reset
+                </button>
                 </div>
-                <img src="uploads/comprobantes/${filename}" 
-                     class="img-fluid rounded" 
-                     alt="Comprobante" 
-                     style="max-height: 500px; border: 1px solid #ddd;">
-                <div class="mt-3">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="rotateImage('${filename}')">
-                        <i class="bi bi-arrow-clockwise"></i> Rotar
-                    </button>
-                </div>
+            </div>
             </div>
         `;
     }
-    
     modal.show();
 }
 
-// Función para rotar imágenes (opcional)
-function rotateImage(filename) {
+// Función para rotar imagen en el viewer simple
+function rotateImageInViewer(filename) {
     const img = document.querySelector('#modalViewComprobanteBody img');
     if (img) {
         const currentRotation = parseInt(img.style.transform.replace('rotate(', '').replace('deg)', '')) || 0;
@@ -2043,90 +2025,4 @@ function rotateImage(filename) {
         img.style.transition = 'transform 0.3s ease';
     }
 }
-
-// Validar archivos en tiempo real
-function validateFileInput(input) {
-    const file = input.files[0];
-    if (!file) return true;
-    
-    const maxSize = 10 * 1024 * 1024; // 10MB máximo para entrada
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
-    
-    if (file.size > maxSize) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Archivo muy grande',
-            html: `El archivo pesa ${(file.size/1024/1024).toFixed(2)} MB.<br>
-                  <strong>Límite máximo: 10MB</strong><br><br>
-                  ¿Necesitas ayuda para comprimirlo?`,
-            showCancelButton: true,
-            confirmButtonText: 'Ver ayuda',
-            cancelButtonText: 'Elegir otro'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const modal = new bootstrap.Modal(document.getElementById('modalAyudaComprimir'));
-                modal.show();
-            }
-            input.value = '';
-        });
-        return false;
-    }
-    
-    if (!allowedTypes.includes(file.type)) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Tipo de archivo no permitido',
-            text: 'Solo se permiten: JPG, PNG, PDF, WebP, GIF',
-            confirmButtonText: 'Entendido'
-        });
-        input.value = '';
-        return false;
-    }
-    
-    return true;
-}
-
-// Modificar el event listener para validar archivos
-document.addEventListener('DOMContentLoaded', function() {
-    // Agregar validación a todos los inputs de archivo
-    document.querySelectorAll('input[type="file"]').forEach(input => {
-        input.addEventListener('change', function() {
-            validateFileInput(this);
-        });
-    });
-});
-$(document).ready(function() {
-        // Inicializar tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-        // Cerrar ventana
-    $('#btnCerrar').click(function() {
-        window.close();
-    });
-
-
-        // Atajos de teclado
-    $(document).on('keydown', function(e) {
-        if (e.key === 'Escape') {
-            window.close();
-        }
-        if (e.ctrlKey && e.key === 'p') {
-            e.preventDefault();
-            window.print();
-        }
-    });
-
-        // Resaltar hover en tablas
-    $('.table-custom tbody tr').hover(
-        function() {
-            $(this).addClass('table-active');
-        },
-        function() {
-            $(this).removeClass('table-active');
-        }
-        );
-});
 </script>
