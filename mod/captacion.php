@@ -11,7 +11,7 @@ $fechaFinDefault = date('Y-m-d');
             <h5 class="mb-0">
                 <i class="bi bi-list-ul me-2"></i>Captaciones Registradas
             </h5>
-            <a class="btn btn-sm btn-light" href="?p=N_captacion" target="_blank">
+            <a class="btn btn-sm btn-light" href="?p=N_captacion" <?= $perm['captacion_crear'];?> target="_blank">
                 <i class="bi bi-plus-circle me-1"></i> Nueva Captación
             </a>
         </div>
@@ -41,7 +41,7 @@ $fechaFinDefault = date('Y-m-d');
                         <button type="button" id="resetBtn" class="btn btn-secondary">
                             <i class="bi bi-x-circle"></i>
                         </button>
-                        <button type="button" id="toggleInactiveBtn" class="btn btn-info">
+                        <button type="button" id="toggleInactiveBtn" class="btn btn-info" <?= $perm['INACTIVO'];?>>
                             <i class="bi bi-eye"></i> Inactivas
                         </button>
                     </div>
@@ -201,31 +201,29 @@ $(document).ready(function() {
                                        title="Ver detalle completo" data-bs-toggle="tooltip" target="_blank">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'admin'): ?>
+                                    
                                         <a href="E_captacion?id=${id}" 
-                                           class="btn btn-warning" title="Editar captación" data-bs-toggle="tooltip">
+                                           class="btn btn-warning" title="Editar captación" data-bs-toggle="tooltip" <?= $perm['captacion_editar'];?>>
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <button class="btn btn-danger desactivar-captacion-btn" 
-                                            data-id="${id}" title="Desactivar captación" data-bs-toggle="tooltip">
+                                            data-id="${id}" title="Desactivar captación" data-bs-toggle="tooltip" <?= $perm['ACT_DES'];?>>
                                             <i class="bi bi-x-circle"></i>
                                         </button>
-                                    <?php endif; ?>
+                                    
                                 </div>
                             `;
                         } else {
                             buttons = `
                                 <div class="btn-group btn-group-sm" role="group">
                                     <a href="?p=V_captacion&id=${id}" class="btn btn-info" 
-                                       title="Ver detalle completo" data-bs-toggle="tooltip" target="_blank">
+                                       title="Ver detalle completo" data-bs-toggle="tooltip" target="_blank" <?= $perm['ACT_DES'];?>>
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'admin'): ?>
                                         <button class="btn btn-success activar-captacion-btn" 
                                             data-id="${id}" title="Activar captación" data-bs-toggle="tooltip">
                                             <i class="bi bi-check-circle"></i>
                                         </button>
-                                    <?php endif; ?>
                                 </div>
                             `;
                         }
