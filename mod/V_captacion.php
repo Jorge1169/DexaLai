@@ -710,6 +710,11 @@ if (isset($_POST['guardar_factura_flete'])) {
                         <button id="btnCerrar" class="btn btn-sm rounded-3 btn-danger align-items-center">
                             <i class="bi bi-x-circle"></i> Cerrar
                         </button>
+                        <script>
+                            document.getElementById('btnCerrar').addEventListener('click', function() {
+                                window.close();
+                            });
+                        </script>
                     </div>
                 </div>
             </div>

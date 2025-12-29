@@ -153,6 +153,8 @@ function alert($txt, $type, $url) {
                 'Recole_Editar' => ($permiso[14] == '1') ? "" : 'style="display: none"',//f1 ->Editar Recoleccion
                 'en_correo' => ($permiso[15] == '1') ? "" : 'style="display: none"',//en_correo ->Enviar correos
                 'sub_precios' => ($permiso[16] == '1') ? "" : 'style="display: none"',//prec ->Dar de alta precios
+                'captacion_crear' => ($permiso[17] == '1') ? "" : 'style="display: none"',//g ->Crear captacion
+                'captacion_editar' => ($permiso[18] == '1') ? "" : 'style="display: none"',//g1 ->Editar captacion
 
                 'ACT_DES' => $DesAct, // Activar o desactivar
                 'ADMIN' => $Admin, // Permisos de ADMIN

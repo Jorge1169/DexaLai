@@ -360,7 +360,7 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
                                 $perMi = $Pruev1['a'].','.$Pruev1['b'].','.$Pruev1['c'].','.$Pruev1['d'].','.$Pruev1['e'].','.
                                 $Pruev1['a1'].','.$Pruev1['b1'].','.$Pruev1['c1'].','.$Pruev1['d1'].','.$Pruev1['e1'].','.
                                 $Pruev1['af'].','.$Pruev1['acr'].','.$Pruev1['acc'].','.$Pruev1['f'].','.$Pruev1['f1'].','.
-                                $Pruev1['en_correo'].','.$Pruev1['prec'];
+                                $Pruev1['en_correo'].','.$Pruev1['prec'].','.$Pruev1['g'].','.$Pruev1['g1'];
 
                                 $dias = array("DOMINGO","LUNES","MARTES","MIÉRCOLES","JUEVES","VIERNES","SÁBADO");
                                 $meses = array("ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE");
