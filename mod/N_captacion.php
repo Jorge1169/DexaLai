@@ -1,5 +1,4 @@
 <?php
-
 $folio = '';
 $folioM = '';
 $fecha_seleccionada = $_POST['fecha_captacion'] ?? date('Y-m-d');

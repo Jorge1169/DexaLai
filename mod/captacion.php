@@ -202,8 +202,8 @@ $(document).ready(function() {
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     
-                                        <a href="E_captacion?id=${id}" 
-                                           class="btn btn-warning" title="Editar captación" data-bs-toggle="tooltip" <?= $perm['captacion_editar'];?>>
+                                        <a href="?p=E_captacion&id=${id}" 
+                                           class="btn btn-warning" title="Editar captación" data-bs-toggle="tooltip" target="_blank" <?= $perm['captacion_editar'];?>>
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <button class="btn btn-danger desactivar-captacion-btn" 
