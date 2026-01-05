@@ -519,6 +519,7 @@ function moduloDisponibleParaZona($modulo, $conn_mysql) {
                   'transportes','V_transporte','E_transportista','N_transportista', 
                   'productos', 'reporte_precios', 'V_producto','E_producto','N_producto',
                   'captacion','N_captacion','reporte_recole_meo', 'usuarios','V_captacion','E_captacion',
+                  'almacenes_info','V_detalle_almacen',
                   'V_usuarios', 'E_usuario', 'N_usuario',
                   'almacenes','N_almacen','V_almacen','E_almacen','N_direccion_almacen','E_direccion_almacen',
                   'usuarios', 'V_usuarios', 'E_usuario', 'N_usuario','sudo_login','sudo_logout','salir'],
