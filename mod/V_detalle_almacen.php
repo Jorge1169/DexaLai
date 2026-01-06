@@ -736,19 +736,37 @@ $bodegas = $stmt_bodegas->get_result();
 // Función para cambiar de mes (navegación)
 function cambiarMes(direccion) {
     const fechaInput = document.getElementById('fecha_mes');
-    const fecha = new Date(fechaInput.value + '-01');
+    let valor = fechaInput.value;
     
+    // Si no hay valor, usar mes actual
+    if (!valor) {
+        const hoy = new Date();
+        valor = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0');
+    }
+    
+    // Asegurar formato YYYY-MM y parsear partes
+    const partes = valor.split('-');
+    let anio = parseInt(partes[0], 10);
+    let mes = parseInt(partes[1], 10);
+    if (isNaN(anio) || isNaN(mes)) {
+        const hoy = new Date();
+        anio = hoy.getFullYear();
+        mes = hoy.getMonth() + 1;
+    }
+    
+    // Crear Date usando año y mes (mes en Date es 0-based)
+    const fecha = new Date(anio, mes - 1, 1);
     fecha.setMonth(fecha.getMonth() + direccion);
     
     const nuevoMes = fecha.getMonth() + 1;
     const nuevoAnio = fecha.getFullYear();
-    const nuevaFecha = nuevoAnio + '-' + nuevoMes.toString().padStart(2, '0');
+    const nuevaFecha = nuevoAnio + '-' + String(nuevoMes).padStart(2, '0');
     
     fechaInput.value = nuevaFecha;
     
-    // Enviar el formulario
+    // Enviar el formulario si existe
     const form = fechaInput.closest('form');
-    form.submit();
+    if (form) form.submit();
 }
 
 // Función para inicializar gráfico
