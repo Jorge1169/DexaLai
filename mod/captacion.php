@@ -52,7 +52,7 @@ $fechaFinDefault = date('Y-m-d');
 
     <!-- Tabla de Captaciones con DataTables y AJAX -->
     <div class="card shadow-sm">
-        <div class="card-body p-0">
+        <div class="card-body p-3">
             <div class="table-responsive">
                 <table id="tablaCaptaciones" class="table table-hover w-100">
                     <thead class="table-light">
