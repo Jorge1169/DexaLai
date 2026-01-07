@@ -592,7 +592,7 @@ $bodega_alm_actual = $capt['id_direc_alma'];
                             <select name="zona" id="zona" class="form-select" onchange="cambiarZona()" required>
                                 <option value="">Selecciona zona...</option>
                                 <?php
-                                $z0 = $conn_mysql->query("SELECT * FROM zonas where status = '1' ORDER BY id_zone");
+                                $z0 = $conn_mysql->query("SELECT * FROM zonas where status = '1' and id_zone = '$zona_actual' ORDER BY id_zone");
                                 while ($z1 = mysqli_fetch_array($z0)) {
                                     $sel = $z1['id_zone'] == $zona_actual ? 'selected' : '';
                                     echo "<option value=\"{$z1['id_zone']}\" $sel>{$z1['PLANTA']}</option>";
@@ -602,7 +602,7 @@ $bodega_alm_actual = $capt['id_direc_alma'];
                         </div>
                         <div class="col-md-6" id="resulFolio">
                             <label class="form-label">Folio</label>
-                            <input type="text" class="form-control bg-light" 
+                            <input type="text" class="form-control" 
                                    value="<?= "C-".htmlspecialchars($capt['zona'])."-".$folio ?>" 
                                    disabled readonly>
                         </div>
