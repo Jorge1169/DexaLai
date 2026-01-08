@@ -498,6 +498,9 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
                     <a href="?p=almacenes_info" class="boton-Subm <?= obtenerClaseMenu('almacenes_info', $conn_mysql) ?>">
                         Almacenes
                     </a>
+                    <a href="?p=ventas" class="boton-Subm <?= obtenerClaseMenu('ventas', $conn_mysql) ?>">
+                        Ventas
+                    </a>
                 </div>
             </div>
         </div>

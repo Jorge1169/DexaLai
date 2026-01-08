@@ -522,6 +522,7 @@ function moduloDisponibleParaZona($modulo, $conn_mysql) {
                   'almacenes_info','V_detalle_almacen',
                   'V_usuarios', 'E_usuario', 'N_usuario',
                   'almacenes','N_almacen','V_almacen','E_almacen','N_direccion_almacen','E_direccion_almacen',
+                  'ventas','N_venta','V_venta','E_venta',
                   'usuarios', 'V_usuarios', 'E_usuario', 'N_usuario','sudo_login','sudo_logout','salir'],
         
         // Puedes agregar más tipos aquí
