@@ -1,5 +1,5 @@
 <?php
-// V_venta.php - Módulo para ver detalles de una venta
+// V_venta.php - Módulo para ver detalles de una venta (Versión Dashboard)
 
 // Obtener ID de la venta
 $id_venta = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -80,7 +80,7 @@ while ($detalle = $detalles->fetch_assoc()) {
     $total_venta += ($detalle['total_kilos'] * $detalle['precio_venta']);
 }
 
-// Reiniciar puntero para usarlo después
+// Reiniciar punteros
 mysqli_data_seek($detalles, 0);
 
 if ($flete_data = $flete->fetch_assoc()) {
@@ -106,130 +106,129 @@ $stmt_movimientos->execute();
 $movimientos = $stmt_movimientos->get_result();
 ?>
 
-<div class="container mt-4">
-    <div class="card shadow-lg">
-        <div class="card-header encabezado-col text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-                <i class="bi bi-receipt me-2"></i>Detalle de Venta: 
-                <span class="badge bg-light text-dark"><?= htmlspecialchars($venta['folio_venta']) ?></span>
-            </h5>
-            <div>
-                <a href="?p=ventas_info" class="btn btn-sm btn-secondary">
-                    <i class="bi bi-arrow-left me-1"></i> Volver a Lista
-                </a>
-                <button onclick="window.print()" class="btn btn-sm btn-outline-light">
-                    <i class="bi bi-printer me-1"></i> Imprimir
-                </button>
+<div class="container mt-3">
+    <!-- Encabezado -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0 text-primary">
+                            <i class="bi bi-receipt me-2"></i>Venta: 
+                            <span class="text-dark"><?= htmlspecialchars($venta['folio_venta']) ?></span>
+                        </h4>
+                        <p class="text-muted mb-0">
+                            <i class="bi bi-calendar me-1"></i><?= date('d/m/Y', strtotime($venta['fecha_venta'])) ?> 
+                            • <i class="bi bi-geo-alt ms-2 me-1"></i><?= htmlspecialchars($venta['nombre_zona']) ?>
+                            • <i class="bi bi-person ms-2 me-1"></i><?= htmlspecialchars($venta['nombre_usuario']) ?>
+                        </p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="?p=ventas_info" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Volver
+                        </a>
+                        <button onclick="window.print()" class="btn btn-outline-primary">
+                            <i class="bi bi-printer me-1"></i> Imprimir
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="card-body">
-            
-            <!-- Información General -->
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <div class="alert alert-primary">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <strong><i class="bi bi-calendar me-2"></i>Fecha:</strong><br>
-                                <?= date('d/m/Y', strtotime($venta['fecha_venta'])) ?>
-                            </div>
-                            <div class="col-md-4">
-                                <strong><i class="bi bi-geo-alt me-2"></i>Zona:</strong><br>
-                                <?= htmlspecialchars($venta['nombre_zona']) ?>
-                            </div>
-                            <div class="col-md-4">
-                                <strong><i class="bi bi-person me-2"></i>Vendedor:</strong><br>
-                                <?= htmlspecialchars($venta['nombre_usuario']) ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Tarjetas de Resumen -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="card border-success">
-                        <div class="card-body text-center">
-                            <h6 class="card-title text-muted">Total Pacas</h6>
-                            <h2 class="text-success"><?= number_format($total_pacas, 0) ?></h2>
+    </div>
+
+    <!-- Tarjetas de Métricas -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-start border-success border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Total Pacas</h6>
+                            <h3 class="mb-0 text-success"><?= number_format($total_pacas, 0) ?></h3>
                             <small class="text-muted">pacas vendidas</small>
                         </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-info">
-                        <div class="card-body text-center">
-                            <h6 class="card-title text-muted">Total Kilos</h6>
-                            <h2 class="text-info"><?= number_format($total_kilos, 2) ?></h2>
-                            <small class="text-muted">kilogramos vendidos</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-warning">
-                        <div class="card-body text-center">
-                            <h6 class="card-title text-muted">Venta Total</h6>
-                            <h2 class="text-warning">$<?= number_format($total_venta, 2) ?></h2>
-                            <small class="text-muted">valor de productos</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-danger">
-                        <div class="card-body text-center">
-                            <h6 class="card-title text-muted">Total General</h6>
-                            <h2 class="text-danger">$<?= number_format($total_general, 2) ?></h2>
-                            <small class="text-muted">incluye flete</small>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-box-seam fs-4 text-success"></i>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Tabs para diferentes secciones -->
-            <ul class="nav nav-tabs mb-4" id="ventaTab" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="detalles-tab" data-bs-toggle="tab" 
-                            data-bs-target="#detalles" type="button" role="tab">
-                        <i class="bi bi-box-seam me-1"></i> Detalles de Venta
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="partes-tab" data-bs-toggle="tab" 
-                            data-bs-target="#partes" type="button" role="tab">
-                        <i class="bi bi-people me-1"></i> Partes Involucradas
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="inventario-tab" data-bs-toggle="tab" 
-                            data-bs-target="#inventario" type="button" role="tab">
-                        <i class="bi bi-arrow-left-right me-1"></i> Movimientos Inventario
-                        <span class="badge bg-primary ms-1"><?= $movimientos->num_rows ?></span>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="flete-tab" data-bs-toggle="tab" 
-                            data-bs-target="#flete" type="button" role="tab">
-                        <i class="bi bi-truck me-1"></i> Información de Flete
-                        <span class="badge bg-primary ms-1"><?= $flete->num_rows ?></span>
-                    </button>
-                </li>
-            </ul>
-            
-            <div class="tab-content" id="ventaTabContent">
-                
-                <!-- Tab 1: Detalles de Venta -->
-                <div class="tab-pane fade show active" id="detalles" role="tabpanel">
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-start border-info border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Total Kilos</h6>
+                            <h3 class="mb-0 text-info"><?= number_format($total_kilos, 2) ?></h3>
+                            <small class="text-muted">kilogramos vendidos</small>
+                        </div>
+                        <div class="bg-info bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-scale fs-4 text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-start border-warning border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Venta Total</h6>
+                            <h3 class="mb-0 text-warning">$<?= number_format($total_venta, 2) ?></h3>
+                            <small class="text-muted">valor de productos</small>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-cash-coin fs-4 text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-start border-danger border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Total General</h6>
+                            <h3 class="mb-0 text-danger">$<?= number_format($total_general, 2) ?></h3>
+                            <small class="text-muted">incluye flete</small>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-currency-dollar fs-4 text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección Principal - Tres columnas -->
+    <div class="row">
+        <!-- Columna 1: Detalles de Productos -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="bi bi-box-seam me-2"></i>Detalles de Productos Vendidos
+                    </h6>
+                    <span class="badge bg-primary"><?= $detalles->num_rows ?> productos</span>
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-dark">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Producto</th>
-                                    <th class="text-end">Precio Unitario</th>
-                                    <th class="text-end">Pacas</th>
-                                    <th class="text-end">Kilos</th>
-                                    <th class="text-end">Subtotal</th>
-                                    <th>Observaciones</th>
+                                    <th class="border-0">Producto</th>
+                                    <th class="border-0 text-end">Precio</th>
+                                    <th class="border-0 text-end">Pacas</th>
+                                    <th class="border-0 text-end">Kilos</th>
+                                    <th class="border-0 text-end">Subtotal</th>
+                                    <th class="border-0">Obs.</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -238,25 +237,45 @@ $movimientos = $stmt_movimientos->get_result();
                                     while ($detalle = $detalles->fetch_assoc()) {
                                         $subtotal = $detalle['total_kilos'] * $detalle['precio_venta'];
                                         ?>
-                                        <tr>
+                                        <tr class="border-bottom">
                                             <td>
-                                                <strong><?= htmlspecialchars($detalle['cod_producto']) ?></strong><br>
-                                                <small class="text-muted"><?= htmlspecialchars($detalle['nombre_producto']) ?></small>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="bg-primary bg-opacity-10 rounded p-2 me-3">
+                                                        <i class="bi bi-box text-primary"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong class="d-block"><?= htmlspecialchars($detalle['cod_producto']) ?></strong>
+                                                        <small class="text-muted"><?= htmlspecialchars($detalle['nombre_producto']) ?></small>
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td class="text-end">$<?= number_format($detalle['precio_venta'], 2) ?>/kg</td>
-                                            <td class="text-end"><?= number_format($detalle['pacas_cantidad'], 0) ?></td>
-                                            <td class="text-end"><?= number_format($detalle['total_kilos'], 2) ?> kg</td>
-                                            <td class="text-end"><strong>$<?= number_format($subtotal, 2) ?></strong></td>
-                                            <td><small><?= htmlspecialchars($detalle['observaciones']) ?></small></td>
+                                            <td class="text-end align-middle">
+                                                <span class="fw-bold">$<?= number_format($detalle['precio_venta'], 2) ?></span>
+                                                <small class="d-block text-muted">/kg</small>
+                                            </td>
+                                            <td class="text-end align-middle">
+                                                <span class="fw-bold"><?= number_format($detalle['pacas_cantidad'], 0) ?></span>
+                                            </td>
+                                            <td class="text-end align-middle">
+                                                <span class="fw-bold"><?= number_format($detalle['total_kilos'], 2) ?></span>
+                                                <small class="d-block text-muted">kg</small>
+                                            </td>
+                                            <td class="text-end align-middle">
+                                                <span class="fw-bold text-success">$<?= number_format($subtotal, 2) ?></span>
+                                            </td>
+                                            <td class="align-middle">
+                                                <small class="text-muted"><?= htmlspecialchars($detalle['observaciones']) ?></small>
+                                            </td>
                                         </tr>
                                         <?php
                                     }
                                 } else {
                                     ?>
                                     <tr>
-                                        <td colspan="6" class="text-center">
+                                        <td colspan="6" class="text-center py-4">
                                             <div class="alert alert-warning mb-0">
-                                                No hay detalles de producto registrados para esta venta
+                                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                                No hay detalles de producto registrados
                                             </div>
                                         </td>
                                     </tr>
@@ -264,220 +283,217 @@ $movimientos = $stmt_movimientos->get_result();
                                 }
                                 ?>
                             </tbody>
-                            <tfoot class="table-secondary fw-bold">
+                            <tfoot class="table-secondary">
                                 <tr>
-                                    <td colspan="2" class="text-end">TOTALES:</td>
-                                    <td class="text-end"><?= number_format($total_pacas, 0) ?></td>
-                                    <td class="text-end"><?= number_format($total_kilos, 2) ?> kg</td>
-                                    <td class="text-end">$<?= number_format($total_venta, 2) ?></td>
-                                    <td></td>
+                                    <td colspan="2" class="border-0"><strong>TOTALES:</strong></td>
+                                    <td class="border-0 text-end fw-bold"><?= number_format($total_pacas, 0) ?></td>
+                                    <td class="border-0 text-end fw-bold"><?= number_format($total_kilos, 2) ?> kg</td>
+                                    <td class="border-0 text-end fw-bold text-success">$<?= number_format($total_venta, 2) ?></td>
+                                    <td class="border-0"></td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
-                
-                <!-- Tab 2: Partes Involucradas -->
-                <div class="tab-pane fade" id="partes" role="tabpanel">
-                    <div class="row">
-                        <!-- Cliente -->
-                        <div class="col-md-6 mb-4">
-                            <div class="card h-100">
-                                <div class="card-header bg-success text-white">
-                                    <h6 class="mb-0"><i class="bi bi-person-badge me-2"></i>Cliente</h6>
-                                </div>
-                                <div class="card-body">
-                                    <h5><?= htmlspecialchars($venta['nombre_cliente']) ?></h5>
-                                    <p class="mb-1"><strong>Código:</strong> <?= htmlspecialchars($venta['cod_cliente']) ?></p>
-                                    <p class="mb-1"><strong>Bodega Destino:</strong></p>
-                                    <div class="alert alert-info py-2">
-                                        <i class="bi bi-building me-2"></i>
-                                        <strong><?= htmlspecialchars($venta['cod_bodega_cliente']) ?></strong><br>
-                                        <small><?= htmlspecialchars($venta['nombre_bodega_cliente']) ?></small>
-                                    </div>
+            </div>
+        </div>
+
+        <!-- Columna 2: Información de Partes -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-people me-2"></i>Partes Involucradas</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Cliente -->
+                    <div class="card border mb-3">
+                        <div class="card-header bg-success bg-opacity-10 border-bottom py-2">
+                            <h6 class="mb-0"><i class="bi bi-person-check me-2 text-success"></i>Cliente</h6>
+                        </div>
+                        <div class="card-body py-3">
+                            <h6 class="text-success mb-2"><?= htmlspecialchars($venta['nombre_cliente']) ?></h6>
+                            <p class="mb-1"><small><strong>Código:</strong> <?= htmlspecialchars($venta['cod_cliente']) ?></small></p>
+                            <div class="mt-3">
+                                <label class="form-label small text-muted mb-1">Bodega Destino:</label>
+                                <div class="alert alert-info py-2 mb-0">
+                                    <i class="bi bi-building me-2"></i>
+                                    <strong><?= htmlspecialchars($venta['cod_bodega_cliente']) ?></strong><br>
+                                    <small><?= htmlspecialchars($venta['nombre_bodega_cliente']) ?></small>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Almacén -->
-                        <div class="col-md-6 mb-4">
-                            <div class="card h-100">
-                                <div class="card-header bg-primary text-white">
-                                    <h6 class="mb-0"><i class="bi bi-building me-2"></i>Almacén de Origen</h6>
-                                </div>
-                                <div class="card-body">
-                                    <h5><?= htmlspecialchars($venta['nombre_almacen']) ?></h5>
-                                    <p class="mb-1"><strong>Código:</strong> <?= htmlspecialchars($venta['cod_almacen']) ?></p>
-                                    <p class="mb-1"><strong>Bodega de Salida:</strong></p>
-                                    <div class="alert alert-warning py-2">
-                                        <i class="bi bi-box-arrow-up me-2"></i>
-                                        <strong><?= htmlspecialchars($venta['cod_bodega_almacen']) ?></strong><br>
-                                        <small><?= htmlspecialchars($venta['nombre_bodega_almacen']) ?></small>
-                                    </div>
+                    </div>
+
+                    <!-- Almacén -->
+                    <div class="card border">
+                        <div class="card-header bg-primary bg-opacity-10 border-bottom py-2">
+                            <h6 class="mb-0"><i class="bi bi-building me-2 text-primary"></i>Almacén de Origen</h6>
+                        </div>
+                        <div class="card-body py-3">
+                            <h6 class="text-primary mb-2"><?= htmlspecialchars($venta['nombre_almacen']) ?></h6>
+                            <p class="mb-1"><small><strong>Código:</strong> <?= htmlspecialchars($venta['cod_almacen']) ?></small></p>
+                            <div class="mt-3">
+                                <label class="form-label small text-muted mb-1">Bodega de Salida:</label>
+                                <div class="alert alert-warning py-2 mb-0">
+                                    <i class="bi bi-box-arrow-up me-2"></i>
+                                    <strong><?= htmlspecialchars($venta['cod_bodega_almacen']) ?></strong><br>
+                                    <small><?= htmlspecialchars($venta['nombre_bodega_almacen']) ?></small>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Tab 3: Movimientos de Inventario -->
-                <div class="tab-pane fade" id="inventario" role="tabpanel">
-                    <div class="alert alert-info mb-3">
-                        <i class="bi bi-info-circle me-2"></i>
-                        Movimientos de inventario generados por esta venta
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Fecha/Hora</th>
-                                    <th>Producto</th>
-                                    <th>Tipo</th>
-                                    <th class="text-end">Pacas Movidas</th>
-                                    <th class="text-end">Kilos Movidos</th>
-                                    <th>Inventario Anterior</th>
-                                    <th>Inventario Nuevo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                if ($movimientos->num_rows > 0) {
-                                    while ($mov = $movimientos->fetch_assoc()) {
-                                        $pacas_anterior = $mov['pacas_cantidad_anterior'];
-                                        $pacas_nuevo = $mov['pacas_cantidad_nuevo'];
-                                        $kilos_anterior = $mov['pacas_kilos_anterior'];
-                                        $kilos_nuevo = $mov['pacas_kilos_nuevo'];
-                                        ?>
-                                        <tr>
-                                            <td><small><?= htmlspecialchars($mov['fecha_formateada']) ?></small></td>
-                                            <td>
-                                                <strong><?= htmlspecialchars($mov['cod_producto']) ?></strong><br>
-                                                <small class="text-muted"><?= htmlspecialchars($mov['nombre_producto']) ?></small>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-danger">SALIDA</span>
-                                            </td>
-                                            <td class="text-end">
-                                                <span class="text-danger">-<?= number_format($mov['pacas_cantidad_movimiento'], 0) ?></span>
-                                            </td>
-                                            <td class="text-end">
-                                                <span class="text-danger">-<?= number_format($mov['pacas_kilos_movimiento'], 2) ?> kg</span>
-                                            </td>
-                                            <td>
-                                                <small>
-                                                    <strong>Pacas:</strong> <?= number_format($pacas_anterior, 0) ?><br>
-                                                    <strong>Kilos:</strong> <?= number_format($kilos_anterior, 2) ?> kg
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <small>
-                                                    <strong>Pacas:</strong> <?= number_format($pacas_nuevo, 0) ?><br>
-                                                    <strong>Kilos:</strong> <?= number_format($kilos_nuevo, 2) ?> kg
-                                                </small>
-                                            </td>
-                                        </tr>
-                                        <?php
-                                    }
-                                } else {
-                                    ?>
-                                    <tr>
-                                        <td colspan="7" class="text-center">
-                                            <div class="alert alert-warning mb-0">
-                                                No se registraron movimientos de inventario para esta venta
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <?php
-                                }
-                                ?>
-                            </tbody>
-                        </table>
-                    </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Segunda Fila: Flete y Resumen -->
+    <div class="row">
+        <!-- Columna 3: Información de Flete -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Información de Flete</h6>
                 </div>
-                
-                <!-- Tab 4: Información de Flete -->
-                <div class="tab-pane fade" id="flete" role="tabpanel">
+                <div class="card-body">
                     <?php if ($flete->num_rows > 0): 
                         mysqli_data_seek($flete, 0);
                         $flete_data = $flete->fetch_assoc();
                         ?>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-info text-white">
-                                        <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Fletero</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <h5><?= htmlspecialchars($venta['nombre_fletero']) ?></h5>
-                                        <p class="mb-1"><strong>Placas:</strong> <?= htmlspecialchars($venta['placas_fletero']) ?></p>
-                                        <p class="mb-1"><strong>Tipo de Flete:</strong> <?= htmlspecialchars($flete_data['tipo_flete']) ?></p>
-                                    </div>
-                                </div>
+                        <!-- Fletero -->
+                        <div class="card border mb-3">
+                            <div class="card-header bg-info bg-opacity-10 border-bottom py-2">
+                                <h6 class="mb-0"><i class="bi bi-truck me-2 text-info"></i>Fletero</h6>
                             </div>
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-warning text-white">
-                                        <h6 class="mb-0"><i class="bi bi-currency-dollar me-2"></i>Costos de Flete</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm">
-                                            <tr>
-                                                <td><strong>Precio Base:</strong></td>
-                                                <td class="text-end">$<?= number_format($flete_data['precio_flete'], 2) ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Total Kilos:</strong></td>
-                                                <td class="text-end"><?= number_format($total_kilos, 2) ?> kg</td>
-                                            </tr>
-                                            <?php if ($flete_data['tipo_flete'] == 'Por tonelada'): ?>
-                                            <tr>
-                                                <td><strong>Toneladas:</strong></td>
-                                                <td class="text-end"><?= number_format($total_kilos / 1000, 3) ?> ton</td>
-                                            </tr>
-                                            <?php endif; ?>
-                                            <tr class="table-success">
-                                                <td><strong>Total Flete:</strong></td>
-                                                <td class="text-end fw-bold">$<?= number_format($total_flete, 2) ?></td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                </div>
+                            <div class="card-body py-3">
+                                <h6 class="text-info mb-2"><?= htmlspecialchars($venta['nombre_fletero']) ?></h6>
+                                <p class="mb-2"><small><strong>Placas:</strong> <?= htmlspecialchars($venta['placas_fletero']) ?></small></p>
+                                <span class="badge bg-info"><?= htmlspecialchars($flete_data['tipo_flete']) ?></span>
+                            </div>
+                        </div>
+
+                        <!-- Costos -->
+                        <div class="card border">
+                            <div class="card-header bg-warning bg-opacity-10 border-bottom py-2">
+                                <h6 class="mb-0"><i class="bi bi-calculator me-2 text-warning"></i>Costos de Flete</h6>
+                            </div>
+                            <div class="card-body py-3">
+                                <table class="table table-sm mb-0">
+                                    <tr>
+                                        <td><small>Precio Base:</small></td>
+                                        <td class="text-end fw-bold">$<?= number_format($flete_data['precio_flete'], 2) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <td><small>Total Kilos:</small></td>
+                                        <td class="text-end"><?= number_format($total_kilos, 2) ?> kg</td>
+                                    </tr>
+                                    <?php if ($flete_data['tipo_flete'] == 'Por tonelada'): ?>
+                                    <tr>
+                                        <td><small>Toneladas:</small></td>
+                                        <td class="text-end"><?= number_format($total_kilos / 1000, 3) ?> ton</td>
+                                    </tr>
+                                    <?php endif; ?>
+                                    <tr class="border-top">
+                                        <td><strong><small>TOTAL FLETE:</small></strong></td>
+                                        <td class="text-end fw-bold text-success">$<?= number_format($total_flete, 2) ?></td>
+                                    </tr>
+                                </table>
                             </div>
                         </div>
                     <?php else: ?>
-                        <div class="alert alert-info">
+                        <div class="alert alert-info mb-0">
                             <i class="bi bi-info-circle me-2"></i>
                             Esta venta no incluye servicio de flete
                         </div>
                     <?php endif; ?>
                 </div>
-                
             </div>
-            
-            <!-- Resumen Final -->
-            <div class="card mt-4">
-                <div class="card-header bg-dark text-white">
+        </div>
+
+        <!-- Columna 4: Movimientos de Inventario -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Movimientos de Inventario</h6>
+                    <span class="badge bg-primary"><?= $movimientos->num_rows ?></span>
+                </div>
+                <div class="card-body">
+                    <?php if ($movimientos->num_rows > 0): ?>
+                        <div class="timeline">
+                            <?php 
+                            $count = 0;
+                            while ($mov = $movimientos->fetch_assoc()):
+                                if ($count++ >= 5) break; // Mostrar máximo 5 movimientos
+                            ?>
+                            <div class="timeline-item border-start border-primary ps-3 pb-3 position-relative">
+                                <div class="position-absolute top-0 start-0 translate-middle bg-primary rounded-circle" style="width: 12px; height: 12px;"></div>
+                                <small class="text-muted d-block"><?= htmlspecialchars($mov['fecha_formateada']) ?></small>
+                                <strong class="d-block"><?= htmlspecialchars($mov['cod_producto']) ?></strong>
+                                <small class="text-muted"><?= htmlspecialchars($mov['nombre_producto']) ?></small>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <span class="badge bg-danger">SALIDA</span>
+                                    <small class="text-danger">-<?= number_format($mov['pacas_cantidad_movimiento'], 0) ?> pacas</small>
+                                </div>
+                            </div>
+                            <?php endwhile; ?>
+                            
+                            <?php if ($movimientos->num_rows > 5): ?>
+                                <div class="text-center mt-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-ellipsis me-1"></i>
+                                        <?= $movimientos->num_rows - 5 ?> movimientos más...
+                                    </small>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            No se registraron movimientos de inventario
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna 5: Resumen Financiero -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
                     <h6 class="mb-0"><i class="bi bi-calculator me-2"></i>Resumen Financiero</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 offset-md-3">
-                            <table class="table table-sm">
-                                <tr>
-                                    <td><strong>Subtotal Productos:</strong></td>
-                                    <td class="text-end">$<?= number_format($total_venta, 2) ?></td>
-                                </tr>
-                                <?php if ($total_flete > 0): ?>
-                                <tr>
-                                    <td><strong>Costo de Flete:</strong></td>
-                                    <td class="text-end">$<?= number_format($total_flete, 2) ?></td>
-                                </tr>
-                                <?php endif; ?>
-                                <tr class="table-primary fw-bold">
-                                    <td><strong>TOTAL GENERAL:</strong></td>
-                                    <td class="text-end fs-5">$<?= number_format($total_general, 2) ?></td>
-                                </tr>
-                            </table>
+                    <div class="d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>Subtotal Productos:</span>
+                            <span class="fw-bold">$<?= number_format($total_venta, 2) ?></span>
+                        </div>
+                        
+                        <?php if ($total_flete > 0): ?>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>Costo de Flete:</span>
+                            <span class="fw-bold text-danger">$<?= number_format($total_flete, 2) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <div class="border-top pt-3 mt-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">TOTAL GENERAL:</h5>
+                                <h4 class="mb-0 text-primary">$<?= number_format($total_general, 2) ?></h4>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="alert alert-success">
+                                <div class="d-flex justify-content-between">
+                                    <small>Valor promedio por kilo:</small>
+                                    <strong>$<?= number_format($total_kilos > 0 ? $total_venta / $total_kilos : 0, 2) ?></strong>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <small>Peso promedio por paca:</small>
+                                    <strong><?= number_format($total_pacas > 0 ? $total_kilos / $total_pacas : 0, 2) ?> kg</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -485,76 +501,3 @@ $movimientos = $stmt_movimientos->get_result();
         </div>
     </div>
 </div>
-
-<!-- Modal de confirmación para eliminar -->
-<div class="modal fade" id="modalEliminar" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar Eliminación</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>¿Está seguro que desea eliminar esta venta?</p>
-                <div class="alert alert-warning">
-                    <i class="bi bi-info-circle me-2"></i>
-                    <strong>Advertencia:</strong> Esta acción eliminará la venta y revertirá el movimiento de inventario.
-                </div>
-                <form id="formEliminar" method="post" action="?p=eliminar_venta">
-                    <input type="hidden" name="id_venta" id="id_venta_eliminar">
-                    <div class="mb-3">
-                        <label for="motivo" class="form-label">Motivo de eliminación:</label>
-                        <textarea name="motivo" id="motivo" class="form-control" rows="3" required></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-danger" onclick="document.getElementById('formEliminar').submit()">
-                    <i class="bi bi-trash me-1"></i> Eliminar Venta
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-// Inicializar tabs
-$(document).ready(function() {
-    $('#ventaTab button').on('click', function (e) {
-        e.preventDefault();
-        $(this).tab('show');
-    });
-    
-    // Inicializar tooltips
-    $('[data-bs-toggle="tooltip"]').tooltip();
-});
-</script>
-
-<!-- Estilos para impresión -->
-<style>
-@media print {
-    .card-header, .nav-tabs, .btn, .modal {
-        display: none !important;
-    }
-    .card {
-        border: none !important;
-        box-shadow: none !important;
-    }
-    .container {
-        max-width: 100% !important;
-        padding: 0 !important;
-    }
-    body {
-        font-size: 12pt !important;
-    }
-    .table th, .table td {
-        padding: 4px !important;
-        font-size: 11pt !important;
-    }
-    .alert {
-        padding: 8px !important;
-        margin-bottom: 8px !important;
-    }
-}
-</style>
