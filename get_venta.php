@@ -485,7 +485,89 @@ if ($accion == 'stock_producto' && isset($_POST['idProd']) && isset($_POST['bode
     }
     exit;
 }
+// 11. Obtener información de venta para edición
+if ($accion == 'info_venta_edicion' && isset($_POST['idVenta'])) {
+    $idVenta = $_POST['idVenta'];
+    
+    $sql = "SELECT v.*, 
+                   vd.id_prod, vd.id_pre_venta, vd.pacas_cantidad, vd.total_kilos, vd.observaciones,
+                   p.cod as cod_producto, p.nom_pro as nombre_producto,
+                   pr.precio as precio_actual,
+                   DATE_FORMAT(v.fecha_venta, '%Y-%m-%d') as fecha_venta_form
+            FROM ventas v
+            LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta AND vd.status = 1
+            LEFT JOIN productos p ON vd.id_prod = p.id_prod
+            LEFT JOIN precios pr ON vd.id_pre_venta = pr.id_precio
+            WHERE v.id_venta = ? AND v.status = 1";
+    
+    $stmt = $conn_mysql->prepare($sql);
+    $stmt->bind_param('i', $idVenta);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $venta = $result->fetch_assoc();
+    
+    if (!$venta) {
+        echo json_encode(['error' => 'Venta no encontrada']);
+        exit;
+    }
+    
+    // Obtener stock disponible para modificación
+    $sql_stock = "SELECT 
+                  IFNULL(SUM(pacas_cantidad_disponible), 0) as pacas_disponibles,
+                  IFNULL(SUM(pacas_kilos_disponible), 0) as kilos_en_pacas
+                  FROM inventario_bodega 
+                  WHERE id_prod = ? AND id_bodega = ?";
+    
+    $stmt_stock = $conn_mysql->prepare($sql_stock);
+    $stmt_stock->bind_param('ii', $venta['id_prod'], $venta['id_direc_alma']);
+    $stmt_stock->execute();
+    $stock_data = $stmt_stock->get_result()->fetch_assoc();
+    
+    $response = [
+        'venta' => $venta,
+        'stock_extra' => [
+            'pacas' => $stock_data['pacas_disponibles'],
+            'kilos' => $stock_data['kilos_en_pacas']
+        ]
+    ];
+    
+    echo json_encode($response);
+    exit;
+}
 
+// 12. Obtener precios para fecha específica (para edición)
+if ($accion == 'precios_edicion' && isset($_POST['idProd']) && isset($_POST['fecha']) && isset($_POST['idBodegaCliente'])) {
+    $idProd = $_POST['idProd'];
+    $fecha = $_POST['fecha'];
+    $idBodegaCliente = $_POST['idBodegaCliente'];
+    
+    $sql = "SELECT p.*, 
+                   CASE 
+                       WHEN p.destino = ? THEN 'Precio específico para esta bodega'
+                       WHEN p.destino = 0 THEN 'Precio general'
+                       ELSE 'Otro precio'
+                   END as tipo_precio
+            FROM precios p 
+            WHERE p.id_prod = ? 
+            AND p.tipo = 'v'
+            AND p.status = '1'
+            AND p.fecha_ini <= ? 
+            AND p.fecha_fin >= ?
+            ORDER BY p.destino DESC, p.fecha_ini DESC";
+    
+    $stmt = $conn_mysql->prepare($sql);
+    $stmt->bind_param('iiss', $idBodegaCliente, $idProd, $fecha, $fecha);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $precios = [];
+    while ($row = $result->fetch_assoc()) {
+        $precios[] = $row;
+    }
+    
+    echo json_encode($precios);
+    exit;
+}
 // Si no se especificó ninguna acción válida
 if (!empty($accion)) {
     die('Error: Acción no reconocida');
