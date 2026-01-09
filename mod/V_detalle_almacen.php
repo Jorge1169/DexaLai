@@ -669,7 +669,7 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                             <td class="text-end fw-bold"><?= number_format($prod['granel_acumulado'], 2) ?> kg</td>
                                             <td class="text-end fw-bold"><?= number_format($prod['pacas_cant_acumulado'], 0) ?></td>
                                             <td class="text-end fw-bold text-primary"><?= number_format($prod['pacas_kilos_acumulado'], 2) ?> kg</td>
-                                            <td class="text-end fw-bold" style="color: #2c3e50;"><?= number_format($total_kilos, 2) ?> kg</td>
+                                            <td class="text-end fw-bold"><?= number_format($total_kilos, 2) ?> kg</td>
                                             <td class="text-end fw-semibold"><?= number_format($peso_promedio, 2) ?> kg</td>
                                         </tr>
                                         <?php

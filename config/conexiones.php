@@ -183,7 +183,7 @@ function verificarPermiso($modulo, $conn_mysql, $permisosUsuario = null) {
             'usuarios' => 'ADMIN',
             'reportes_actividad' => 'ACT_AC',
             'ia_test' => 'ACT_AC',
-            'contra_recibos' => 'UTILERIAS'
+            'contra_recibos' => 'REPORTES'
         ];
         
         if (isset($permisosEspeciales[$modulo])) {
