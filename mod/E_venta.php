@@ -272,8 +272,12 @@ $precios_disponibles = $stmt_precios->get_result();
     <div class="card shadow-sm">
         <div class="card-header encabezado-col text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Editar Venta: <?= htmlspecialchars($venta['folio_compuesto']) ?></h5>
-            <button id="btnCerrar" class="btn btn-sm rounded-3 btn-danger"><i class="bi bi-x-circle"></i> Cerrar</button>
+            <button id="btnCerrar" type="button" class="btn btn-sm rounded-3 btn-danger"
+                onclick="(function(){ try{ window.open('','_self'); window.close(); }catch(e){ console.error(e); } })();">
+                <i class="bi bi-x-circle"></i> Cerrar
+            </button>
         </div>
+        
         <div class="card-body">
             <form class="forms-sample" method="post" action="" id="formEditarVenta">
                 

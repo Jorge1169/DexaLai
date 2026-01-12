@@ -155,6 +155,8 @@ function alert($txt, $type, $url) {
                 'sub_precios' => ($permiso[16] == '1') ? "" : 'style="display: none"',//prec ->Dar de alta precios
                 'captacion_crear' => ($permiso[17] == '1') ? "" : 'style="display: none"',//g ->Crear captacion
                 'captacion_editar' => ($permiso[18] == '1') ? "" : 'style="display: none"',//g1 ->Editar captacion
+                'ventas_crear' => ($permiso[19] == '1') ? "" : 'style="display: none"',//h ->Crear venta
+                'ventas_editar' => ($permiso[20] == '1') ? "" : 'style="display: none"',//h1 ->Editar venta
 
                 'ACT_DES' => $DesAct, // Activar o desactivar
                 'ADMIN' => $Admin, // Permisos de ADMIN

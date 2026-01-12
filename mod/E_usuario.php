@@ -66,12 +66,16 @@ if (isset($_POST['guardar01'])) {
                 'd' => $_POST['d'] ?? 0,
                 'e' => $_POST['e'] ?? 0,
                 'f' => $_POST['f'] ?? 0,
+                'g' => $_POST['g'] ?? 0,
+                'h' => $_POST['h'] ?? 0,
                 'a1' => $_POST['a1'] ?? 0,
                 'b1' => $_POST['b1'] ?? 0,
                 'c1' => $_POST['c1'] ?? 0,
                 'd1' => $_POST['d1'] ?? 0,
                 'e1' => $_POST['e1'] ?? 0,
                 'f1' => $_POST['f1'] ?? 0,
+                'g1' => $_POST['g1'] ?? 0,
+                'h1' => $_POST['h1'] ?? 0,
                 'zona' => isset($_POST['zonas']) ? implode(',', $_POST['zonas']) : '0',
                 'af' => $_POST['af'] ?? 0,
                 'acr' => $_POST['acr'] ?? 0,
@@ -297,6 +301,16 @@ if (isset($_POST['guardar01'])) {
                                             <?= ($usuarioData['f'] == 1) ? 'checked' : '' ?>>
                                             <label class="form-check-label" for="f">Recolección (Crear)</label>
                                         </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="g" id="g" value="1" 
+                                            <?= ($usuarioData['g'] == 1) ? 'checked' : '' ?>>
+                                            <label class="form-check-label" for="g">Captación (Crear zona especial)</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="h" id="h" value="1" 
+                                            <?= ($usuarioData['h'] == 1) ? 'checked' : '' ?>>
+                                            <label class="form-check-label" for="h">Ventas (Crear zona especial)</label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -333,6 +347,16 @@ if (isset($_POST['guardar01'])) {
                                             <input class="form-check-input" type="checkbox" name="f1" id="f1" value="1" 
                                             <?= ($usuarioData['f1'] == 1) ? 'checked' : '' ?>>
                                             <label class="form-check-label" for="f1">Recolección (Editar)</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="g1" id="g1" value="1" 
+                                            <?= ($usuarioData['g1'] == 1) ? 'checked' : '' ?>>
+                                            <label class="form-check-label" for="g1">Captación (Editar zona especial)</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="h1" id="h1" value="1" 
+                                            <?= ($usuarioData['h1'] == 1) ? 'checked' : '' ?>>
+                                            <label class="form-check-label" for="h1">Ventas (Editar zona especial)</label>
                                         </div>
                                     </div>
                                 </div>

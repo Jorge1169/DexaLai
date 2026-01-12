@@ -11,7 +11,7 @@ $fechaFinDefault = date('Y-m-d');
             <h5 class="mb-0">
                 <i class="bi bi-cart-check me-2"></i>Ventas Registradas
             </h5>
-            <a class="btn btn-sm btn-light" href="?p=N_venta" target="_blank">
+            <a class="btn btn-sm btn-light" href="?p=N_venta" <?= $perm['ventas_crear']; ?> target="_blank">
                 <i class="bi bi-plus-circle me-1"></i> Nueva Venta
             </a>
         </div>
@@ -245,7 +245,7 @@ $(document).ready(function() {
                                     </a>
                                     
                                     <a href="?p=E_venta&id=${id}" 
-                                    class="btn btn-warning" title="Editar venta" data-bs-toggle="tooltip" target="_blank">
+                                    class="btn btn-warning" title="Editar venta" data-bs-toggle="tooltip" <?= $perm['ventas_editar']; ?> target="_blank">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button class="btn btn-danger desactivar-venta-btn" 

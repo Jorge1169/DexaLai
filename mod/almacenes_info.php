@@ -66,15 +66,6 @@ $result = $conn_mysql->query($sql);
                                     </td>
                                     <td>
                                         <div>{$total_kilos_formateado}</div>
-                                        <div class=\"progress\" style=\"height: 5px;\">
-                                            <div class=\"progress-bar {$color_barra}\" 
-                                                 role=\"progressbar\" 
-                                                 style=\"width: {$porcentaje_uso}%\"
-                                                 aria-valuenow=\"{$porcentaje_uso}\" 
-                                                 aria-valuemin=\"0\" 
-                                                 aria-valuemax=\"100\">
-                                            </div>
-                                        </div>
                                     </td>
                                     <td>
                                         <span class=\"badge bg-success\">Activo</span>

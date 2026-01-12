@@ -140,7 +140,9 @@ switch ($usuarioData['tipo']) {
                                 'c' => 'Productos', 
                                 'd' => 'Almacenes', 
                                 'e' => 'Transportistas',
-                                'f' => 'Recolección'
+                                'f' => 'Recolección',
+                                'g' => 'Captación',
+                                'h' => 'Ventas'
                             ];
                             foreach ($permisos as $key => $label): ?>
                                 <div class="col-6 col-md-4">
