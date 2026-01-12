@@ -79,18 +79,34 @@ $fechaFinDefault = date('Y-m-d');
     </div>
 </div>
 
-<!-- Modal de confirmación para cambiar status -->
-<div class="modal fade" id="confirmCaptacionModal" tabindex="-1" aria-hidden="true">
+<!-- Modal de confirmación para cambiar status - VERSIÓN CORREGIDA -->
+<div class="modal fade" id="modalCaptacionModal" tabindex="-1" aria-labelledby="modalCaptacionLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div id="modalCaptacionHeader" class="modal-header">
-                <h5 class="modal-title">Confirmar acción</h5>
+            <div class="modal-header" id="modalCaptacionHeader">
+                <h5 class="modal-title" id="modalCaptacionLabel">Confirmar acción</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p id="modalCaptacionMessage">¿Estás seguro de que deseas desactivar esta captación?</p>
+                
+                <!-- Campo para motivo de cancelación -->
+                <div id="motivoContainer" style="display: none;">
+                    <div class="form-group mt-3">
+                        <label for="motivoCancelacion" class="form-label">
+                            <strong>Motivo de cancelación:</strong>
+                            <span class="text-danger">*</span>
+                        </label>
+                        <textarea id="motivoCancelacion" class="form-control" rows="3" 
+                                placeholder="Explique por qué se cancela esta captación (requerido)"></textarea>
+                        <small class="text-muted">Este motivo quedará registrado en el historial de movimientos.</small>
+                    </div>
+                </div>
+                
                 <input type="hidden" id="captacionId">
                 <input type="hidden" id="captacionAccion">
+                <input type="hidden" id="usuarioId" value="<?= $idUser ?>">
+                <input type="hidden" id="usuarioNombre" value="<?= $Usuario ?>">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -307,76 +323,152 @@ $(document).ready(function() {
         const id = $(this).data('id');
         $('#captacionId').val(id);
         $('#captacionAccion').val('desactivar');
-        $('#modalCaptacionMessage').text('¿Estás seguro de que deseas desactivar esta captación?');
-        $('#confirmCaptacionModal').modal('show');
+        
+        // Mostrar campo de motivo
+        $('#motivoContainer').show();
+        $('#motivoCancelacion').val('').prop('required', true);
+        
+        $('#modalCaptacionMessage').text('¿Estás seguro de que deseas cancelar esta captación?');
+        $('#modalCaptacionModal').modal('show');
         $('#modalCaptacionHeader').addClass('text-bg-danger');
-        $('#confirmCaptacionBtn').addClass('btn-danger').removeClass('btn-success');
+        $('#confirmCaptacionBtn').addClass('btn-danger').removeClass('btn-success')
+                                .html('<i class="bi bi-x-circle me-1"></i>Cancelar Captación');
     });
 
     $(document).on('click', '.activar-captacion-btn', function() {
         const id = $(this).data('id');
         $('#captacionId').val(id);
         $('#captacionAccion').val('activar');
+        
+        // Ocultar campo de motivo
+        $('#motivoContainer').hide();
+        $('#motivoCancelacion').val('').prop('required', false);
+        
         $('#modalCaptacionMessage').text('¿Estás seguro de que deseas reactivar esta captación?');
-        $('#confirmCaptacionModal').modal('show');
+        $('#modalCaptacionModal').modal('show');
         $('#modalCaptacionHeader').addClass('text-bg-success');
-        $('#confirmCaptacionBtn').addClass('btn-success').removeClass('btn-danger');
+        $('#confirmCaptacionBtn').addClass('btn-success').removeClass('btn-danger')
+                                .html('<i class="bi bi-check-circle me-1"></i>Reactivar Captación');
     });
 
-    // Confirmar acción para captaciones
-    $('#confirmCaptacionBtn').click(function() {
-        const id = $('#captacionId').val();
-        const accion = $('#captacionAccion').val();
-
-        $.ajax({
-            url: 'actualizar_status_captacion.php',
-            type: 'POST',
-            data: {
-                id: id,
-                accion: accion
-            },
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    // Recargar la tabla después de cambiar el status
-                    reloadTable();
-                    // Mostrar mensaje de éxito
-                    showToast(response.message, 'success');
-                } else {
-                    showToast(response.message, 'error');
-                }
-            },
-            error: function(xhr, status, error) {
-                showToast('Error en la solicitud: ' + error, 'error');
-            }
-        });
-
-        $('#confirmCaptacionModal').modal('hide');
-    });
-
-    // Función para mostrar notificaciones toast
-    function showToast(message, type) {
-        const toastClass = type === 'success' ? 'bg-success' : 'bg-danger';
-        const toast = $(`
-            <div class="toast align-items-center text-white ${toastClass} border-0" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>
-        `);
-        
-        $('#toastContainer').append(toast);
-        const bsToast = new bootstrap.Toast(toast[0]);
-        bsToast.show();
-        
-        // Remover el toast después de que se cierre
-        toast.on('hidden.bs.toast', function() {
-            $(this).remove();
-        });
+// CORREGIDO - Manejo de confirmación de acción
+$('#confirmCaptacionBtn').click(function() {
+    const id = $('#captacionId').val();
+    const accion = $('#captacionAccion').val();
+    const motivo = $('#motivoCancelacion').val();
+    const usuarioId = $('#usuarioId').val();
+    const usuarioNombre = $('#usuarioNombre').val();
+    
+    // Validar motivo si es desactivar
+    if (accion === 'desactivar' && !motivo.trim()) {
+        showToast('Debe proporcionar un motivo para cancelar la captación', 'error');
+        return;
     }
+    
+    // Deshabilitar botón mientras se procesa
+    const $btn = $(this);
+    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Procesando...');
+    
+    $.ajax({
+        url: 'actualizar_status_captacion.php',
+        type: 'POST',
+        data: {
+            id: id,
+            accion: accion,
+            motivo: motivo,
+            usuarioId: usuarioId,
+            usuarioNombre: usuarioNombre
+        },
+        dataType: 'json',
+        success: function(response) {
+            console.log('Respuesta recibida:', response);
+            
+            if (response.success) {
+                // Mostrar mensaje de éxito
+                showToast(response.message, 'success');
+                
+                // Cerrar modal
+                $('#modalCaptacionModal').modal('hide');
+                
+                // Recargar la tabla después de 1 segundo
+                setTimeout(() => {
+                    reloadTable();
+                }, 1000);
+            } else {
+                // Mostrar error
+                showToast(response.message || 'Error desconocido', 'error');
+                $btn.prop('disabled', false).html(
+                    accion === 'activar' ? 
+                    '<i class="bi bi-check-circle me-1"></i>Reactivar Captación' : 
+                    '<i class="bi bi-x-circle me-1"></i>Cancelar Captación'
+                );
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error AJAX:', error);
+            console.error('Status:', status);
+            console.error('Response:', xhr.responseText);
+            
+            let errorMsg = 'Error al procesar la solicitud';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                errorMsg = response.message || errorMsg;
+            } catch (e) {
+                errorMsg = xhr.responseText.substring(0, 100);
+            }
+            
+            showToast(errorMsg, 'error');
+            $btn.prop('disabled', false).html(
+                accion === 'activar' ? 
+                '<i class="bi bi-check-circle me-1"></i>Reactivar Captación' : 
+                '<i class="bi bi-x-circle me-1"></i>Cancelar Captación'
+            );
+        }
+    });
+});
+
+// Restablecer modal al cerrarse
+$('#modalCaptacionModal').on('hidden.bs.modal', function() {
+    $('#motivoCancelacion').val('').prop('required', false);
+    $('#motivoContainer').hide();
+    $('#modalCaptacionHeader').removeClass('text-bg-danger text-bg-success');
+    $('#confirmCaptacionBtn')
+        .removeClass('btn-danger btn-success')
+        .prop('disabled', false)
+        .html('Confirmar');
+});
+
+
+
+// Función mejorada para mostrar notificaciones
+function showToast(message, type) {
+    const toastClass = type === 'success' ? 'bg-success' : 'bg-danger';
+    const icon = type === 'success' ? 'bi-check-circle' : 'bi-exclamation-circle';
+    
+    const toast = $(`
+        <div class="toast align-items-center text-white ${toastClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi ${icon} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `);
+    
+    $('#toastContainer').append(toast);
+    const bsToast = new bootstrap.Toast(toast[0], {
+        autohide: true,
+        delay: 5000
+    });
+    bsToast.show();
+    
+    // Remover el toast después de que se cierre
+    toast.on('hidden.bs.toast', function() {
+        $(this).remove();
+    });
+}
 
     // Crear contenedor para toasts
     if (!$('#toastContainer').length) {

@@ -94,7 +94,7 @@ $fechaFinDefault = date('Y-m-d');
     </div>
 </div>
 
-<!-- Modal de confirmación para cambiar status -->
+<!-- Modal de confirmación para cambiar status - VERSIÓN CON MOTIVO -->
 <div class="modal fade" id="confirmVentaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -104,6 +104,20 @@ $fechaFinDefault = date('Y-m-d');
             </div>
             <div class="modal-body">
                 <p id="modalVentaMessage">¿Estás seguro de que deseas desactivar esta venta?</p>
+                
+                <!-- Campo para motivo de cancelación (igual que captaciones) -->
+                <div id="motivoContainer" style="display: none;">
+                    <div class="form-group mt-3">
+                        <label for="motivoCancelacion" class="form-label">
+                            <strong>Motivo de cancelación:</strong>
+                            <span class="text-danger">*</span>
+                        </label>
+                        <textarea id="motivoCancelacion" class="form-control" rows="3" 
+                                placeholder="Explique por qué se cancela esta venta (requerido)"></textarea>
+                        <small class="text-muted">Este motivo quedará registrado en el historial de movimientos.</small>
+                    </div>
+                </div>
+                
                 <input type="hidden" id="ventaId">
                 <input type="hidden" id="ventaAccion">
             </div>
@@ -114,6 +128,7 @@ $fechaFinDefault = date('Y-m-d');
         </div>
     </div>
 </div>
+
 
 <!-- Estilos adicionales -->
 <style>
@@ -358,52 +373,116 @@ $(document).ready(function() {
         const id = $(this).data('id');
         $('#ventaId').val(id);
         $('#ventaAccion').val('desactivar');
-        $('#modalVentaMessage').text('¿Estás seguro de que deseas desactivar esta venta?');
+        
+        // Mostrar campo de motivo
+        $('#motivoContainer').show();
+        $('#motivoCancelacion').val('').prop('required', true);
+        
+        $('#modalVentaMessage').text('¿Estás seguro de que deseas cancelar esta venta?');
         $('#confirmVentaModal').modal('show');
         $('#modalVentaHeader').addClass('text-bg-danger');
-        $('#confirmVentaBtn').addClass('btn-danger').removeClass('btn-success');
+        $('#confirmVentaBtn').addClass('btn-danger').removeClass('btn-success')
+                            .html('<i class="bi bi-x-circle me-1"></i>Cancelar Venta');
     });
 
     $(document).on('click', '.activar-venta-btn', function() {
         const id = $(this).data('id');
         $('#ventaId').val(id);
         $('#ventaAccion').val('activar');
+        
+        // Ocultar campo de motivo
+        $('#motivoContainer').hide();
+        $('#motivoCancelacion').val('').prop('required', false);
+        
         $('#modalVentaMessage').text('¿Estás seguro de que deseas reactivar esta venta?');
         $('#confirmVentaModal').modal('show');
         $('#modalVentaHeader').addClass('text-bg-success');
-        $('#confirmVentaBtn').addClass('btn-success').removeClass('btn-danger');
+        $('#confirmVentaBtn').addClass('btn-success').removeClass('btn-danger')
+                            .html('<i class="bi bi-check-circle me-1"></i>Reactivar Venta');
     });
 
     // Confirmar acción para ventas
-    $('#confirmVentaBtn').click(function() {
-        const id = $('#ventaId').val();
-        const accion = $('#ventaAccion').val();
-
-        $.ajax({
-            url: 'actualizar_status_venta.php',
-            type: 'POST',
-            data: {
-                id: id,
-                accion: accion
-            },
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    // Recargar la tabla después de cambiar el status
+$('#confirmVentaBtn').click(function() {
+    const id = $('#ventaId').val();
+    const accion = $('#ventaAccion').val();
+    const motivo = $('#motivoCancelacion').val();
+    
+    // Validar motivo si es desactivar
+    if (accion === 'desactivar' && !motivo.trim()) {
+        showToast('Debe proporcionar un motivo para cancelar la venta', 'error');
+        return;
+    }
+    
+    // Deshabilitar botón mientras se procesa
+    const $btn = $(this);
+    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Procesando...');
+    
+    $.ajax({
+        url: 'actualizar_status_venta.php',
+        type: 'POST',
+        data: {
+            id: id,
+            accion: accion,
+            motivo: motivo
+        },
+        dataType: 'json',
+        success: function(response) {
+            console.log('Respuesta recibida:', response);
+            
+            if (response.success) {
+                // Mostrar mensaje de éxito
+                showToast(response.message, 'success');
+                
+                // Cerrar modal
+                $('#confirmVentaModal').modal('hide');
+                
+                // Recargar la tabla después de 1 segundo
+                setTimeout(() => {
                     reloadTable();
-                    // Mostrar mensaje de éxito
-                    showToast(response.message, 'success');
-                } else {
-                    showToast(response.message, 'error');
-                }
-            },
-            error: function(xhr, status, error) {
-                showToast('Error en la solicitud: ' + error, 'error');
+                }, 1000);
+            } else {
+                // Mostrar error
+                showToast(response.message || 'Error desconocido', 'error');
+                $btn.prop('disabled', false).html(
+                    accion === 'activar' ? 
+                    '<i class="bi bi-check-circle me-1"></i>Reactivar Venta' : 
+                    '<i class="bi bi-x-circle me-1"></i>Cancelar Venta'
+                );
             }
-        });
-
-        $('#confirmVentaModal').modal('hide');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error AJAX:', error);
+            console.error('Status:', status);
+            console.error('Response:', xhr.responseText);
+            
+            let errorMsg = 'Error al procesar la solicitud';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                errorMsg = response.message || errorMsg;
+            } catch (e) {
+                errorMsg = xhr.responseText.substring(0, 100);
+            }
+            
+            showToast(errorMsg, 'error');
+            $btn.prop('disabled', false).html(
+                accion === 'activar' ? 
+                '<i class="bi bi-check-circle me-1"></i>Reactivar Venta' : 
+                '<i class="bi bi-x-circle me-1"></i>Cancelar Venta'
+            );
+        }
     });
+});
+
+// Restablecer modal al cerrarse
+$('#confirmVentaModal').on('hidden.bs.modal', function() {
+    $('#motivoCancelacion').val('').prop('required', false);
+    $('#motivoContainer').hide();
+    $('#modalVentaHeader').removeClass('text-bg-danger text-bg-success');
+    $('#confirmVentaBtn')
+        .removeClass('btn-danger btn-success')
+        .prop('disabled', false)
+        .html('Confirmar');
+});
 
     // Función para mostrar notificaciones toast
     function showToast(message, type) {
