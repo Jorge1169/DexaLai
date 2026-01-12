@@ -689,13 +689,13 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                         <?php } ?>
                                     </tbody>
                                     <?php if($total_general_kilos > 0): ?>
-                                    <tfoot class="table-light">
+                                    <tfoot>
                                         <tr>
                                             <td colspan="3" class="text-end fw-bold">TOTALES ACUMULADOS:</td>
                                             <td class="text-end fw-bold"><?= number_format($total_general_granel, 2) ?> kg</td>
                                             <td class="text-end fw-bold"><?= number_format($total_general_pacas_cant, 0) ?></td>
                                             <td class="text-end fw-bold text-primary"><?= number_format($total_general_pacas_kilos, 2) ?> kg</td>
-                                            <td class="text-end fw-bold" style="color: #2c3e50;"><?= number_format($total_general_kilos, 2) ?> kg</td>
+                                            <td class="text-end fw-bold"><?= number_format($total_general_kilos, 2) ?> kg</td>
                                             <td class="text-end fw-semibold">-</td>
                                         </tr>
                                     </tfoot>
@@ -984,7 +984,7 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                                 FROM inventario_bodega ib
                                                 LEFT JOIN productos p ON ib.id_prod = p.id_prod
                                                 LEFT JOIN movimiento_inventario mi ON ib.id_inventario = mi.id_inventario
-                                                WHERE ib.id_alma = ?
+                                                WHERE ib.id_alma = ? AND p.status = 1 and p.zona = '$zona_seleccionada'
                                                 GROUP BY ib.id_inventario, p.id_prod, p.cod, p.nom_pro
                                                 HAVING granel_disponible > 0
                                                 ORDER BY p.cod";

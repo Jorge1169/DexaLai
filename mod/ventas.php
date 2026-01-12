@@ -38,7 +38,7 @@ $fechaFinDefault = date('Y-m-d');
                     <select id="filtroCliente" class="form-select">
                         <option value="">Todos los clientes</option>
                         <?php
-                        $clientes_query = $conn_mysql->query("SELECT id_cli, cod, nombre FROM clientes WHERE status = 1 ORDER BY nombre");
+                        $clientes_query = $conn_mysql->query("SELECT id_cli, cod, nombre FROM clientes WHERE status = 1 AND zona = '$zona_seleccionada' ORDER BY nombre");
                         while ($cliente = $clientes_query->fetch_assoc()) {
                             echo '<option value="' . $cliente['id_cli'] . '">' . htmlspecialchars($cliente['cod'] . ' - ' . $cliente['nombre']) . '</option>';
                         }

@@ -1,5 +1,5 @@
 <?php
-// V_venta.php - Módulo para ver detalles de una venta (Versión Dashboard)
+// V_venta.php - Módulo para ver detalles de una venta (Rediseño ERP compacto)
 
 // Obtener ID de la venta
 $id_venta = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -97,64 +97,76 @@ if ($flete_data = $flete->fetch_assoc()) {
 }
 $total_general = $total_venta - $total_flete;
 
-// Obtener movimientos de inventario relacionados
-$sql_movimientos = "SELECT mi.*, 
-                           p.cod as cod_producto, p.nom_pro as nombre_producto,
-                           DATE_FORMAT(mi.created_at, '%d/%m/%Y %H:%i') as fecha_formateada
-                    FROM movimiento_inventario mi
-                    LEFT JOIN inventario_bodega ib ON mi.id_inventario = ib.id_inventario
-                    LEFT JOIN productos p ON ib.id_prod = p.id_prod
-                    WHERE mi.id_venta = ?
-                    ORDER BY mi.created_at DESC";
-$stmt_movimientos = $conn_mysql->prepare($sql_movimientos);
-$stmt_movimientos->bind_param('i', $id_venta);
-$stmt_movimientos->execute();
-$movimientos = $stmt_movimientos->get_result();
+// Obtener el primer producto (ya que solo se vende uno)
+$producto = $detalles->fetch_assoc();
 ?>
 
-<div class="container mt-3">
-    <!-- Encabezado mejorado -->
-    <div class="row mb-3">
+<div class="container-fluid px-3 py-3" style="max-width: 1400px; margin: 0 auto;">
+    <!-- Header compacto -->
+    <div class="row mb-4">
         <div class="col-12">
-            <div class="card shadow-sm border-0 overflow-hidden">
-                <div class="card-header encabezado-col text-white py-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center">
+                    <button onclick="window.close()" class="btn btn-outline-secondary me-3">
+                        <i class="bi bi-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h3 class="mb-1 fw-bold">Detalle de Venta</h3>
+                        <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+                        </nav>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary">
+                        <i class="bi bi-printer me-2"></i>Imprimir
+                    </button>
+                    <button class="btn btn-primary">
+                        <i class="bi bi-download me-2"></i>Exportar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tarjeta de estado -->
+            <div class="card border-0 shadow mb-3">
+                <div class="card-body p-3">
                     <div class="row align-items-center">
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <div class="d-flex align-items-center">
-                                <div class="bg-white bg-opacity-25 rounded-circle p-2 me-3">
-                                    <i class="bi bi-receipt fs-5"></i>
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-3 me-3">
+                                    <i class="bi bi-file-text text-primary fs-2"></i>
                                 </div>
                                 <div>
-                                    <h4 class="mb-1 text-white">
-                                        Venta: <span class="fw-bold"><?= htmlspecialchars($venta['folio_compuesto']) ?></span>
-                                    </h4>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <span class="badge bg-light text-dark">
-                                            <i class="bi bi-calendar me-1"></i><?= htmlspecialchars($venta['fecha_formateada']) ?>
-                                        </span>
-                                        <span class="badge bg-light text-dark">
-                                            <i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($venta['nombre_zona']) ?>
-                                        </span>
-                                        <span class="badge bg-light text-dark">
-                                            <i class="bi bi-person me-1"></i><?= htmlspecialchars($venta['nombre_usuario']) ?>
-                                        </span>
-                                        <span class="badge bg-info">
-                                            <i class="bi bi-clock-history me-1"></i>Creado: <?= htmlspecialchars($venta['fecha_creacion_formateada']) ?>
-                                        </span>
-                                    </div>
+                                    <h4 class="mb-0 fw-bold"><?= htmlspecialchars($venta['folio_compuesto']) ?></h4>
+                                    <small class="text-muted">Folio del documento</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 text-md-end mt-2 mt-md-0">
-                            <div class="d-flex justify-content-md-end gap-2">
-                                <button id="btnCerrar" class="btn btn-sm rounded-3 btn-danger align-items-center">
-                                    <i class="bi bi-x-circle"></i> Cerrar
-                                </button>
-                                <script>
-                                    document.getElementById('btnCerrar').addEventListener('click', function() {
-                                        window.close();
-                                    });
-                                </script>
+                        <div class="col-md-5">
+                            <div class="row">
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Fecha Venta</small>
+                                    <strong><?= htmlspecialchars($venta['fecha_formateada']) ?></strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Zona</small>
+                                    <strong><?= htmlspecialchars($venta['nombre_zona']) ?></strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Responsable</small>
+                                    <strong><?= htmlspecialchars($venta['nombre_usuario']) ?></strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-end">
+                                <div class="me-3">
+                                    <small class="text-muted d-block">Estado</small>
+                                    <span class="badge bg-success">Completada</span>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">Creado</small>
+                                    <small><?= htmlspecialchars($venta['fecha_creacion_formateada']) ?></small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -163,254 +175,132 @@ $movimientos = $stmt_movimientos->get_result();
         </div>
     </div>
 
-    <!-- Métricas Compactas -->
-    <div class="row mb-3">
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                            <i class="bi bi-box-seam text-primary fs-5"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 text-primary"><?= number_format($total_pacas, 0) ?></h5>
-                            <small class="text-muted">Pacas</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
-                            <i class="bi bi-bar-chart-line text-success fs-5"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 text-success"><?= number_format($total_kilos, 2) ?> kg</h5>
-                            <small class="text-muted">Peso Total</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-warning bg-opacity-10 rounded-circle p-2 me-3">
-                            <i class="bi bi-cash-coin text-warning fs-5"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 text-warning">$<?= number_format($total_venta, 2) ?></h5>
-                            <small class="text-muted">Venta</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-danger bg-opacity-10 rounded-circle p-2 me-3">
-                            <i class="bi bi-currency-dollar text-danger fs-5"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 text-danger">$<?= number_format($total_general, 2) ?></h5>
-                            <small class="text-muted">Total General</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Contenido Principal - Diseño en 2 columnas -->
-    <div class="row">
-        <!-- Columna Izquierda: Productos y Partes -->
+    <div class="row g-3">
+        <!-- Columna principal - Información del producto -->
         <div class="col-lg-8">
-            <!-- Productos Vendidos - Diseño Compacto -->
-            <div class="card border-0 shadow-sm mb-3">
-                <div class="card-header py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="bi bi-box-seam me-2"></i>Productos Vendidos
-                        </h6>
-                        <span class="badge bg-primary"><?= $detalles->num_rows ?> producto(s)</span>
-                    </div>
+            <!-- Tarjeta principal del producto -->
+            <div class="card border-0 shadow mb-3">
+                <div class="card-header py-2 px-3 border-bottom">
+                    <h5 class="mb-0">
+                        <i class="bi bi-box-seam text-primary me-2"></i>Detalles del Producto
+                    </h5>
                 </div>
                 <div class="card-body p-0">
-                    <?php
-                    if ($detalles->num_rows > 0) {
-                        $contador = 0;
-                        while ($detalle = $detalles->fetch_assoc()) {
-                            $contador++;
-                            $subtotal = $detalle['total_kilos'] * $detalle['precio_venta'];
-                            ?>
-                            <div class="border-bottom p-3 <?= $contador % 2 == 0 ? 'bg-light' : '' ?>">
-                                <div class="row align-items-center">
-                                    <div class="col-md-5">
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-primary bg-opacity-10 rounded p-2 me-3">
-                                                <i class="bi bi-box text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-1"><?= htmlspecialchars($detalle['cod_producto']) ?></h6>
-                                                <small class="text-muted"><?= htmlspecialchars($detalle['nombre_producto']) ?></small>
-                                            </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="40" class="text-center">#</th>
+                                    <th>Producto</th>
+                                    <th class="text-center">Precio Unitario</th>
+                                    <th class="text-center">Pacas</th>
+                                    <th class="text-center">Kilos</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($producto): ?>
+                                <tr>
+                                    <td class="text-center align-middle">1</td>
+                                    <td>
+                                        <div class="fw-semibold"><?= htmlspecialchars($producto['cod_producto']) ?></div>
+                                        <div class="text-muted small"><?= htmlspecialchars($producto['nombre_producto']) ?></div>
+                                        <?php if (!empty($producto['observaciones'])): ?>
+                                        <div class="mt-1">
+                                            <small class="text-info">
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                <?= htmlspecialchars($producto['observaciones']) ?>
+                                            </small>
                                         </div>
-                                    </div>
-                                    <div class="col-md-7">
-                                        <div class="row text-center">
-                                            <div class="col-3">
-                                                <small class="text-muted d-block">Precio</small>
-                                                <strong>$<?= number_format($detalle['precio_venta'], 2) ?></strong>
-                                            </div>
-                                            <div class="col-2">
-                                                <small class="text-muted d-block">Pacas</small>
-                                                <strong><?= number_format($detalle['pacas_cantidad'], 0) ?></strong>
-                                            </div>
-                                            <div class="col-3">
-                                                <small class="text-muted d-block">Kilos</small>
-                                                <strong><?= number_format($detalle['total_kilos'], 2) ?></strong>
-                                            </div>
-                                            <div class="col-4">
-                                                <small class="text-muted d-block">Subtotal</small>
-                                                <strong class="text-success">$<?= number_format($subtotal, 2) ?></strong>
-                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="badge bg-light text-dark fs-6">
+                                            $<?= number_format($producto['precio_venta'], 2) ?>
+                                        </span>
+                                        <div class="text-muted small mt-1">por kg</div>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <div class="fw-bold fs-5"><?= number_format($producto['pacas_cantidad'], 0) ?></div>
+                                        <div class="text-muted small">unidades</div>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <div class="fw-bold fs-5"><?= number_format($producto['total_kilos'], 2) ?></div>
+                                        <div class="text-muted small">kilogramos</div>
+                                    </td>
+                                    <td class="text-end align-middle">
+                                        <div class="fw-bold fs-5 text-success">
+                                            $<?= number_format($producto['total_kilos'] * $producto['precio_venta'], 2) ?>
                                         </div>
-                                    </div>
-                                </div>
-                                <?php if (!empty($detalle['observaciones'])): ?>
-                                <div class="row mt-2">
-                                    <div class="col-12">
-                                        <small class="text-muted">
-                                            <i class="bi bi-chat-left-text me-1"></i>
-                                            <?= htmlspecialchars($detalle['observaciones']) ?>
-                                        </small>
-                                    </div>
-                                </div>
+                                    </td>
+                                </tr>
                                 <?php endif; ?>
-                            </div>
-                            <?php
-                        }
-                    } else {
-                        ?>
-                        <div class="text-center py-4">
-                            <i class="bi bi-box-seam text-muted fs-1 mb-2"></i>
-                            <p class="text-muted mb-0">No hay productos registrados</p>
-                        </div>
-                        <?php
-                    }
-                    ?>
-                    
-                    <!-- Totales Compactos -->
-                    <div class="p-3">
-                        <div class="row">
-                            <div class="col-md-5">
-                                <h6 class="mb-0">Totales:</h6>
-                            </div>
-                            <div class="col-md-7">
-                                <div class="row text-center">
-                                    <div class="col-3">
-                                        <small class="text-muted d-block">Prom. Precio</small>
-                                        <strong>$<?= number_format($total_kilos > 0 ? $total_venta / $total_kilos : 0, 2) ?></strong>
-                                    </div>
-                                    <div class="col-2">
-                                        <small class="text-muted d-block">Pacas</small>
-                                        <strong><?= number_format($total_pacas, 0) ?></strong>
-                                    </div>
-                                    <div class="col-3">
-                                        <small class="text-muted d-block">Kilos</small>
-                                        <strong><?= number_format($total_kilos, 2) ?></strong>
-                                    </div>
-                                    <div class="col-4">
-                                        <small class="text-muted d-block">Total Venta</small>
-                                        <strong class="text-success">$<?= number_format($total_venta, 2) ?></strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold">Totales:</td>
+                                    <td class="text-center fw-bold">
+                                        <?= number_format($total_kilos, 2) ?> kg
+                                    </td>
+                                    <td class="text-end fw-bold fs-5 text-success">
+                                        $<?= number_format($total_venta, 2) ?>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Partes Involucradas - Diseño Compacto -->
-            <div class="row">
-                <!-- Cliente -->
-                <div class="col-md-6 mb-3">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-success text-white py-2">
+            <!-- Información de origen y destino en tarjetas compactas -->
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card border-0 shadow h-100">
+                        <div class="card-header py-2 px-3 border-bottom">
                             <h6 class="mb-0">
-                                <i class="bi bi-person-check me-2"></i>Cliente
+                                <i class="bi bi-shop text-primary me-2"></i>Origen
                             </h6>
                         </div>
-                        <div class="card-body">
-                            <div class="d-flex align-items-start mb-3">
-                                <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
-                                    <i class="bi bi-person fs-5 text-success"></i>
-                                </div>
-                                <div>
-                                    <h5 class="mb-1 text-success"><?= htmlspecialchars($venta['nombre_cliente']) ?></h5>
-                                    <small class="text-muted">Código: <?= htmlspecialchars($venta['cod_cliente']) ?></small>
-                                </div>
-                            </div>
-                            
-                            <div class="card border">
-                                <div class="card-header py-1">
-                                    <small class="fw-bold">Bodega Destino</small>
-                                </div>
-                                <div class="card-body py-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="bi bi-building text-info me-2"></i>
-                                        <div>
-                                            <small class="fw-bold d-block"><?= htmlspecialchars($venta['cod_bodega_cliente']) ?></small>
-                                            <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_cliente']) ?></small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Almacén -->
-                <div class="col-md-6 mb-3">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-primary text-white py-2">
-                            <h6 class="mb-0">
-                                <i class="bi bi-building me-2"></i>Almacén de Origen
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex align-items-start mb-3">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center mb-2">
                                 <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                                    <i class="bi bi-box-arrow-up fs-5 text-primary"></i>
+                                    <i class="bi bi-building text-primary"></i>
                                 </div>
                                 <div>
-                                    <h5 class="mb-1 text-primary"><?= htmlspecialchars($venta['nombre_almacen']) ?></h5>
+                                    <div class="fw-bold"><?= htmlspecialchars($venta['nombre_almacen']) ?></div>
                                     <small class="text-muted">Código: <?= htmlspecialchars($venta['cod_almacen']) ?></small>
                                 </div>
                             </div>
-                            
-                            <div class="card border">
-                                <div class="card-header py-1">
-                                    <small class="fw-bold">Bodega de Salida</small>
+                            <div class="border-start border-3 border-primary ps-3 mt-3">
+                                <small class="text-muted d-block">Bodega de Salida</small>
+                                <div class="fw-semibold"><?= htmlspecialchars($venta['cod_bodega_almacen']) ?></div>
+                                <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_almacen']) ?></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card border-0 shadow h-100">
+                        <div class="card-header py-2 px-3 border-bottom">
+                            <h6 class="mb-0">
+                                <i class="bi bi-person-badge text-success me-2"></i>Destino
+                            </h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
+                                    <i class="bi bi-person text-success"></i>
                                 </div>
-                                <div class="card-body py-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="bi bi-box-arrow-up text-warning me-2"></i>
-                                        <div>
-                                            <small class="fw-bold d-block"><?= htmlspecialchars($venta['cod_bodega_almacen']) ?></small>
-                                            <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_almacen']) ?></small>
-                                        </div>
-                                    </div>
+                                <div>
+                                    <div class="fw-bold"><?= htmlspecialchars($venta['nombre_cliente']) ?></div>
+                                    <small class="text-muted">Código: <?= htmlspecialchars($venta['cod_cliente']) ?></small>
                                 </div>
+                            </div>
+                            <div class="border-start border-3 border-success ps-3 mt-3">
+                                <small class="text-muted d-block">Bodega de Destino</small>
+                                <div class="fw-semibold"><?= htmlspecialchars($venta['cod_bodega_cliente']) ?></div>
+                                <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_cliente']) ?></small>
                             </div>
                         </div>
                     </div>
@@ -418,166 +308,257 @@ $movimientos = $stmt_movimientos->get_result();
             </div>
         </div>
 
-        <!-- Columna Derecha: Resumen y Detalles -->
+        <!-- Columna lateral - Resumen y flete -->
         <div class="col-lg-4">
-            <!-- Resumen Financiero -->
-            <div class="card border-0 shadow-sm mb-3">
-                <div class="card-header bg-warning text-white py-2">
+            <!-- Resumen financiero compacto -->
+            <div class="card border-0 shadow mb-3">
+                <div class="card-header py-2 px-3 border-bottom">
                     <h6 class="mb-0">
-                        <i class="bi bi-calculator me-2"></i>Resumen Financiero
+                        <i class="bi bi-calculator text-warning me-2"></i>Resumen Financiero
                     </h6>
                 </div>
-                <div class="card-body">
-                    <table class="table table-sm mb-0">
-                        <tbody>
-                            <tr>
-                                <td><small>Venta Productos:</small></td>
-                                <td class="text-end text-success fw-bold">+ $<?= number_format($total_venta, 2) ?></td>
-                            </tr>
+                <div class="card-body p-0">
+                    <div class="p-3">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted">Valor de venta:</span>
+                                <span class="fw-semibold">$<?= number_format($total_venta, 2) ?></span>
+                            </div>
                             <?php if ($total_flete > 0): ?>
-                            <tr>
-                                <td><small>Costo de Flete:</small></td>
-                                <td class="text-end text-danger">- $<?= number_format($total_flete, 2) ?></td>
-                            </tr>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted">Costo de flete:</span>
+                                <span class="text-danger">-$<?= number_format($total_flete, 2) ?></span>
+                            </div>
                             <?php endif; ?>
-                            <tr class="border-top">
-                                <td><strong>Total Ganancia:</strong></td>
-                                <td class="text-end fw-bold <?= $total_general >= 0 ? 'text-success' : 'text-danger' ?> fs-5">
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">Ganancia neta:</span>
+                                <span class="fw-bold fs-5 <?= $total_general >= 0 ? 'text-success' : 'text-danger' ?>">
                                     $<?= number_format($total_general, 2) ?>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    
-                    <div class="mt-3">
-                        <div class="alert alert-info mb-2 py-2">
-                            <div class="d-flex justify-content-between">
-                                <small>Precio promedio:</small>
-                                <strong>$<?= number_format($total_kilos > 0 ? $total_venta / $total_kilos : 0, 2) ?> /kg</strong>
+                                </span>
                             </div>
                         </div>
-                        <div class="alert alert-success py-2 mb-0">
-                            <div class="d-flex justify-content-between">
-                                <small>Peso por paca:</small>
-                                <strong><?= number_format($total_pacas > 0 ? $total_kilos / $total_pacas : 0, 2) ?> kg</strong>
+
+                        <!-- Métricas rápidas -->
+                        <div class="border rounded p-2 bg-body-tertiary">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Precio promedio</small>
+                                    <strong>$<?= number_format($total_kilos > 0 ? $total_venta / $total_kilos : 0, 2) ?>/kg</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Peso por paca</small>
+                                    <strong><?= number_format($total_pacas > 0 ? $total_kilos / $total_pacas : 0, 2) ?> kg</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Información de Flete (si existe) -->
+            <!-- Información de flete (si aplica) -->
             <?php if ($flete->num_rows > 0): 
                 mysqli_data_seek($flete, 0);
                 $flete_data = $flete->fetch_assoc();
-                ?>
-                <div class="card border-0 shadow-sm mb-3">
-                    <div class="card-header bg-info text-white py-2">
-                        <h6 class="mb-0">
-                            <i class="bi bi-truck me-2"></i>Flete
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex align-items-start mb-3">
-                            <div class="bg-info bg-opacity-10 rounded-circle p-2 me-3">
-                                <i class="bi bi-truck fs-5 text-info"></i>
-                            </div>
-                            <div>
-                                <h6 class="mb-1 text-info"><?= htmlspecialchars($venta['nombre_fletero']) ?></h6>
-                                <small class="text-muted">Placas: <?= htmlspecialchars($venta['placas_fletero']) ?></small>
-                            </div>
+            ?>
+            <div class="card border-0 shadow mb-3">
+                <div class="card-header py-2 px-3 border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-truck text-info me-2"></i>Información de Flete
+                    </h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-info bg-opacity-10 rounded-circle p-2 me-3">
+                            <i class="bi bi-truck text-info"></i>
                         </div>
-                        
-                        <div class="alert alert-info py-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <small>Tipo:</small>
+                        <div>
+                            <div class="fw-bold"><?= htmlspecialchars($venta['nombre_fletero']) ?></div>
+                            <small class="text-muted">
+                                <i class="bi bi-upc-scan me-1"></i>
+                                <?= htmlspecialchars($venta['placas_fletero']) ?>
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="border rounded p-2 bg-body-tertiary">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Tipo</small>
                                 <span class="badge bg-info"><?= htmlspecialchars($flete_data['tipo_flete']) ?></span>
                             </div>
-                            <div class="d-flex justify-content-between mt-2">
-                                <small>Total Flete:</small>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Costo</small>
                                 <strong>$<?= number_format($total_flete, 2) ?></strong>
                             </div>
+                            <?php if ($flete_data['tipo_flete'] == 'Por tonelada'): ?>
+                            <div class="col-12">
+                                <small class="text-muted d-block">Precio por tonelada</small>
+                                <strong>$<?= number_format($flete_data['precio_flete'], 2) ?></strong>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
+            </div>
             <?php endif; ?>
 
-            <!-- Movimientos de Inventario -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-dark text-white py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="bi bi-arrow-left-right me-2"></i>Movimientos
-                        </h6>
-                        <span class="badge bg-light text-dark"><?= $movimientos->num_rows ?></span>
-                    </div>
+            <!-- Información adicional -->
+            <div class="card border-0 shadow">
+                <div class="card-header py-2 px-3 border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle text-secondary me-2"></i>Información Adicional
+                    </h6>
                 </div>
-                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                    <?php if ($movimientos->num_rows > 0): 
-                        $contador_mov = 0;
-                        while ($mov = $movimientos->fetch_assoc()):
-                            if ($contador_mov++ >= 10) break;
-                    ?>
-                    <div class="border-bottom py-2">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <small class="text-muted"><?= htmlspecialchars($mov['fecha_formateada']) ?></small>
-                                <div class="d-flex align-items-center mt-1">
-                                    <span class="badge bg-danger me-2">Salida</span>
-                                    <small><?= htmlspecialchars($mov['cod_producto']) ?></small>
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <small class="text-danger d-block">-<?= number_format($mov['pacas_cantidad_movimiento'], 0) ?> pacas</small>
-                                <small class="text-muted"><?= number_format($mov['pacas_kilos_movimiento'], 2) ?> kg</small>
-                            </div>
+                <div class="card-body p-3">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Zona</small>
+                            <strong><?= htmlspecialchars($venta['nombre_zona']) ?></strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Folio Simple</small>
+                            <strong>#<?= htmlspecialchars($venta['folio_simple']) ?></strong>
+                        </div>
+                        <div class="col-12">
+                            <small class="text-muted d-block">Creado</small>
+                            <strong><?= htmlspecialchars($venta['fecha_creacion_formateada']) ?></strong>
                         </div>
                     </div>
-                    <?php 
-                        endwhile;
-                        if ($movimientos->num_rows > 10):
-                    ?>
-                    <div class="text-center mt-2">
-                        <small class="text-muted">
-                            <i class="bi bi-ellipsis me-1"></i>
-                            <?= $movimientos->num_rows - 10 ?> movimientos más
-                        </small>
-                    </div>
-                    <?php endif; ?>
-                    <?php else: ?>
-                    <div class="text-center py-3">
-                        <i class="bi bi-arrow-left-right text-muted fs-3 mb-2"></i>
-                        <p class="text-muted mb-0">Sin movimientos</p>
-                    </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<!-- Estilos adicionales -->
+
+<!-- Estilos específicos para ERP compacto -->
 <style>
-.card {
-    border-radius: 10px;
+:root {
+    --erp-primary: #2c3e50;
+    --erp-secondary: #f8f9fa;
+    --erp-border: #dee2e6;
+    --erp-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
-.card-header {
-    border-radius: 10px 10px 0 0 !important;
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
+
+
+.table th {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background-color: #f8f9fa;
+    padding: 10px 12px;
+}
+
+.table td {
+    padding: 12px;
+    vertical-align: middle;
+}
+
 .badge {
-    font-size: 0.75em;
-    padding: 0.25em 0.6em;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
 }
-.timeline-item {
-    position: relative;
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.03);
+    transition: background-color 0.2s ease;
 }
-.timeline-item:before {
-    content: '';
-    position: absolute;
-    left: -6px;
-    top: 0;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background-color: #0d6efd;
+
+/* Estilos para métricas */
+.border-start {
+    border-left-width: 3px !important;
+}
+
+.text-muted {
+    color: #6c757d !important;
+    font-size: 0.85rem;
+}
+
+/* Mejoras responsivas */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 10px !important;
+    }
+    
+    .card-body {
+        padding: 12px !important;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+}
+
+/* Estilos para números y montos */
+.fw-bold {
+    font-weight: 600 !important;
+}
+
+.text-success {
+    color: #198754 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+/* Scroll suave */
+.table-responsive {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 </style>
+
+<script>
+// Script para mejor experiencia de usuario
+document.addEventListener('DOMContentLoaded', function() {
+    // Cerrar ventana con tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            window.close();
+        }
+    });
+    
+    // Agregar tooltips si se necesitan
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Mejorar la experiencia de impresión
+    document.querySelector('[class*="btn-outline-primary"]').addEventListener('click', function() {
+        window.print();
+    });
+});
+</script>
