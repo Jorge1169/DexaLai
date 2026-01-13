@@ -173,6 +173,8 @@ $stmt_bodegas->bind_param('i', $id_almacen);
 $stmt_bodegas->execute();
 $bodegas = $stmt_bodegas->get_result();
 
+$hay_bodegas = $bodegas && $bodegas->num_rows > 0;
+
 // Calcular inventario total actual
 $sql_total_actual = "SELECT SUM(total_kilos_disponible) as total 
                     FROM inventario_bodega 
@@ -601,8 +603,11 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                         </li>
                         
                     </ul>
+                    <!-- Después del botón de Transformar Producto en el HEADER DEL DASHBOARD -->
                     <div class="card-toolbar mb-3 d-flex justify-content-end">
-                        <!-- Después del botón de Imprimir Reporte en el HEADER DEL DASHBOARD -->
+                        <button type="button" class="btn btn-modern btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalEntrada">
+                            <i class="bi bi-box-arrow-in-down me-2"></i> Nueva Entrada
+                        </button>
                         <button type="button" class="btn btn-modern btn-warning ms-2" data-bs-toggle="modal" data-bs-target="#modalConversion">
                             <i class="bi bi-arrow-repeat me-2"></i> Transformar Producto
                         </button>
@@ -727,12 +732,6 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                     </button>
                                     <button type="button" class="btn btn-outline-danger" onclick="filtrarMovimientos('salida')">
                                         <i class="bi bi-box-arrow-up me-1"></i> Salidas
-                                    </button>
-                                    <button type="button" class="btn btn-outline-warning" onclick="filtrarMovimientos('ajuste')">
-                                        <i class="bi bi-sliders me-1"></i> Ajustes
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info" onclick="filtrarMovimientos('conversion')">
-                                        <i class="bi bi-arrow-repeat me-1"></i> Conversiones
                                     </button>
                                 </div>
                             </div>
@@ -956,7 +955,7 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
             <form id="formConversion" action="procesar_conversion.php" method="POST">
                 <div class="modal-body">
                     <input type="hidden" name="id_almacen" value="<?= $id_almacen ?>">
-                    <input type="hidden" name="id_usuario" value="<?= $_SESSION['user_id'] ?? 0 ?>">
+                    <input type="hidden" name="id_usuario" value="<?= $idUser?>">
                     
                     <!-- Alert informativo -->
                     <div class="alert alert-modern alert-info mb-4">
@@ -1125,6 +1124,207 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-warning">
                         <i class="bi bi-arrow-repeat me-2"></i> Procesar Transformación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Modal para Entrada de Productos SOLUCIÓN DEFINITIVA -->
+<div class="modal fade" id="modalEntrada" tabindex="-1" aria-labelledby="modalEntradaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header encabezado-col">
+                <h5 class="modal-title text-white" id="modalEntradaLabel">
+                    <i class="bi bi-box-arrow-in-down me-2"></i> Nueva Entrada de Producto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEntrada" action="procesar_entrada.php" method="POST" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="id_almacen" value="<?= $id_almacen ?>">
+                    <input type="hidden" name="id_usuario" value="<?= $idUser ?>">
+                    
+                    <!-- Alert informativo -->
+                    <div class="alert alert-modern alert-info mb-4">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong>Nueva entrada:</strong> Registre una entrada de producto en granel o en pacas. El inventario se actualizará automáticamente.
+                    </div>
+                    
+                    <div class="row g-4">
+                        <!-- Selección de Producto -->
+                        <div class="col-md-6">
+                            <div class="card card-dashboard">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="bi bi-box me-2"></i> Producto</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Seleccionar Producto <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="producto_entrada" name="producto_entrada">
+                                            <option value="">Seleccione un producto...</option>
+                                            <?php
+                                            // Obtener productos de la zona actual
+                                            $zona_seleccionada = isset($_SESSION['selected_zone']) ? $_SESSION['selected_zone'] : 0;
+                                            $sql_productos_entrada = "SELECT id_prod, cod, nom_pro FROM productos 
+                                                                    WHERE status = 1 AND zona = ? 
+                                                                    ORDER BY cod";
+                                            $stmt_productos_entrada = $conn_mysql->prepare($sql_productos_entrada);
+                                            $stmt_productos_entrada->bind_param('i', $zona_seleccionada);
+                                            $stmt_productos_entrada->execute();
+                                            $productos_entrada = $stmt_productos_entrada->get_result();
+                                            
+                                            if ($productos_entrada && $productos_entrada->num_rows > 0) {
+                                                while ($prod = $productos_entrada->fetch_assoc()) {
+                                                    echo '<option value="' . $prod['id_prod'] . '">' . 
+                                                         htmlspecialchars($prod['cod']) . ' - ' . htmlspecialchars($prod['nom_pro']) . 
+                                                         '</option>';
+                                                }
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Seleccionar Bodega <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="bodega_entrada" name="bodega_entrada">
+                                            <option value="">Seleccione una bodega...</option>
+                                            <?php
+                                            if ($hay_bodegas) {
+                                                $bodegas->data_seek(0); // Reiniciar el puntero
+                                                while ($bodega = $bodegas->fetch_assoc()) {
+                                                    echo '<option value="' . $bodega['id_direc'] . '">' . 
+                                                        htmlspecialchars($bodega['noma']) . '</option>';
+                                                }
+                                            } else {
+                                                echo '<option value="" disabled>No hay bodegas disponibles</option>';
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Tipo de Entrada <span class="text-danger">*</span></label>
+                                        <div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="tipo_entrada" 
+                                                       id="granel_radio" value="granel" checked 
+                                                       onchange="toggleTipoEntrada()">
+                                                <label class="form-check-label" for="granel_radio">
+                                                    Granel (kg)
+                                                </label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="tipo_entrada" 
+                                                       id="pacas_radio" value="pacas"
+                                                       onchange="toggleTipoEntrada()">
+                                                <label class="form-check-label" for="pacas_radio">
+                                                    Pacas
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Detalles de la Entrada -->
+                        <div class="col-md-6">
+                            <div class="card card-dashboard">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="bi bi-clipboard-data me-2"></i> Detalles de la Entrada</h6>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Granel -->
+                                    <div id="granel_section">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Kilos de Granel <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input type="number" id="kilos_granel" name="kilos_granel" 
+                                                       class="form-control" step="0.01" min="0.01" 
+                                                       value="0.00">
+                                                <span class="input-group-text">kg</span>
+                                            </div>
+                                            <small class="text-muted">Cantidad en kilogramos</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Pacas -->
+                                    <div id="pacas_section" style="display: none;">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label fw-semibold">Cantidad de Pacas <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <input type="number" id="cantidad_pacas_entrada" name="cantidad_pacas_entrada" 
+                                                           class="form-control" step="1" min="1" value="1">
+                                                    <span class="input-group-text">pacas</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label fw-semibold">Peso Total Pacas <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <input type="number" id="peso_pacas_entrada" name="peso_pacas_entrada" 
+                                                           class="form-control" step="0.01" min="0.01" value="0.00">
+                                                    <span class="input-group-text">kg</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Peso por Paca (Calculado)</label>
+                                            <div class="input-group">
+                                                <input type="text" id="peso_por_paca_entrada" class="form-control" readonly>
+                                                <span class="input-group-text">kg/paca</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Tipo de Movimiento</label>
+                                        <select class="form-select" name="tipo_movimiento">
+                                            <option value="entrada" selected>Entrada Normal</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Fecha de Entrada</label>
+                                        <input type="datetime-local" class="form-control" name="fecha_entrada" 
+                                               value="<?= date('Y-m-d\TH:i') ?>">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Observaciones -->
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Observaciones <span class="text-danger">*</span></label>
+                                <textarea class="form-control" name="observacionesEntrada" rows="3" 
+                                          placeholder="Ej: Entrada por compra, ajuste por conteo físico, etc."></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Resumen de la Entrada -->
+                        <div class="col-12">
+                            <div class="alert alert-modern alert-success">
+                                <div class="row align-items-center">
+                                    <div class="col-auto">
+                                        <i class="bi bi-box-seam fs-2"></i>
+                                    </div>
+                                    <div class="col">
+                                        <h6 class="fw-bold mb-1">Resumen de la Entrada</h6>
+                                        <div id="resumen_entrada">
+                                            <p class="mb-0">Complete los datos para ver el resumen</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="validarYEnviarEntrada()">
+                        <i class="bi bi-check-circle me-2"></i> Registrar Entrada
                     </button>
                 </div>
             </form>
@@ -1437,4 +1637,374 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+// Funciones para el modal de entrada - VERSIÓN DEFINITIVA
+function toggleTipoEntrada() {
+    const granelRadio = document.getElementById('granel_radio');
+    const granelSection = document.getElementById('granel_section');
+    const pacasSection = document.getElementById('pacas_section');
+    
+    if (granelRadio.checked) {
+        granelSection.style.display = 'block';
+        pacasSection.style.display = 'none';
+        
+        // Resetear valores de pacas
+        document.getElementById('cantidad_pacas_entrada').value = '1';
+        document.getElementById('peso_pacas_entrada').value = '0.00';
+        document.getElementById('peso_por_paca_entrada').value = '0.00';
+    } else {
+        granelSection.style.display = 'none';
+        pacasSection.style.display = 'block';
+        
+        // Resetear valor de granel
+        document.getElementById('kilos_granel').value = '0.00';
+    }
+    
+    actualizarResumenEntrada();
+}
+
+function calcularPesoPorPacaEntrada() {
+    const cantidad = parseInt(document.getElementById('cantidad_pacas_entrada').value) || 0;
+    const peso = parseFloat(document.getElementById('peso_pacas_entrada').value) || 0;
+    
+    if (cantidad > 0 && peso > 0) {
+        const pesoPorPaca = peso / cantidad;
+        document.getElementById('peso_por_paca_entrada').value = pesoPorPaca.toFixed(2);
+    } else {
+        document.getElementById('peso_por_paca_entrada').value = '0.00';
+    }
+    
+    actualizarResumenEntrada();
+}
+
+function actualizarResumenEntrada() {
+    const productoSelect = document.getElementById('producto_entrada');
+    const bodegaSelect = document.getElementById('bodega_entrada');
+    const granelRadio = document.getElementById('granel_radio');
+    const tipoMovimiento = document.querySelector('select[name="tipo_movimiento"]');
+    
+    const productoText = productoSelect.options[productoSelect.selectedIndex]?.text || '';
+    const bodegaText = bodegaSelect.options[bodegaSelect.selectedIndex]?.text || '';
+    
+    let resumenHTML = '';
+    
+    if (productoText && bodegaText) {
+        if (granelRadio.checked) {
+            const kilos = parseFloat(document.getElementById('kilos_granel').value) || 0;
+            if (kilos > 0) {
+                resumenHTML = `
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Producto:</small>
+                            <strong>${productoText}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Bodega:</small>
+                            <strong>${bodegaText}</strong>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="row">
+                        <div class="col-4">
+                            <small class="text-muted d-block">Tipo:</small>
+                            <span class="badge bg-info">Granel</span>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted d-block">Cantidad:</small>
+                            <strong class="text-success">${kilos.toFixed(2)} kg</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted d-block">Movimiento:</small>
+                            <strong>${tipoMovimiento?.value || 'entrada'}</strong>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resumenHTML = `
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Producto:</small>
+                            <strong>${productoText}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Bodega:</small>
+                            <strong>${bodegaText}</strong>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="alert alert-sm alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Ingrese la cantidad de kilos para granel
+                    </div>
+                `;
+            }
+        } else {
+            const cantidad = parseInt(document.getElementById('cantidad_pacas_entrada').value) || 0;
+            const peso = parseFloat(document.getElementById('peso_pacas_entrada').value) || 0;
+            const pesoPorPaca = parseFloat(document.getElementById('peso_por_paca_entrada').value) || 0;
+            
+            if (cantidad > 0 && peso > 0) {
+                resumenHTML = `
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Producto:</small>
+                            <strong>${productoText}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Bodega:</small>
+                            <strong>${bodegaText}</strong>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="row">
+                        <div class="col-3">
+                            <small class="text-muted d-block">Tipo:</small>
+                            <span class="badge bg-warning">Pacas</span>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-muted d-block">Cantidad:</small>
+                            <strong class="text-success">${cantidad} pacas</strong>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-muted d-block">Peso total:</small>
+                            <strong>${peso.toFixed(2)} kg</strong>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-muted d-block">Peso/paca:</small>
+                            <strong>${pesoPorPaca.toFixed(2)} kg</strong>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resumenHTML = `
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Producto:</small>
+                            <strong>${productoText}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Bodega:</small>
+                            <strong>${bodegaText}</strong>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="alert alert-sm alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Ingrese cantidad y peso de las pacas
+                    </div>
+                `;
+            }
+        }
+    } else {
+        resumenHTML = '<p class="mb-0">Complete los datos para ver el resumen</p>';
+    }
+    
+    document.getElementById('resumen_entrada').innerHTML = resumenHTML;
+}
+
+// Función principal de validación y envío
+function validarYEnviarEntrada() {
+    const productoSelect = document.getElementById('producto_entrada');
+    const bodegaSelect = document.getElementById('bodega_entrada');
+    const observacionesEntradaTextarea = document.querySelector('textarea[name="observacionesEntrada"]');
+    
+    // Obtener valores
+    const producto = productoSelect ? productoSelect.value : '';
+    const bodega = bodegaSelect ? bodegaSelect.value : '';
+    const observaciones = observacionesEntradaTextarea ? observacionesEntradaTextarea.value.trim() : '';
+    
+    const granelRadio = document.getElementById('granel_radio').checked;
+    const kilosGranel = parseFloat(document.getElementById('kilos_granel').value) || 0;
+    const cantidadPacas = parseInt(document.getElementById('cantidad_pacas_entrada').value) || 0;
+    const pesoPacas = parseFloat(document.getElementById('peso_pacas_entrada').value) || 0;
+    const tipoMovimientoSelect = document.querySelector('select[name="tipo_movimiento"]');
+    const tipoMovimiento = tipoMovimientoSelect ? tipoMovimientoSelect.value : 'entrada';
+    
+     console.log('Valores capturados:', {
+        producto: producto,
+        bodega: bodega,
+        observaciones: observaciones,
+        granelRadio: granelRadio,
+        kilosGranel: kilosGranel,
+        cantidadPacas: cantidadPacas,
+        pesoPacas: pesoPacas,   
+        fechadeentrada: document.querySelector('input[name="fecha_entrada"]').value,
+    });
+
+    // Validaciones
+    let errores = [];
+    
+    if (!producto) {
+        errores.push('Por favor seleccione un producto');
+    }
+    
+    // Validar bodega
+    if (!bodega || bodega === "") {
+        errores.push('Por favor seleccione una bodega');
+        if (bodegaSelect) bodegaSelect.classList.add('is-invalid');
+    } else {
+        if (bodegaSelect) bodegaSelect.classList.remove('is-invalid');
+    }
+    
+    if (!observaciones) {
+        errores.push('Por favor ingrese observaciones');
+        if (observacionesEntradaTextarea) observacionesEntradaTextarea.classList.add('is-invalid');
+    } else {
+        if (observacionesEntradaTextarea) observacionesEntradaTextarea.classList.remove('is-invalid');
+    }
+    
+    if (granelRadio) {
+        if (kilosGranel <= 0) {
+            errores.push('Por favor ingrese una cantidad válida de kilos para granel (mayor a 0)');
+        }
+    } else {
+        if (cantidadPacas <= 0) {
+            errores.push('Por favor ingrese una cantidad válida de pacas (mayor a 0)');
+        }
+        
+        if (pesoPacas <= 0) {
+            errores.push('Por favor ingrese un peso válido para las pacas (mayor a 0)');
+        }
+        
+        if (pesoPacas / cantidadPacas <= 0) {
+            errores.push('El peso por paca debe ser mayor a 0');
+        }
+    }
+    
+    if (errores.length > 0) {
+        // Mostrar errores con SweetAlert2
+        Swal.fire({
+            title: 'Error de Validación',
+            html: '<div class="text-start">' + 
+                  '<i class="bi bi-exclamation-triangle text-danger me-2"></i>' +
+                  '<strong>Por favor corrija los siguientes errores:</strong><br>' +
+                  '<ul class="mt-2 mb-0">' + 
+                  errores.map(error => `<li>${error}</li>`).join('') + 
+                  '</ul></div>',
+            icon: 'error',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#dc3545'
+        });
+        return false;
+    }
+    
+    // Confirmar envío
+    Swal.fire({
+        title: '¿Registrar Entrada?',
+        html: '¿Está seguro de registrar esta entrada en el inventario?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, Registrar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Deshabilitar botón para evitar doble clic
+            const submitBtn = document.querySelector('#modalEntrada .btn-success');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...';
+            
+            // Enviar formulario
+            document.getElementById('formEntrada').submit();
+        }
+    });
+}
+
+// Event listeners para campos de entrada
+document.addEventListener('DOMContentLoaded', function() {
+    // Modal de entrada
+    const modalEntrada = document.getElementById('modalEntrada');
+    if (modalEntrada) {
+        modalEntrada.addEventListener('shown.bs.modal', function() {
+            // Inicializar valores
+            toggleTipoEntrada();
+            
+            // Enfocar el primer campo
+            setTimeout(() => {
+                document.getElementById('producto_entrada').focus();
+            }, 500);
+        });
+        
+        modalEntrada.addEventListener('hidden.bs.modal', function() {
+            // Resetear formulario
+            document.getElementById('formEntrada').reset();
+            document.getElementById('cantidad_pacas_entrada').value = '1';
+            document.getElementById('resumen_entrada').innerHTML = 
+                '<p class="mb-0">Complete los datos para ver el resumen</p>';
+            
+            // Asegurar que el tipo granel esté seleccionado por defecto
+            document.getElementById('granel_radio').checked = true;
+            toggleTipoEntrada();
+            
+            // Restaurar botón
+            const submitBtn = document.querySelector('#modalEntrada .btn-success');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Registrar Entrada';
+            }
+        });
+    }
+    
+    // Event listeners para actualizar resumen
+    const kilosGranelInput = document.getElementById('kilos_granel');
+    const cantidadPacasInput = document.getElementById('cantidad_pacas_entrada');
+    const pesoPacasInput = document.getElementById('peso_pacas_entrada');
+    
+    if (kilosGranelInput) {
+        kilosGranelInput.addEventListener('input', actualizarResumenEntrada);
+    }
+    
+    if (cantidadPacasInput) {
+        cantidadPacasInput.addEventListener('input', function() {
+            calcularPesoPorPacaEntrada();
+            actualizarResumenEntrada();
+        });
+    }
+    
+    if (pesoPacasInput) {
+        pesoPacasInput.addEventListener('input', function() {
+            calcularPesoPorPacaEntrada();
+            actualizarResumenEntrada();
+        });
+    }
+    
+    if (document.getElementById('producto_entrada')) {
+        document.getElementById('producto_entrada').addEventListener('change', actualizarResumenEntrada);
+    }
+    
+    if (document.getElementById('bodega_entrada')) {
+        document.getElementById('bodega_entrada').addEventListener('change', actualizarResumenEntrada);
+    }
+    
+    const tipoMovimientoSelect = document.querySelector('select[name="tipo_movimiento"]');
+    if (tipoMovimientoSelect) {
+        tipoMovimientoSelect.addEventListener('change', actualizarResumenEntrada);
+    }
+    
+    // Permitir enviar con Enter en los campos numéricos
+    if (kilosGranelInput) {
+        kilosGranelInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                validarYEnviarEntrada();
+            }
+        });
+    }
+    
+    if (pesoPacasInput) {
+        pesoPacasInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                validarYEnviarEntrada();
+            }
+        });
+    }
+    
+    // Evitar el envío automático del formulario
+    document.getElementById('formEntrada').addEventListener('submit', function(e) {
+        e.preventDefault();
+        // El envío ahora se controla desde validarYEnviarEntrada()
+    });
+});
+
 </script>
