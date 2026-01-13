@@ -605,10 +605,10 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                     </ul>
                     <!-- Después del botón de Transformar Producto en el HEADER DEL DASHBOARD -->
                     <div class="card-toolbar mb-3 d-flex justify-content-end">
-                        <button type="button" class="btn btn-modern btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalEntrada">
+                        <button type="button" class="btn btn-modern btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalEntrada" <?= $perm['ACT_AC']; ?>>
                             <i class="bi bi-box-arrow-in-down me-2"></i> Nueva Entrada
                         </button>
-                        <button type="button" class="btn btn-modern btn-warning ms-2" data-bs-toggle="modal" data-bs-target="#modalConversion">
+                        <button type="button" class="btn btn-modern btn-warning ms-2" data-bs-toggle="modal" data-bs-target="#modalConversion" <?= $perm['ACT_AC']; ?>>
                             <i class="bi bi-arrow-repeat me-2"></i> Transformar Producto
                         </button>
                     </div>
