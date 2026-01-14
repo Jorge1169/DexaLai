@@ -811,302 +811,251 @@ if (isset($_POST['eliminar_ticket'])) {
 ?>
 
 <div class="container-fluid px-3 py-3" style="max-width: 1400px; margin: 0 auto;">
-    <!-- Header compacto -->
+    <!-- Header principal -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="d-flex align-items-center">
-                    <button onclick="window.close()" class="btn btn-outline-secondary me-3">
-                        <i class="bi bi-arrow-left"></i>
-                    </button>
-                    <div>
-                        <h3 class="mb-1 fw-bold">Detalle de Venta</h3>
-                        <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
-                        </nav>
+            <!-- Tarjeta de información principal -->
+            <div class="card border-0 shadow mb-4">
+                <div class="card-header encabezado-col">
+                    <!-- Barra de acciones superior -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <button onclick="window.close()" class="btn btn-warning btn-sm me-3">
+                                <i class="bi bi-arrow-left"></i>
+                            </button>
+                            <div>
+                                <h3 class="mb-1 fw-bold text-light">Detalle de Venta</h3>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFacturaVenta">
+                                <i class="bi bi-file-text me-1"></i>
+                                <?= $factura_venta_estado == 'sin_factura' ? 'Factura' : 'Editar Factura' ?>
+                            </button>
+                            <?php if ($flete->num_rows > 0): ?>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFletero">
+                                <i class="bi bi-truck me-1"></i>Transporte
+                            </button>
+                            <?php endif; ?>
+                            <button class="btn btn-secondary btn-sm">
+                                <i class="bi bi-printer me-1"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFacturaVenta">
-                        <i class="bi bi-file-text me-2"></i>
-                        <?= $factura_venta_estado == 'sin_factura' ? 'Agregar Factura' : 'Editar Factura' ?>
-                    </button>
-                    <?php if ($flete->num_rows > 0): ?>
-                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFletero">
-                        <i class="bi bi-truck me-2"></i>Datos Fletero
-                    </button>
-                    <?php endif; ?>
-                    <button class="btn btn-outline-primary">
-                        <i class="bi bi-printer me-2"></i>Imprimir
-                    </button>
-                    <button class="btn btn-primary">
-                        <i class="bi bi-download me-2"></i>Exportar
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Tarjeta de estado -->
-            <div class="card border-0 shadow mb-3">
-                <div class="card-body p-3">
+                <div class="card-body p-4">
                     <div class="row align-items-center">
-                        <div class="col-md-3">
+                        <div class="col-lg-4 mb-3 mb-lg-0">
                             <div class="d-flex align-items-center">
                                 <div class="bg-primary bg-opacity-10 rounded-3 p-3 me-3">
-                                    <i class="bi bi-file-text text-primary fs-2"></i>
+                                    <i class="bi bi-cart-check text-primary fs-2"></i>
                                 </div>
                                 <div>
-                                    <h4 class="mb-0 fw-bold"><?= htmlspecialchars($venta['folio_compuesto']) ?></h4>
-                                    <small class="text-muted">Folio del documento</small>
+                                    <h4 class="mb-1 fw-bold">Venta #<?= htmlspecialchars($venta['folio_compuesto']) ?></h4>
+                                    <div class="text-muted small">
+                                        <i class="bi bi-calendar me-1"></i>
+                                        <?= htmlspecialchars($venta['fecha_formateada']) ?>
+                                        <span class="mx-2">•</span>
+                                        <i class="bi bi-person me-1"></i>
+                                        <?= htmlspecialchars($venta['nombre_usuario']) ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-5">
+                        
+                        <div class="col-lg-8">
                             <div class="row">
-                                <div class="col-4">
-                                    <small class="text-muted d-block">Fecha Venta</small>
-                                    <strong><?= htmlspecialchars($venta['fecha_formateada']) ?></strong>
+                                <div class="col-md-3 mb-2 mb-md-0">
+                                    <div class="border-start border-3 border-primary ps-3">
+                                        <small class="text-muted d-block">Zona</small>
+                                        <strong class="d-block"><?= htmlspecialchars($venta['nombre_zona']) ?></strong>
+                                    </div>
                                 </div>
-                                <div class="col-4">
-                                    <small class="text-muted d-block">Zona</small>
-                                    <strong><?= htmlspecialchars($venta['nombre_zona']) ?></strong>
+                                <div class="col-md-3 mb-2 mb-md-0">
+                                    <div class="border-start border-3 border-success ps-3">
+                                        <small class="text-muted d-block">Valor Venta</small>
+                                        <strong class="d-block text-success">$<?= number_format($total_venta, 2) ?></strong>
+                                    </div>
                                 </div>
-                                <div class="col-4">
-                                    <small class="text-muted d-block">Responsable</small>
-                                    <strong><?= htmlspecialchars($venta['nombre_usuario']) ?></strong>
+                                <div class="col-md-3 mb-2 mb-md-0">
+                                    <div class="border-start border-3 border-info ps-3">
+                                        <small class="text-muted d-block">Costo Flete</small>
+                                        <strong class="d-block text-info">$<?= number_format($total_flete, 2) ?></strong>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="d-flex justify-content-end">
-                                <div class="me-3">
-                                    <small class="text-muted d-block">Estado</small>
-                                    <span class="badge bg-success">Completada</span>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block">Creado</small>
-                                    <small><?= htmlspecialchars($venta['fecha_creacion_formateada']) ?></small>
+                                <div class="col-md-3">
+                                    <div class="border-start border-3 border-warning ps-3">
+                                        <small class="text-muted d-block">Ganancia Neta</small>
+                                        <strong class="d-block text-warning">$<?= number_format($total_general, 2) ?></strong>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Información de factura de venta - SIMPLE Y DIRECTA -->
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="bg-<?= $factura_venta_clase ?> bg-opacity-25 border border-<?= $factura_venta_clase ?> rounded-2 p-2 d-flex justify-content-between align-items-center py-2">
-                                <div>
-                                    <i class="bi bi-receipt me-2"></i>
-                                    <strong>Factura de Venta:</strong> 
-                                    <span class="ms-2"><?= htmlspecialchars($factura_venta_texto) ?></span>
-                                    
-                                    <?php if ($factura_venta_estado == 'con_factura' && !empty($venta['fecha_factura_formateada'])): ?>
-                                        <span class="ms-3">
+                    <!-- Barra de estado de factura -->
+                    <div class="mt-4 pt-3 border-top">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                            <div class="mb-2 mb-md-0">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-receipt me-2 fs-5 text-<?= $factura_venta_clase ?>"></i>
+                                    <div>
+                                        <h5 class="mb-1 fw-semibold">
+                                            Factura de Venta 
+                                            <?php if (!empty($venta['factura_venta'])): ?>
+                                            <span class="ms-2 fw-normal"><?= htmlspecialchars($venta['factura_venta']) ?></span>
+                                            <?php endif; ?>
+                                        </h5>
+                                        <?php if ($factura_venta_estado == 'con_factura' && !empty($venta['fecha_factura_formateada'])): ?>
+                                        <p class="mb-0 text-muted small">
                                             <i class="bi bi-calendar me-1"></i>
                                             <?= htmlspecialchars($venta['fecha_factura_formateada']) ?>
-                                        </span>
-                                    <?php endif; ?>
-                                    
-                                    <!-- Estado de validación (sí/no) -->
-                                    <?php if (!empty($venta['factura_venta'])): ?>
-                                        <span class="ms-3">
-                                            <?php if ($venta['factura_valida'] == 1): ?>
-                                                <span class="badge bg-success" title="PDF encontrado en el servidor">
-                                                    <i class="bi bi-check-circle me-1"></i>Válida
-                                                </span>
-                                            <?php elseif (!empty($venta['fecha_validacion_formateada'])): ?>
-                                                <span class="badge bg-danger" title="PDF no encontrado">
-                                                    <i class="bi bi-x-circle me-1"></i>No válida
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary" title="Sin validar">
-                                                    <i class="bi bi-clock me-1"></i>Sin validar
-                                                </span>
-                                            <?php endif; ?>
-                                        </span>
-                                    <?php endif; ?>
-                                    
-                                    <?php if ($factura_venta_duplicada_info): ?>
-                                        <span class="badge bg-warning ms-2" title="Factura duplicada">
-                                            <i class="bi bi-exclamation-triangle"></i> Duplicada
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <!-- Botón para validar factura (si existe factura) -->
-                                    <?php if (!empty($venta['factura_venta'])): ?>
-                                        <a href="?p=V_venta&id=<?= $id_venta ?>&validar_factura=1" 
-                                        class="btn btn-sm btn-<?= $venta['factura_valida'] == 1 ? 'success' : 'warning' ?>"
-                                        title="Validar existencia del PDF">
-                                            <i class="bi bi-shield-check me-1"></i>
-                                            <?= $venta['factura_valida'] == 1 ? 'Re-validar' : 'Validar' ?>
-                                        </a>
-                                        
-                                        <!-- Enlace al PDF si está validado -->
-                                        <?php if ($venta['factura_valida'] == 1 && !empty($venta['url_factura_pdf'])): ?>
-                                            <a href="<?= htmlspecialchars($venta['url_factura_pdf']) ?>" 
-                                            target="_blank" 
-                                            class="btn btn-sm btn-outline-success"
-                                            title="Ver PDF">
-                                                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-                                            </a>
+                                        </p>
                                         <?php endif; ?>
-                                    <?php endif; ?>
-                                    
-                                    <button type="button" class="btn btn-sm btn-<?= $factura_venta_clase == 'secondary' ? 'outline-primary' : 'outline-' . $factura_venta_clase ?>" 
-                                            data-bs-toggle="modal" data-bs-target="#modalFacturaVenta">
-                                        <i class="bi bi-pencil-square me-1"></i>
-                                        <?= $factura_venta_estado == 'sin_factura' ? 'Agregar' : 'Editar' ?>
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <!-- Mensaje simple si la factura no es válida -->
-                            <?php if (!empty($venta['factura_venta']) && !empty($venta['fecha_validacion_formateada']) && $venta['factura_valida'] == 0): ?>
-                                <div class="alert alert-danger mt-2 py-2" role="alert">
-                                    <i class="bi bi-exclamation-triangle me-2"></i>
-                                    <strong>Factura no válida:</strong> El PDF no fue encontrado en el servidor.
-                                    Última validación: <?= htmlspecialchars($venta['fecha_validacion_formateada']) ?>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($factura_venta_duplicada_info): ?>
-                                <div class="alert alert-warning mt-2 py-2" role="alert">
-                                    <i class="bi bi-exclamation-triangle me-2"></i>
-                                    <strong>Advertencia:</strong> Esta factura ya está registrada en otra venta.
-                                </div>
-                            <?php endif; ?>
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- Estado de validación -->
+                                <?php if (!empty($venta['factura_venta'])): ?>
+                                    <?php if ($venta['factura_valida'] == 1): ?>
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success">
+                                            <i class="bi bi-check-circle me-1"></i>Válida
+                                        </span>
+                                        <?php if (!empty($venta['url_factura_pdf'])): ?>
+                                        <a href="<?= htmlspecialchars($venta['url_factura_pdf']) ?>" 
+                                           target="_blank" 
+                                           class="btn btn-sm btn-outline-success"
+                                           title="Ver PDF">
+                                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                                        </a>
+                                        <?php endif; ?>
+                                    <?php elseif (!empty($venta['fecha_validacion_formateada'])): ?>
+                                        <span class="badge bg-danger bg-opacity-25 text-danger border border-danger">
+                                            <i class="bi bi-x-circle me-1"></i>No válida
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary">
+                                            <i class="bi bi-clock me-1"></i>Sin validar
+                                        </span>
+                                    <?php endif; ?>
+                                    
+                                    <a href="?p=V_venta&id=<?= $id_venta ?>&validar_factura=1" 
+                                    class="btn btn-sm btn-<?= $venta['factura_valida'] == 1 ? 'outline-success' : 'outline-warning' ?>"
+                                    title="Validar existencia del PDF">
+                                        <i class="bi bi-shield-check me-1"></i>
+                                        <?= $venta['factura_valida'] == 1 ? 'Revalidar' : 'Validar' ?>
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <?php if ($factura_venta_duplicada_info): ?>
+                                <span class="badge bg-warning bg-opacity-20 text-warning border border-warning" 
+                                      data-bs-toggle="tooltip" title="Factura duplicada">
+                                    <i class="bi bi-exclamation-triangle me-1"></i> Duplicada
+                                </span>
+                                <?php endif; ?>
+                                
+                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                        data-bs-toggle="modal" data-bs-target="#modalFacturaVenta">
+                                    <i class="bi bi-pencil-square me-1"></i>
+                                    <?= $factura_venta_estado == 'sin_factura' ? 'Agregar' : 'Editar' ?>
+                                </button>
+                            </div>
                         </div>
+                        
+                        <!-- Mensajes informativos -->
+                        <?php if (!empty($venta['factura_venta']) && !empty($venta['fecha_validacion_formateada']) && $venta['factura_valida'] == 0): ?>
+                        <div class="alert alert-danger alert-sm mt-3 py-2" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Factura no válida:</strong> El PDF no fue encontrado en el servidor.
+                            <small class="ms-2">Última validación: <?= htmlspecialchars($venta['fecha_validacion_formateada']) ?></small>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if ($factura_venta_duplicada_info): ?>
+                        <div class="alert alert-warning alert-sm mt-2 py-2" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Advertencia:</strong> Esta factura ya está registrada en otra venta activa.
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3">
-        <!-- Columna principal - Información del producto -->
-        <div class="col-lg-8">
-            <!-- Tarjeta principal del producto -->
-            <div class="card border-0 shadow mb-3">
-                <div class="card-header py-2 px-3 border-bottom">
+    <!-- Contenido principal en grid 3 columnas -->
+    <div class="row g-4">
+        <!-- Columna 1: Producto y origen/destino -->
+        <div class="col-lg-4">
+            <!-- Tarjeta del producto -->
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-transparent border-bottom py-3">
                     <h5 class="mb-0">
-                        <i class="bi bi-box-seam text-primary me-2"></i>Detalles del Producto
+                        <i class="bi bi-box-seam text-primary me-2"></i>Producto Vendido
                     </h5>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th width="40" class="text-center">#</th>
-                                    <th>Producto</th>
-                                    <th class="text-center">Precio Unitario</th>
-                                    <th class="text-center">Pacas</th>
-                                    <th class="text-center">Kilos</th>
-                                    <th class="text-end">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if ($producto): ?>
-                                <tr>
-                                    <td class="text-center align-middle">1</td>
-                                    <td>
-                                        <div class="fw-semibold"><?= htmlspecialchars($producto['cod_producto']) ?></div>
-                                        <div class="text-muted small"><?= htmlspecialchars($producto['nombre_producto']) ?></div>
-                                        <?php if (!empty($producto['observaciones'])): ?>
-                                        <div class="mt-1">
-                                            <small class="text-info">
-                                                <i class="bi bi-info-circle me-1"></i>
-                                                <?= htmlspecialchars($producto['observaciones']) ?>
-                                            </small>
-                                        </div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <span class="badge bg-light text-dark fs-6">
-                                            $<?= number_format($producto['precio_venta'], 2) ?>
-                                        </span>
-                                        <div class="text-muted small mt-1">por kg</div>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <div class="fw-bold fs-5"><?= number_format($producto['pacas_cantidad'], 0) ?></div>
-                                        <div class="text-muted small">unidades</div>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <div class="fw-bold fs-5"><?= number_format($producto['total_kilos'], 2) ?></div>
-                                        <div class="text-muted small">kilogramos</div>
-                                    </td>
-                                    <td class="text-end align-middle">
-                                        <div class="fw-bold fs-5 text-success">
-                                            $<?= number_format($producto['total_kilos'] * $producto['precio_venta'], 2) ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php endif; ?>
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colspan="4" class="text-end fw-bold">Totales:</td>
-                                    <td class="text-center fw-bold">
-                                        <?= number_format($total_kilos, 2) ?> kg
-                                    </td>
-                                    <td class="text-end fw-bold fs-5 text-success">
-                                        $<?= number_format($total_venta, 2) ?>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Información de origen y destino en tarjetas compactas -->
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <div class="card border-0 shadow h-100">
-                        <div class="card-header py-2 px-3 border-bottom">
-                            <h6 class="mb-0">
-                                <i class="bi bi-shop text-primary me-2"></i>Origen
-                            </h6>
+                <div class="card-body">
+                    <?php if ($producto): ?>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-1"><?= htmlspecialchars($producto['nombre_producto']) ?></h6>
+                                <p class="text-muted small mb-0">Código: <?= htmlspecialchars($producto['cod_producto']) ?></p>
+                            </div>
+                            <span class="badge bg-primary bg-opacity-10 text-primary">
+                                <i class="bi bi-tag me-1"></i>
+                                $<?= number_format($producto['precio_venta'], 2) ?>/kg
+                            </span>
                         </div>
-                        <div class="card-body p-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                                    <i class="bi bi-building text-primary"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold"><?= htmlspecialchars($venta['nombre_almacen']) ?></div>
-                                    <small class="text-muted">Código: <?= htmlspecialchars($venta['cod_almacen']) ?></small>
+                        
+                        <?php if (!empty($producto['observaciones'])): ?>
+                        <div class="alert alert-info alert-sm py-2 mb-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <?= htmlspecialchars($producto['observaciones']) ?>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="border rounded p-2 text-center bg-body-tertiary">
+                                    <small class="text-muted d-block">Pacas</small>
+                                    <h4 class="fw-bold mb-0"><?= number_format($producto['pacas_cantidad'], 0) ?></h4>
                                 </div>
                             </div>
-                            <div class="border-start border-3 border-primary ps-3 mt-3">
-                                <small class="text-muted d-block">Bodega de Salida</small>
-                                <div class="fw-semibold"><?= htmlspecialchars($venta['cod_bodega_almacen']) ?></div>
-                                <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_almacen']) ?></small>
+                            <div class="col-6">
+                                <div class="border rounded p-2 text-center bg-body-tertiary">
+                                    <small class="text-muted d-block">Kilos</small>
+                                    <h4 class="fw-bold mb-0"><?= number_format($producto['total_kilos'], 1) ?></h4>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Subtotal:</span>
+                                <span class="fw-bold fs-5 text-success">
+                                    $<?= number_format($producto['total_kilos'] * $producto['precio_venta'], 2) ?>
+                                </span>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="card border-0 shadow h-100">
-                        <div class="card-header py-2 px-3 border-bottom">
-                            <h6 class="mb-0">
-                                <i class="bi bi-person-badge text-success me-2"></i>Destino
-                            </h6>
-                        </div>
-                        <div class="card-body p-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
-                                    <i class="bi bi-person text-success"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold"><?= htmlspecialchars($venta['nombre_cliente']) ?></div>
-                                    <small class="text-muted">Código: <?= htmlspecialchars($venta['cod_cliente']) ?></small>
-                                </div>
+                    <?php endif; ?>
+                    
+                    <!-- Métricas -->
+                    <div class="border rounded p-3 bg-body-tertiary">
+                        <h6 class="fw-bold mb-3 text-muted">
+                            <i class="bi bi-graph-up me-2"></i>Métricas
+                        </h6>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Precio promedio</small>
+                                <strong>$<?= number_format($total_kilos > 0 ? $total_venta / $total_kilos : 0, 2) ?>/kg</strong>
                             </div>
-                            <div class="border-start border-3 border-success ps-3 mt-3">
-                                <small class="text-muted d-block">Bodega de Destino</small>
-                                <div class="fw-semibold"><?= htmlspecialchars($venta['cod_bodega_cliente']) ?></div>
-                                <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_cliente']) ?></small>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Peso por paca</small>
+                                <strong><?= number_format($total_pacas > 0 ? $total_kilos / $total_pacas : 0, 2) ?> kg</strong>
                             </div>
                         </div>
                     </div>
@@ -1114,246 +1063,370 @@ if (isset($_POST['eliminar_ticket'])) {
             </div>
         </div>
 
-        <!-- Columna lateral - Resumen y flete -->
+        <!-- Columna 2: Origen y Destino -->
         <div class="col-lg-4">
-            <!-- Resumen financiero compacto -->
-            <div class="card border-0 shadow mb-3">
-                <div class="card-header py-2 px-3 border-bottom">
-                    <h6 class="mb-0">
-                        <i class="bi bi-calculator text-warning me-2"></i>Resumen Financiero
-                    </h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="p-3">
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="text-muted">Valor de venta:</span>
-                                <span class="fw-semibold">$<?= number_format($total_venta, 2) ?></span>
-                            </div>
-                            <?php if ($total_flete > 0): ?>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="text-muted">Costo de flete:</span>
-                                <span class="text-danger">-$<?= number_format($total_flete, 2) ?></span>
-                            </div>
-                            <?php endif; ?>
-                            <hr class="my-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-bold">Ganancia neta:</span>
-                                <span class="fw-bold fs-5 <?= $total_general >= 0 ? 'text-success' : 'text-danger' ?>">
-                                    $<?= number_format($total_general, 2) ?>
-                                </span>
-                            </div>
-                        </div>
+            <?php
+            // Obtener direcciones completas de las bodegas (si no están ya en $venta)
+            $dir_alm = null;
+            $dir_cli = null;
 
-                        <!-- Métricas rápidas -->
-                        <div class="border rounded p-2 bg-body-tertiary">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <small class="text-muted d-block">Precio promedio</small>
-                                    <strong>$<?= number_format($total_kilos > 0 ? $total_venta / $total_kilos : 0, 2) ?>/kg</strong>
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted d-block">Peso por paca</small>
-                                    <strong><?= number_format($total_pacas > 0 ? $total_kilos / $total_pacas : 0, 2) ?> kg</strong>
-                                </div>
-                            </div>
-                        </div>
+            if (!empty($venta['id_direc_alma'])) {
+            $sql_dir_alm = "SELECT calle, numext, numint, colonia, estado, c_postal FROM direcciones WHERE id_direc = ? LIMIT 1";
+            $stmt_dir_alm = $conn_mysql->prepare($sql_dir_alm);
+            if ($stmt_dir_alm) {
+                $stmt_dir_alm->bind_param('i', $venta['id_direc_alma']);
+                $stmt_dir_alm->execute();
+                $res_dir_alm = $stmt_dir_alm->get_result();
+                if ($res_dir_alm && $res_dir_alm->num_rows) {
+                $dir_alm = $res_dir_alm->fetch_assoc();
+                }
+            }
+            }
+
+            if (!empty($venta['id_direc_cliente'])) {
+            $sql_dir_cli = "SELECT calle, numext, numint, colonia, estado, c_postal FROM direcciones WHERE id_direc = ? LIMIT 1";
+            $stmt_dir_cli = $conn_mysql->prepare($sql_dir_cli);
+            if ($stmt_dir_cli) {
+                $stmt_dir_cli->bind_param('i', $venta['id_direc_cliente']);
+                $stmt_dir_cli->execute();
+                $res_dir_cli = $stmt_dir_cli->get_result();
+                if ($res_dir_cli && $res_dir_cli->num_rows) {
+                $dir_cli = $res_dir_cli->fetch_assoc();
+                }
+            }
+            }
+
+            function formato_direccion($d) {
+            if (empty($d)) return '<span class="text-muted small">Sin dirección registrada</span>';
+            $parts = [];
+            if (!empty($d['calle'])) $parts[] = htmlspecialchars($d['calle']);
+            $num = '';
+            if (!empty($d['numext'])) $num .= 'No. Ext ' . htmlspecialchars($d['numext']);
+            if (!empty($d['numint'])) $num .= ($num ? ' / ' : '') . 'Int ' . htmlspecialchars($d['numint']);
+            if ($num) $parts[] = $num;
+            if (!empty($d['colonia'])) $parts[] = 'Col. ' . htmlspecialchars($d['colonia']);
+            if (!empty($d['estado'])) $parts[] = htmlspecialchars($d['estado']);
+            if (!empty($d['c_postal'])) $parts[] = 'CP ' . htmlspecialchars($d['c_postal']);
+            if (!empty($d['referencia'])) $parts[] = '<small class="text-muted">Ref: ' . htmlspecialchars($d['referencia']) . '</small>';
+            return implode('<br>', $parts);
+            }
+            ?>
+            <div class="card border-0 shadow h-100">
+            <div class="card-header bg-transparent border-bottom py-3">
+                <h5 class="mb-0">
+                <i class="bi bi-arrow-left-right text-info me-2"></i>Origen y Destino
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Origen -->
+                <div class="mb-4">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-primary bg-opacity-10 rounded-2 p-2 me-3">
+                    <i class="bi bi-shop text-primary fs-4"></i>
+                    </div>
+                    <div>
+                    <h6 class="fw-bold mb-0"><?= htmlspecialchars($venta['nombre_almacen']) ?></h6>
+                    <p class="text-muted small mb-0">Código: <?= htmlspecialchars($venta['cod_almacen']) ?></p>
                     </div>
                 </div>
-            </div>
 
-            <!-- Información de flete (si aplica) -->
-            <?php if ($flete->num_rows > 0): 
-                if ($flete_data) {
-                    // Mostrar alerta si la factura está duplicada
-                    if ($factura_transportista_duplicada_info): ?>
-                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>Advertencia:</strong> La factura del transportista ya está registrada en la venta activa con folio: 
-                        <strong><?= htmlspecialchars($factura_transportista_duplicada_info['folio']) ?></strong>
-                        <br><small>Se recomienda utilizar un número de factura único.</small>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <div class="ps-5">
+                    <div class="border-start border-3 border-primary ps-3">
+                    <small class="text-muted d-block">Bodega de Salida</small>
+                    <div class="fw-semibold"><?= htmlspecialchars($venta['cod_bodega_almacen']) ?></div>
+                    <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_almacen']) ?></small>
+
+                    <div class="mt-2 small">
+                        <?= formato_direccion($dir_alm) ?>
+                    </div>
+                    </div>
+                </div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Destino -->
+                <div>
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-success bg-opacity-10 rounded-2 p-2 me-3">
+                    <i class="bi bi-person text-success fs-4"></i>
+                    </div>
+                    <div>
+                    <h6 class="fw-bold mb-0"><?= htmlspecialchars($venta['nombre_cliente']) ?></h6>
+                    <p class="text-muted small mb-0">Código: <?= htmlspecialchars($venta['cod_cliente']) ?></p>
+                    </div>
+                </div>
+
+                <div class="ps-5">
+                    <div class="border-start border-3 border-success ps-3">
+                    <small class="text-muted d-block">Bodega de Destino</small>
+                    <div class="fw-semibold"><?= htmlspecialchars($venta['cod_bodega_cliente']) ?></div>
+                    <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_cliente']) ?></small>
+
+                    <div class="mt-2 small">
+                        <?= formato_direccion($dir_cli) ?>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+            </div>
+        </div>
+
+        <!-- Columna 3: Información de flete -->
+        <div class="col-lg-4">
+            <?php if ($flete->num_rows > 0 && $flete_data): ?>
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-truck text-info me-2"></i>Información de Transporte
+                        </h5>
+                        <?php if (!empty($flete_data['fecha_actualizacion_formateada'])): ?>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary">
+                            <i class="bi bi-clock-history me-1"></i>
+                            <?= htmlspecialchars($flete_data['fecha_actualizacion_formateada']) ?>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Información básica del fletero -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-info bg-opacity-10 rounded-2 p-2 me-3">
+                                <i class="bi bi-truck text-info fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-0"><?= htmlspecialchars($venta['nombre_fletero']) ?></h6>
+                                <p class="text-muted small mb-0">
+                                    <i class="bi bi-upc-scan me-1"></i>
+                                    <?= htmlspecialchars($venta['placas_fletero']) ?>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <?php if ($factura_transportista_duplicada_info): ?>
+                        <div class="alert alert-warning alert-sm py-2 mb-3">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Factura duplicada:</strong> Ya existe en venta #<?= htmlspecialchars($factura_transportista_duplicada_info['folio']) ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- Detalles del transporte -->
+                    <?php if (!empty($flete_data['tipo_camion']) || !empty($flete_data['nombre_chofer']) || 
+                               !empty($flete_data['placas_unidad']) || !empty($flete_data['factura_transportista'])): ?>
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3 text-info">
+                            <i class="bi bi-truck-front me-2"></i>Detalles del Transporte
+                        </h6>
+                        <div class="row g-2">
+                            <?php if (!empty($flete_data['tipo_camion'])): ?>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Tipo de unidad</small>
+                                <strong><?= htmlspecialchars($flete_data['tipo_camion']) ?></strong>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <?php if (!empty($flete_data['nombre_chofer'])): ?>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Chofer</small>
+                                <strong><?= htmlspecialchars($flete_data['nombre_chofer']) ?></strong>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <?php if (!empty($flete_data['placas_unidad'])): ?>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Placas unidad</small>
+                                <strong><?= htmlspecialchars($flete_data['placas_unidad']) ?></strong>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <?php if (!empty($flete_data['factura_transportista'])): ?>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Factura transportista</small>
+                                <div class="d-flex align-items-center">
+                                    <strong><?= htmlspecialchars($flete_data['factura_transportista']) ?></strong>
+                                    <?php if ($factura_transportista_duplicada_info): ?>
+                                    <span class="badge bg-warning bg-opacity-20 text-warning border border-warning ms-2">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                    </span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <?php endif; ?>
                     
-                    <div class="card border-0 shadow mb-3">
-                        <div class="card-header py-2 px-3 border-bottom">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-truck text-info me-2"></i>Información de Flete
-                                </h6>
-                                <?php if (!empty($flete_data['fecha_actualizacion_formateada'])): ?>
-                                <span class="badge bg-secondary">
-                                    <i class="bi bi-clock-history me-1"></i>
-                                    <?= htmlspecialchars($flete_data['fecha_actualizacion_formateada']) ?>
-                                </span>
+                    <!-- Información del flete -->
+                    <div class="border rounded p-3 bg-info bg-opacity-10 mb-4">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Tipo de flete</small>
+                                <span class="badge bg-info bg-opacity-25 text-info"><?= htmlspecialchars($flete_data['tipo_flete']) ?></span>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Costo total</small>
+                                <strong class="text-info">$<?= number_format($total_flete, 2) ?></strong>
+                            </div>
+                            <?php if ($flete_data['tipo_flete'] == 'Por tonelada'): ?>
+                            <div class="col-12 mt-2">
+                                <small class="text-muted d-block">Precio por tonelada</small>
+                                <strong>$<?= number_format($flete_data['precio_flete'], 2) ?></strong>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <!-- Ticket de báscula -->
+                    <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): ?>
+                    <div class="border rounded p-3 bg-success bg-opacity-10">
+                        <h6 class="fw-bold mb-3 text-success">
+                            <i class="bi bi-scale me-2"></i>Ticket de Báscula
+                        </h6>
+                        
+                        <?php if (!empty($flete_data['folio_ticket_bascula'])): ?>
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Folio del ticket</small>
+                            <strong><?= htmlspecialchars($flete_data['folio_ticket_bascula']) ?></strong>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($flete_data['archivo_ticket'])): 
+                            $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket']);
+                        ?>
+                        <div>
+                            <small class="text-muted d-block">Archivo adjunto</small>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <?php if ($info_ticket && $info_ticket['existe']): ?>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-primary me-2" 
+                                            onclick="verTicket('<?= $info_ticket['url'] ?>', '<?= $info_ticket['es_imagen'] ? 'imagen' : 'pdf' ?>', '<?= addslashes($info_ticket['nombre']) ?>')">
+                                        <i class="bi bi-eye me-1"></i>
+                                        Ver
+                                    </button>
+                                    <a href="<?= $info_ticket['url'] ?>" 
+                                       download
+                                       class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-download me-1"></i>
+                                        Descargar
+                                    </a>
+                                    <?php else: ?>
+                                    <span class="text-danger small">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>
+                                        Archivo no encontrado
+                                    </span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if ($info_ticket): ?>
+                                <small class="text-muted">
+                                    <?= strtoupper($info_ticket['extension']) ?>
+                                </small>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="card-body p-3">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="bg-info bg-opacity-10 rounded-circle p-2 me-3">
-                                    <i class="bi bi-truck text-info"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold"><?= htmlspecialchars($venta['nombre_fletero']) ?></div>
-                                    <small class="text-muted">
-                                        <i class="bi bi-upc-scan me-1"></i>
-                                        <?= htmlspecialchars($venta['placas_fletero']) ?>
-                                    </small>
-                                </div>
-                            </div>
-                            
-                            <!-- Nuevos campos del fletero -->
-                            <?php if (!empty($flete_data['tipo_camion']) || !empty($flete_data['nombre_chofer']) || 
-                                       !empty($flete_data['placas_unidad']) || !empty($flete_data['factura_transportista'])): ?>
-                            <div class="border rounded p-3 mb-3 bg-info bg-opacity-5">
-                                <h6 class="fw-bold mb-2 text-info">
-                                    <i class="bi bi-truck-front me-2"></i>Detalles del Transporte
-                                </h6>
-                                <div class="row g-2">
-                                    <?php if (!empty($flete_data['tipo_camion'])): ?>
-                                    <div class="col-12">
-                                        <small class="text-muted d-block">Tipo de unidad</small>
-                                        <strong><?= htmlspecialchars($flete_data['tipo_camion']) ?></strong>
-                                    </div>
-                                    <?php endif; ?>
-                                    
-                                    <?php if (!empty($flete_data['nombre_chofer'])): ?>
-                                    <div class="col-12">
-                                        <small class="text-muted d-block">Nombre del chofer</small>
-                                        <strong><?= htmlspecialchars($flete_data['nombre_chofer']) ?></strong>
-                                    </div>
-                                    <?php endif; ?>
-                                    
-                                    <?php if (!empty($flete_data['placas_unidad'])): ?>
-                                    <div class="col-12">
-                                        <small class="text-muted d-block">Placas de la unidad</small>
-                                        <strong><?= htmlspecialchars($flete_data['placas_unidad']) ?></strong>
-                                    </div>
-                                    <?php endif; ?>
-                                    
-                                    <?php if (!empty($flete_data['factura_transportista'])): ?>
-                                    <div class="col-12">
-                                        <small class="text-muted d-block">Factura transportista</small>
-                                        <div class="d-flex align-items-center">
-                                            <strong><?= htmlspecialchars($flete_data['factura_transportista']) ?></strong>
-                                            <?php if ($factura_transportista_duplicada_info): ?>
-                                            <span class="badge bg-warning ms-2" data-bs-toggle="tooltip" 
-                                                  title="Esta factura está duplicada en otra venta activa">
-                                                <i class="bi bi-exclamation-triangle"></i>
-                                            </span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <?php endif; ?>
-
-                                </div>
-                            </div>
-                            <!-- Sección de ticket de báscula -->
-                            <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): ?>
-                            <div class="border rounded p-3 mt-3 bg-success bg-opacity-10">
-                                <h6 class="fw-bold mb-2 text-success">
-                                    <i class="bi bi-scale me-2"></i>Ticket de Báscula
-                                </h6>
-                                <div class="row g-2">
-                                    <?php if (!empty($flete_data['folio_ticket_bascula'])): ?>
-                                    <div class="col-md-6">
-                                        <small class="text-muted d-block">Folio del ticket</small>
-                                        <strong><?= htmlspecialchars($flete_data['folio_ticket_bascula']) ?></strong>
-                                    </div>
-                                    <?php endif; ?>
-                                    
-                                    <?php if (!empty($flete_data['archivo_ticket'])): 
-                                        $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket']);
-                                    ?>
-                                    <div class="col-12 mt-2">
-                                        <small class="text-muted d-block">Archivo del ticket</small>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <?php if ($info_ticket && $info_ticket['existe']): ?>
-                                                <!-- Botón para ver en modal -->
-                                                <button type="button" 
-                                                        class="btn btn-sm btn-outline-primary" 
-                                                        onclick="verTicket('<?= $info_ticket['url'] ?>', '<?= $info_ticket['es_imagen'] ? 'imagen' : 'pdf' ?>', '<?= addslashes($info_ticket['nombre']) ?>')">
-                                                    <i class="bi bi-eye me-1"></i>
-                                                    Ver
-                                                </button>
-                                                
-                                                <!-- Enlace para descargar -->
-                                                <a href="<?= $info_ticket['url'] ?>" 
-                                                download
-                                                class="btn btn-sm btn-outline-success">
-                                                    <i class="bi bi-download me-1"></i>
-                                                    Descargar
-                                                </a>
-                                                
-                                                <small class="text-muted">
-                                                    <?= strtoupper($info_ticket['extension']) ?> - 
-                                                    <?= $info_ticket['tamano_formateado'] ?>
-                                                </small>
-                                            <?php else: ?>
-                                                <span class="text-danger">
-                                                    <i class="bi bi-exclamation-triangle me-1"></i>
-                                                    Archivo no encontrado en el servidor
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            <?php else: ?>
-                            <div class="alert alert-info alert-dismissible fade show" role="alert">
-                                <i class="bi bi-info-circle me-2"></i>
-                                No hay información adicional del transporte.
-                                <small>Haz clic en "Datos Fletero" para agregarla.</small>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <div class="border rounded p-2 bg-body-tertiary">
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <small class="text-muted d-block">Tipo</small>
-                                        <span class="badge bg-info"><?= htmlspecialchars($flete_data['tipo_flete']) ?></span>
-                                    </div>
-                                    <div class="col-6">
-                                        <small class="text-muted d-block">Costo</small>
-                                        <strong>$<?= number_format($total_flete, 2) ?></strong>
-                                    </div>
-                                    <?php if ($flete_data['tipo_flete'] == 'Por tonelada'): ?>
-                                    <div class="col-12">
-                                        <small class="text-muted d-block">Precio por tonelada</small>
-                                        <strong>$<?= number_format($flete_data['precio_flete'], 2) ?></strong>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($flete_data['fecha_subida_ticket_formateada'])): ?>
+                        <div class="mt-2 pt-2 border-top">
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>
+                                Subido: <?= htmlspecialchars($flete_data['fecha_subida_ticket_formateada']) ?>
+                            </small>
                         </div>
+                        <?php endif; ?>
                     </div>
-            <?php }
-            endif; ?>
-
-            <!-- Información adicional -->
-            <div class="card border-0 shadow">
-                <div class="card-header py-2 px-3 border-bottom">
-                    <h6 class="mb-0">
-                        <i class="bi bi-info-circle text-secondary me-2"></i>Información Adicional
-                    </h6>
+                    <?php endif; ?>
+                    
+                    <!-- Botón para editar -->
+                    <div class="mt-4 pt-3 border-top text-center">
+                        <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalFletero">
+                            <i class="bi bi-pencil-square me-2"></i>Editar Información de Transporte
+                        </button>
+                    </div>
                 </div>
-                <div class="card-body p-3">
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <small class="text-muted d-block">Zona</small>
-                            <strong><?= htmlspecialchars($venta['nombre_zona']) ?></strong>
+            </div>
+            <?php else: ?>
+            <div class="card border-0 shadow h-100">
+                <div class="card-body d-flex flex-column justify-content-center align-items-center text-center p-5">
+                    <div class="bg-info bg-opacity-10 rounded-3 p-4 mb-3">
+                        <i class="bi bi-truck text-info fs-1"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Sin Información de Transporte</h5>
+                    <p class="text-muted mb-4">No hay datos de flete registrados para esta venta.</p>
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFletero">
+                        <i class="bi bi-plus-circle me-2"></i>Agregar Datos de Transporte
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Resumen financiero al final -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4">
+                        <i class="bi bi-calculator text-warning me-2"></i>Resumen Financiero
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 text-center bg-body-tertiary h-100">
+                                <small class="text-muted d-block mb-2">Valor de Venta</small>
+                                <h3 class="fw-bold text-success mb-0">$<?= number_format($total_venta, 2) ?></h3>
+                                <small class="text-muted mt-2 d-block">
+                                    <?= number_format($total_kilos, 2) ?> kg 
+                                    × $<?= number_format($total_kilos > 0 ? $total_venta / $total_kilos : 0, 2) ?>/kg
+                                </small>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <small class="text-muted d-block">Folio Simple</small>
-                            <strong>#<?= htmlspecialchars($venta['folio_simple']) ?></strong>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 text-center bg-body-tertiary h-100">
+                                <small class="text-muted d-block mb-2">Costo de Flete</small>
+                                <h3 class="fw-bold text-info mb-0">$<?= number_format($total_flete, 2) ?></h3>
+                                <?php if ($flete_data && $flete_data['tipo_flete'] == 'Por tonelada'): ?>
+                                <small class="text-muted mt-2 d-block">
+                                    <?= number_format($total_kilos / 1000, 2) ?> ton 
+                                    × $<?= number_format($flete_data['precio_flete'], 2) ?>/ton
+                                </small>
+                                <?php endif; ?>
+                            </div>
                         </div>
-                        <div class="col-12">
-                            <small class="text-muted d-block">Creado</small>
-                            <strong><?= htmlspecialchars($venta['fecha_creacion_formateada']) ?></strong>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 text-center bg-body-tertiary h-100">
+                                <small class="text-muted d-block mb-2">Ganancia Neta</small>
+                                <h3 class="fw-bold <?= $total_general >= 0 ? 'text-warning' : 'text-danger' ?> mb-0">
+                                    $<?= number_format($total_general, 2) ?>
+                                </h3>
+                                <small class="text-muted mt-2 d-block">
+                                    <?= number_format($total_kilos, 2) ?> kg totales
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 text-center bg-body-tertiary h-100">
+                                <small class="text-muted d-block mb-2">Margen de Ganancia</small>
+                                <?php if ($total_venta > 0): 
+                                    $margen = (($total_general / $total_venta) * 100);
+                                ?>
+                                <h3 class="fw-bold <?= $margen >= 0 ? 'text-success' : 'text-danger' ?> mb-0">
+                                    <?= number_format($margen, 1) ?>%
+                                </h3>
+                                <small class="text-muted mt-2 d-block">
+                                    Sobre valor de venta
+                                </small>
+                                <?php else: ?>
+                                <h3 class="fw-bold text-secondary mb-0">0.0%</h3>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1431,7 +1504,7 @@ if (isset($_POST['eliminar_ticket'])) {
                     </div>
                     
                     <!-- Información de la venta -->
-                    <div class="card border-0 bg-light mb-3">
+                    <div class="card border-0 bg-body-tertiary mb-3">
                         <div class="card-body p-3">
                             <div class="row g-2">
                                 <div class="col-6">
@@ -1889,237 +1962,194 @@ if (isset($_POST['eliminar_ticket'])) {
         </div>
     </div>
 </div>
-<!-- Estilos específicos para ERP compacto -->
 <style>
 :root {
-    --erp-primary: #2c3e50;
-    --erp-secondary: #f8f9fa;
-    --erp-border: #dee2e6;
-    --erp-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --erp-border-radius: 10px;
+    --erp-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --erp-shadow-hover: 0 4px 12px rgba(0,0,0,0.12);
 }
 
 body {
-    background-color: #f8f9fa;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.table th {
-    font-weight: 600;
-    color: #495057;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    background-color: #f8f9fa;
-    padding: 10px 12px;
+.card {
+    border-radius: var(--erp-border-radius);
+    border: 1px solid #e2e8f0;
+    box-shadow: var(--erp-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.table td {
-    padding: 12px;
-    vertical-align: middle;
+.card:hover {
+    box-shadow: var(--erp-shadow-hover);
+}
+
+.card-header {
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .badge {
     font-weight: 500;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 0.35em 0.65em;
+    border-radius: 6px;
 }
 
-.table-hover tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.03);
-    transition: background-color 0.2s ease;
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
 }
 
-/* Estilos para métricas */
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.alert-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    border-radius: 8px;
+}
+
 .border-start {
     border-left-width: 3px !important;
 }
 
-.text-muted {
-    color: #6c757d !important;
-    font-size: 0.85rem;
+/* Colores personalizados */
+.bg-primary.bg-opacity-10 {
+    background-color: rgba(13, 110, 253, 0.1) !important;
 }
 
-/* Mejoras responsivas */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding: 10px !important;
-    }
-    
-    .card-body {
-        padding: 12px !important;
-    }
-    
-    .table-responsive {
-        font-size: 0.9rem;
-    }
-    
-    .modal-dialog {
-        margin: 10px;
-    }
-}
-
-/* Estilos para números y montos */
-.fw-bold {
-    font-weight: 600 !important;
-}
-
-.text-success {
-    color: #198754 !important;
-}
-
-.text-danger {
-    color: #dc3545 !important;
-}
-
-.bg-light {
-    background-color: #f8f9fa !important;
-}
-
-/* Scroll suave */
-.table-responsive {
-    scrollbar-width: thin;
-    scrollbar-color: #c1c1c1 #f1f1f1;
-}
-
-.table-responsive::-webkit-scrollbar {
-    height: 6px;
-    width: 6px;
-}
-
-.table-responsive::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* Estilos específicos para la información del fletero */
-.bg-info.bg-opacity-5 {
-    background-color: rgba(13, 202, 240, 0.05) !important;
+.bg-success.bg-opacity-10 {
+    background-color: rgba(25, 135, 84, 0.1) !important;
 }
 
 .bg-info.bg-opacity-10 {
     background-color: rgba(13, 202, 240, 0.1) !important;
 }
 
-/* Mejoras para el modal */
+.bg-warning.bg-opacity-10 {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+/* Tipografía mejorada */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+}
+
+.text-muted {
+    color: #64748b !important;
+}
+
+/* Mejoras para tablas */
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: #f8f9fa;
+}
+
+.table th {
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.75rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.table td {
+    padding: 1rem 0.75rem;
+    vertical-align: middle;
+    border-color: #e2e8f0;
+}
+
+/* Mejoras para badges */
+.badge.bg-opacity-20 {
+    opacity: 1;
+}
+
+/* Mejoras para modal */
 .modal-content {
+    border-radius: 12px;
     border: none;
-    border-radius: 10px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .modal-header {
-    border-radius: 10px 10px 0 0;
+    border-radius: 12px 12px 0 0;
+    padding: 1.25rem 1.5rem;
 }
 
-.form-label i {
-    font-size: 0.9rem;
-}
-/* Estilos para las pestañas del modal del fletero */
-.nav-tabs .nav-link {
-    color: #495057;
-    font-weight: 500;
-    border: none;
-    padding: 0.75rem 1rem;
+.modal-body {
+    padding: 1.5rem;
 }
 
-.nav-tabs .nav-link.active {
-    color: #0dcaf0;
-    background-color: transparent;
-    border-bottom: 2px solid #0dcaf0;
+/* Responsividad mejorada */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 1rem !important;
+    }
+    
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .d-flex {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .modal-dialog {
+        margin: 0.5rem;
+    }
 }
 
-.nav-tabs .nav-link:hover {
-    color: #0dcaf0;
-    background-color: rgba(13, 202, 240, 0.05);
+/* Efectos hover */
+.btn-outline-primary:hover {
+    transform: translateY(-1px);
 }
 
-/* Estilos para el campo de archivo */
-.form-control[type="file"] {
-    padding: 0.375rem 0.75rem;
+.card:hover {
+    transform: translateY(-2px);
 }
 
-.form-control[type="file"]::file-selector-button {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-right: none;
-    padding: 0.375rem 0.75rem;
-    margin: -0.375rem -0.75rem;
-    margin-right: 0.75rem;
-    color: #495057;
-    border-radius: 0.375rem 0 0 0.375rem;
+/* Scroll personalizado */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-.form-control[type="file"]:hover::file-selector-button {
-    background-color: #e9ecef;
-}
-
-/* Estilos para la vista previa del ticket */
-.ticket-preview {
-    max-width: 100%;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    padding: 0.5rem;
-    background-color: #f8f9fa;
-}
-
-.ticket-preview img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 0.25rem;
-}
-
-/* Estilos para la alerta de ticket */
-.alert-success .alert-heading {
-    color: #0f5132;
-}
-</style>
-<style>
-/* Estilos simplificados para ticket */
-.ticket-preview-container {
-    border: 2px dashed #dee2e6;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 15px;
-    background-color: #f8f9fa;
-}
-
-.ticket-preview-container img {
-    max-width: 100%;
-    max-height: 200px;
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
     border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-.btn-ticket {
-    min-width: 80px;
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
 }
 
-.archivo-info {
-    font-size: 0.85rem;
-    color: #6c757d;
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
-/* Estilos para el modal de visualización (si decides usar modal después) */
-.modal-ticket-content {
-    max-height: 80vh;
-    overflow-y: auto;
+/* Animaciones sutiles */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
 }
 
-.modal-ticket-content img {
-    max-width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 </style>
+
 <script>
 // Script para mejor experiencia de usuario
 document.addEventListener('DOMContentLoaded', function() {
