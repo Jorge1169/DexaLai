@@ -1,8 +1,279 @@
 <?php
+// Obtener tipo de zona actual
+$tipoZonaActual = obtenerTipoZonaActual($conn_mysql);
+
+// ============================================================================
+// ESCENARIO 1: SIN ZONA SELECCIONADA - Solo mostrar mensaje
+// ============================================================================
+if ($zona_seleccionada == '0' || empty($zona_seleccionada)) {
+    // NO usar exit() - solo mostrar contenido específico
+    ?>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-lg rounded-4">
+                    <div class="card-body text-center p-5">
+                        <div class="mb-4">
+                            <i class="bi bi-geo-alt display-1 text-primary"></i>
+                        </div>
+                        
+                        <h2 class="fw-bold text-primary mb-3">Selecciona una Zona</h2>
+                        
+                        <p class="text-muted fs-5 mb-4">
+                            Para acceder al dashboard, primero debes seleccionar la zona con la que trabajarás.
+                        </p>
+                        
+                        <div class="alert alert-info border-0 bg-info-subtle mb-4">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-info-circle-fill text-info fs-4 me-3"></i>
+                                <div>
+                                    <p class="mb-1 fw-semibold">¿Cómo seleccionar una zona?</p>
+                                    <p class="mb-0">Usa el selector de zona ubicado en la barra superior junto a la fecha.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6 mb-3">
+                                <div class="card border border-primary-subtle bg-primary-subtle h-100">
+                                    <div class="card-body text-center p-4">
+                                        <i class="bi bi-truck text-primary fs-1 mb-3"></i>
+                                        <h5 class="text-primary-emphasis">Zonas NOR</h5>
+                                        <p class="text-muted small">Dashboard completo con métricas de recolección tradicional</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <div class="card border border-success-subtle bg-success-subtle h-100">
+                                    <div class="card-body text-center p-4">
+                                        <i class="bi bi-box-seam text-success fs-1 mb-3"></i>
+                                        <h5 class="text-success-emphasis">Zonas MEO</h5>
+                                        <p class="text-muted small">Gestión de materiales especiales y operaciones</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-5">
+                            <button class="btn btn-primary btn-lg px-5" onclick="mostrarSelectorZona()">
+                                <i class="bi bi-geo-alt me-2"></i> Seleccionar Zona Ahora
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <small class="text-muted">
+                                <i class="bi bi-exclamation-circle me-1"></i>
+                                No podrás acceder al dashboard hasta que selecciones una zona
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    function mostrarSelectorZona() {
+        // Enfocar el selector de zona en la barra superior
+        const zoneSelect = document.getElementById('zoneSelect');
+        if (zoneSelect) {
+            zoneSelect.focus();
+            
+            // Mostrar un tooltip o mensaje
+            Swal.fire({
+                icon: 'info',
+                title: 'Selector de Zona',
+                html: 'Por favor, selecciona una zona del menú desplegable ubicado junto a la fecha en la barra superior.',
+                confirmButtonText: 'Entendido'
+            });
+        } else {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Selector no disponible',
+                text: 'El selector de zona no está disponible en este momento.',
+                confirmButtonText: 'Entendido'
+            });
+        }
+    }
+    </script>
+    <?php
+    // NO usar exit() - dejar que se siga cargando el resto de la página
+    // Solo terminar la ejecución de este archivo
+    return;
+}
+
+// ============================================================================
+// ESCENARIO 2: ZONA MEO SELECCIONADA - Mostrar dashboard MEO
+// ============================================================================
+if ($tipoZonaActual === 'MEO') {
+    // Obtener nombre de la zona MEO seleccionada
+    $zona_query = $conn_mysql->query("SELECT nom FROM zonas WHERE id_zone = '$zona_seleccionada'");
+    $zona_data = mysqli_fetch_array($zona_query);
+    $nombre_zona = $zona_data['nom'] ?? '';
+    ?>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card border-0 shadow-lg rounded-4">
+                    <div class="card-header bg-primary-subtle border-0 py-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="fw-bold text-primary mb-1">
+                                    <i class="bi bi-box-seam me-2"></i>Dashboard MEO
+                                </h2>
+                                <p class="text-muted mb-0">
+                                    Zona: <span class="badge bg-primary"><?= htmlspecialchars($nombre_zona) ?></span>
+                                    <span class="badge bg-success ms-2">
+                                        <i class="bi bi-shield-check me-1"></i> MEO
+                                    </span>
+                                </p>
+                            </div>
+                            <div>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar me-1"></i><?= date('d/m/Y') ?>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-5">
+                        <div class="text-center mb-5">
+                            <i class="bi bi-tools display-1 text-warning mb-4"></i>
+                            <h3 class="fw-bold text-primary mb-3">Dashboard en Construcción</h3>
+                            <p class="text-muted fs-5">
+                                Estamos trabajando en el dashboard especializado para zonas MEO (Materiales Especiales y Operaciones).
+                            </p>
+                        </div>
+                        
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="card border border-primary-subtle h-100 hover-lift">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="bg-primary-subtle p-3 rounded-circle me-3">
+                                                <i class="bi bi-box-seam text-primary fs-3"></i>
+                                            </div>
+                                            <div>
+                                                <h5 class="text-primary-emphasis mb-2">Almacenes MEO</h5>
+                                                <p class="text-muted small mb-3">
+                                                    Gestión de inventario y control de materiales especiales en almacenes.
+                                                </p>
+                                                <a href="?p=almacenes_info" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-arrow-right me-1"></i> Acceder
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card border border-success-subtle h-100 hover-lift">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="bg-success-subtle p-3 rounded-circle me-3">
+                                                <i class="bi bi-cart-check text-success fs-3"></i>
+                                            </div>
+                                            <div>
+                                                <h5 class="text-success-emphasis mb-2">Ventas MEO</h5>
+                                                <p class="text-muted small mb-3">
+                                                    Sistema de ventas y transacciones para materiales especiales.
+                                                </p>
+                                                <a href="?p=ventas" class="btn btn-sm btn-outline-success">
+                                                    <i class="bi bi-arrow-right me-1"></i> Acceder
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card border border-info-subtle h-100 hover-lift">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="bg-info-subtle p-3 rounded-circle me-3">
+                                                <i class="bi bi-clipboard-data text-info fs-3"></i>
+                                            </div>
+                                            <div>
+                                                <h5 class="text-info-emphasis mb-2">Captación MEO</h5>
+                                                <p class="text-muted small mb-3">
+                                                    Sistema de captación para materiales especiales.
+                                                </p>
+                                                <a href="?p=captacion" class="btn btn-sm btn-outline-info">
+                                                    <i class="bi bi-arrow-right me-1"></i> Acceder
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card border border-warning-subtle h-100 hover-lift">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="bg-warning-subtle p-3 rounded-circle me-3">
+                                                <i class="bi bi-graph-up text-warning fs-3"></i>
+                                            </div>
+                                            <div>
+                                                <h5 class="text-warning-emphasis mb-2">Reportes MEO</h5>
+                                                <p class="text-muted small mb-3">
+                                                    Próximamente: Reportes especializados para gestión MEO.
+                                                </p>
+                                                <button class="btn btn-sm btn-outline-warning" disabled>
+                                                    <i class="bi bi-clock me-1"></i> Próximamente
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning border-0 bg-warning-subtle mt-5">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-lightning-charge-fill text-warning fs-4 me-3"></i>
+                                <div>
+                                    <p class="mb-1 fw-semibold">Próximas Funcionalidades:</p>
+                                    <ul class="mb-0">
+                                        <li>Dashboard con métricas específicas MEO</li>
+                                        <li>Reportes financieros para materiales especiales</li>
+                                        <li>Control de calidad y certificaciones</li>
+                                        <li>Integración con sistemas externos</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer bg-light border-0 py-4">
+                        <div class="text-center">
+                            <small class="text-muted">
+                                <i class="bi bi-clock-history me-1"></i>
+                                Dashboard MEO - En desarrollo - Versión Beta
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+    // NO usar exit() - dejar que se siga cargando el resto de la página
+    // Solo terminar la ejecución de este archivo
+    return;
+}
+if ($tipoZonaActual === 'NOR') {
+// ============================================================================
+// DASHBOARD PARA ZONAS NOR (EL CÓDIGO ORIGINAL)
+// ============================================================================
+
 // Título de la página
 $titulo_pagina = "Dashboard";
 
-// Obtener estadísticas generales (código igual)
+// Obtener estadísticas generales
 $stats_query = "
 SELECT 
 (SELECT COUNT(*) FROM proveedores WHERE status = 1" . ($zona_seleccionada != '0' ? " AND zona = '$zona_seleccionada'" : "") . ") AS proveedores_activos,
@@ -29,7 +300,7 @@ SELECT
 
 $stats = $conn_mysql->query($stats_query)->fetch_assoc();
 
-// AVISOS IMPORTANTES (código igual)
+// AVISOS IMPORTANTES
 $precios_caducando = $conn_mysql->query("SELECT COUNT(*) as total FROM precios WHERE status = 1 AND fecha_fin BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 3 DAY)" . ($zona_seleccionada != '0' ? " AND id_prod IN (SELECT id_prod FROM productos WHERE zona = '$zona_seleccionada')" : ""));
 $aviso_precios = $precios_caducando->fetch_assoc()['total'] ?? 0;
 
@@ -47,7 +318,7 @@ if($zona_seleccionada != '0') {
     $nombre_zona = $zona_data['nom'] ?? '';
 }
 
-// Obtener últimas recolecciones (código igual) 
+// Obtener últimas recolecciones
 $ultimasRecolecciones = $conn_mysql->query("
     SELECT r.id_recol, r.folio, r.fecha_r, r.factura_v, 
     p.rs AS proveedor, c.nombre AS cliente, t.razon_so AS fletero,
@@ -88,16 +359,15 @@ $recolecciones_rechazadas = $conn_mysql->query("
 
 $total_rechazadas = $recolecciones_rechazadas->num_rows;
 ?>
-<div class="container py-3">
+<div class="container py-3" data-zona-tipo="<?= $tipoZonaActual ?>">
     
     <!-- HEADER CON TÍTULO Y ZONA -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h1 class="h3 mb-2">Panel de Control</h1>
                     <?php if($nombre_zona): ?>
-                        <div class="d-flex align-items-center">
+                        <div class="d-flex align-items-center zona-badge">
                             <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle me-2">
                                 <i class="bi bi-geo-alt me-1"></i> Zona: <?= htmlspecialchars($nombre_zona) ?>
                             </span>
@@ -176,7 +446,8 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
         </div>
         <?php endforeach; ?>
     </div>
-<!-- ALERTAS Y NOTIFICACIONES -->
+
+    <!-- ALERTAS Y NOTIFICACIONES -->
     <div class="row mb-4">
         <div class="col-12">
             <?php if ($aviso_precios > 0 || $aviso_sin_precio > 0 || $aviso_fleteros > 0): ?>
@@ -338,6 +609,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
         </div>
     </div>
     <?php endif; ?>
+
     <!-- SECCIÓN DE ESTADO DE RECOLECCIONES -->
     <div class="row mb-4">
         <div class="col-12">
@@ -543,6 +815,10 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
         </div>
     </div>
 </div>
+<?php
+}
+
+?>
 
 <!-- Utilidades de Bootstrap 5 -->
 <style>
