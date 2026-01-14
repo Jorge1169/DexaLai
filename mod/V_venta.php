@@ -254,7 +254,10 @@ $sql_flete = "SELECT vf.*,
                          WHEN p.tipo = 'MFV' THEN 'Por viaje'
                          ELSE p.tipo
                      END as tipo_flete,
-                     DATE_FORMAT(vf.fecha_actualizacion, '%d/%m/%Y %H:%i') as fecha_actualizacion_formateada
+                     DATE_FORMAT(vf.fecha_actualizacion, '%d/%m/%Y %H:%i') as fecha_actualizacion_formateada,
+                     DATE_FORMAT(vf.fecha_subida_ticket, '%d/%m/%Y %H:%i') as fecha_subida_ticket_formateada,
+                     vf.folio_ticket_bascula,
+                     vf.archivo_ticket
               FROM venta_flete vf
               LEFT JOIN precios p ON vf.id_pre_flete = p.id_precio
               WHERE vf.id_venta = ?";
@@ -544,6 +547,265 @@ if (isset($_GET['validar_factura']) && $_GET['validar_factura'] == 1) {
         alert("❌ Factura no válida - PDF no encontrado", 2, "V_venta&id=$id_venta");
     } else {
         alert("⚠️ No se pudo validar la factura", 2, "V_venta&id=$id_venta");
+    }
+}
+// =============================================
+// FUNCIONES SIMPLIFICADAS PARA TICKET DE BÁSCULA
+// =============================================
+
+/**
+ * Función simplificada para subir ticket
+ */
+function subirTicketBascula($archivo_temporal, $nombre_original, $id_venta, $folio_ticket) {
+    // Ruta ABSOLUTAMENTE SIMPLE y directa
+    $directorio_base = $_SERVER['DOCUMENT_ROOT'] . '/DexaLai/uploads/ticket/';
+    
+    // Verificar y crear directorios si no existen
+    if (!is_dir($directorio_base)) {
+        if (!mkdir($directorio_base, 0755, true)) {
+            return ['error' => 'No se pudo crear el directorio: ' . $directorio_base];
+        }
+    }
+    
+    // Verificar que el directorio sea escribible
+    if (!is_writable($directorio_base)) {
+        return ['error' => 'El directorio no tiene permisos de escritura: ' . $directorio_base];
+    }
+    
+    // Validar que sea un archivo válido
+    if (!is_uploaded_file($archivo_temporal)) {
+        return ['error' => 'Archivo no válido o no subido correctamente'];
+    }
+    
+    // Obtener extensión
+    $extension = strtolower(pathinfo($nombre_original, PATHINFO_EXTENSION));
+    
+    // Validar extensión
+    $extensiones_permitidas = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp'];
+    if (!in_array($extension, $extensiones_permitidas)) {
+        return ['error' => 'Tipo de archivo no permitido. Solo PDF, JPG, PNG, GIF, BMP'];
+    }
+    
+    // Validar tamaño (5MB máximo)
+    $tamano = filesize($archivo_temporal);
+    if ($tamano > (5 * 1024 * 1024)) {
+        return ['error' => 'El archivo es demasiado grande. Máximo 5MB'];
+    }
+    
+    // Crear nombre seguro para el archivo
+    $folio_limpio = preg_replace('/[^a-zA-Z0-9]/', '_', $folio_ticket);
+    $nombre_archivo = 'ticket_' . $id_venta . '_' . $folio_limpio . '_' . time() . '.' . $extension;
+    $ruta_completa = $directorio_base . $nombre_archivo;
+    
+    // Debug: Verificar ruta (solo para desarrollo)
+    // error_log("Intentando subir archivo a: " . $ruta_completa);
+    
+    // Mover archivo
+    if (move_uploaded_file($archivo_temporal, $ruta_completa)) {
+        // URL relativa para guardar en BD y acceder desde web
+        $url_relativa = '/DexaLai/uploads/ticket/' . $nombre_archivo;
+        
+        return [
+            'success' => true,
+            'nombre_archivo' => $nombre_archivo,
+            'ruta_completa' => $ruta_completa,
+            'url' => $url_relativa,
+            'url_absoluta' => 'http://' . $_SERVER['HTTP_HOST'] . $url_relativa
+        ];
+    } else {
+        $error_info = error_get_last();
+        return ['error' => 'Error al mover el archivo: ' . ($error_info['message'] ?? 'Error desconocido')];
+    }
+}
+
+/**
+ * Función simplificada para obtener información del ticket
+ */
+function obtenerInfoTicket($nombre_archivo) {
+    if (empty($nombre_archivo)) {
+        return null;
+    }
+    
+    // Misma ruta que en subirTicketBascula
+    $directorio_base = $_SERVER['DOCUMENT_ROOT'] . '/DexaLai/uploads/ticket/';
+    $ruta_archivo = $directorio_base . $nombre_archivo;
+    $url_base = '/DexaLai/uploads/ticket/';
+    
+    if (!file_exists($ruta_archivo)) {
+        return [
+            'nombre' => $nombre_archivo,
+            'existe' => false,
+            'error' => 'Archivo no encontrado en: ' . $ruta_archivo
+        ];
+    }
+    
+    $extension = strtolower(pathinfo($nombre_archivo, PATHINFO_EXTENSION));
+    $tamano = filesize($ruta_archivo);
+    
+    return [
+        'nombre' => $nombre_archivo,
+        'ruta' => $ruta_archivo,
+        'url' => $url_base . $nombre_archivo,
+        'url_absoluta' => 'http://' . $_SERVER['HTTP_HOST'] . $url_base . $nombre_archivo,
+        'extension' => $extension,
+        'tamano' => $tamano,
+        'tamano_formateado' => formatoTamanoSimple($tamano),
+        'es_imagen' => in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'bmp']),
+        'es_pdf' => $extension == 'pdf',
+        'existe' => true
+    ];
+}
+
+/**
+ * Formatear tamaño de forma simple
+ */
+function formatoTamanoSimple($bytes) {
+    if ($bytes >= 1048576) {
+        return number_format($bytes / 1048576, 1) . ' MB';
+    } elseif ($bytes >= 1024) {
+        return number_format($bytes / 1024, 1) . ' KB';
+    } else {
+        return $bytes . ' bytes';
+    }
+}
+
+/**
+ * Eliminar archivo de ticket
+ */
+function eliminarTicketArchivo($nombre_archivo) {
+    if (empty($nombre_archivo)) {
+        return true;
+    }
+    
+    // Misma ruta consistente
+    $directorio_base = $_SERVER['DOCUMENT_ROOT'] . '/DexaLai/uploads/ticket/';
+    $ruta_archivo = $directorio_base . $nombre_archivo;
+    
+    if (file_exists($ruta_archivo) && is_file($ruta_archivo)) {
+        return @unlink($ruta_archivo);
+    }
+    
+    return true;
+}
+function verificarDirectorioTicket() {
+    $directorio = $_SERVER['DOCUMENT_ROOT'] . '/DexaLai/uploads/ticket/';
+    
+    echo "<div style='background:#f0f0f0; padding:10px; margin:10px 0;'>";
+    echo "<strong>Debug de directorio:</strong><br>";
+    echo "Ruta: " . $directorio . "<br>";
+    echo "Existe: " . (is_dir($directorio) ? 'Sí' : 'No') . "<br>";
+    echo "Es escribible: " . (is_writable($directorio) ? 'Sí' : 'No') . "<br>";
+    echo "Permisos: " . substr(sprintf('%o', fileperms($directorio)), -4) . "<br>";
+    echo "</div>";
+}
+// Procesar subida de ticket de báscula - VERSIÓN SIMPLIFICADA
+if (isset($_POST['subir_ticket'])) {
+    $id_venta = intval($_POST['id_venta'] ?? 0);
+    $folio_ticket = trim($_POST['folio_ticket'] ?? '');
+    
+    // Validaciones básicas
+    if ($id_venta <= 0) {
+        alert("ID de venta no válido", 2, "V_venta&id=$id_venta");
+        exit;
+    }
+    
+    if (empty($folio_ticket)) {
+        alert("El folio del ticket es obligatorio", 2, "V_venta&id=$id_venta");
+        exit;
+    }
+    
+    // Verificar archivo
+    if (!isset($_FILES['archivo_ticket']) || $_FILES['archivo_ticket']['error'] !== UPLOAD_ERR_OK) {
+        alert("Debe seleccionar un archivo válido", 2, "V_venta&id=$id_venta");
+        exit;
+    }
+    
+    $archivo_temporal = $_FILES['archivo_ticket']['tmp_name'];
+    $nombre_original = $_FILES['archivo_ticket']['name'];
+    
+    // Subir archivo (versión simplificada)
+    $resultado = subirTicketBascula($archivo_temporal, $nombre_original, $id_venta, $folio_ticket);
+    
+    if (isset($resultado['error'])) {
+        alert("Error al subir el ticket: " . $resultado['error'], 2, "V_venta&id=$id_venta");
+        exit;
+    }
+    
+    // Si hay archivo anterior, eliminarlo
+    $sql_anterior = "SELECT archivo_ticket FROM venta_flete WHERE id_venta = ?";
+    $stmt_anterior = $conn_mysql->prepare($sql_anterior);
+    $stmt_anterior->bind_param('i', $id_venta);
+    $stmt_anterior->execute();
+    $result_anterior = $stmt_anterior->get_result();
+    
+    if ($result_anterior->num_rows > 0) {
+        $anterior = $result_anterior->fetch_assoc();
+        if (!empty($anterior['archivo_ticket'])) {
+            eliminarTicketArchivo($anterior['archivo_ticket']);
+        }
+    }
+    
+    // Actualizar en base de datos
+    $sql_update = "UPDATE venta_flete 
+                   SET folio_ticket_bascula = ?,
+                       archivo_ticket = ?,
+                       fecha_subida_ticket = NOW()
+                   WHERE id_venta = ?";
+    
+    $stmt_update = $conn_mysql->prepare($sql_update);
+    if ($stmt_update) {
+        $stmt_update->bind_param('ssi', 
+            $folio_ticket,
+            $resultado['nombre_archivo'],
+            $id_venta
+        );
+        
+        if ($stmt_update->execute()) {
+            alert("Ticket de báscula guardado correctamente", 1, "V_venta&id=$id_venta");
+            exit;
+        } else {
+            alert("Error al guardar en la base de datos", 2, "V_venta&id=$id_venta");
+        }
+    } else {
+        alert("Error en la consulta SQL", 2, "V_venta&id=$id_venta");
+    }
+}
+
+// Procesar eliminación de ticket - VERSIÓN SIMPLIFICADA
+if (isset($_POST['eliminar_ticket'])) {
+    $id_venta = intval($_POST['id_venta'] ?? 0);
+    
+    // Obtener nombre del archivo
+    $sql_archivo = "SELECT archivo_ticket FROM venta_flete WHERE id_venta = ?";
+    $stmt_archivo = $conn_mysql->prepare($sql_archivo);
+    $stmt_archivo->bind_param('i', $id_venta);
+    $stmt_archivo->execute();
+    $result_archivo = $stmt_archivo->get_result();
+    
+    if ($result_archivo->num_rows > 0) {
+        $archivo_data = $result_archivo->fetch_assoc();
+        if (!empty($archivo_data['archivo_ticket'])) {
+            eliminarTicketArchivo($archivo_data['archivo_ticket']);
+        }
+    }
+    
+    // Actualizar base de datos
+    $sql_delete = "UPDATE venta_flete 
+                   SET folio_ticket_bascula = NULL,
+                       archivo_ticket = NULL,
+                       fecha_subida_ticket = NULL
+                   WHERE id_venta = ?";
+    
+    $stmt_delete = $conn_mysql->prepare($sql_delete);
+    if ($stmt_delete) {
+        $stmt_delete->bind_param('i', $id_venta);
+        
+        if ($stmt_delete->execute()) {
+            alert("Ticket de báscula eliminado correctamente", 1, "V_venta&id=$id_venta");
+            exit;
+        } else {
+            alert("Error al eliminar el ticket", 2, "V_venta&id=$id_venta");
+        }
     }
 }
 ?>
@@ -985,8 +1247,62 @@ if (isset($_GET['validar_factura']) && $_GET['validar_factura'] == 1) {
                                         </div>
                                     </div>
                                     <?php endif; ?>
+
                                 </div>
                             </div>
+                            <!-- Sección de ticket de báscula -->
+                            <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): ?>
+                            <div class="border rounded p-3 mt-3 bg-success bg-opacity-10">
+                                <h6 class="fw-bold mb-2 text-success">
+                                    <i class="bi bi-scale me-2"></i>Ticket de Báscula
+                                </h6>
+                                <div class="row g-2">
+                                    <?php if (!empty($flete_data['folio_ticket_bascula'])): ?>
+                                    <div class="col-md-6">
+                                        <small class="text-muted d-block">Folio del ticket</small>
+                                        <strong><?= htmlspecialchars($flete_data['folio_ticket_bascula']) ?></strong>
+                                    </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($flete_data['archivo_ticket'])): 
+                                        $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket']);
+                                    ?>
+                                    <div class="col-12 mt-2">
+                                        <small class="text-muted d-block">Archivo del ticket</small>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <?php if ($info_ticket && $info_ticket['existe']): ?>
+                                                <!-- Botón para ver en modal -->
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-primary" 
+                                                        onclick="verTicket('<?= $info_ticket['url'] ?>', '<?= $info_ticket['es_imagen'] ? 'imagen' : 'pdf' ?>', '<?= addslashes($info_ticket['nombre']) ?>')">
+                                                    <i class="bi bi-eye me-1"></i>
+                                                    Ver
+                                                </button>
+                                                
+                                                <!-- Enlace para descargar -->
+                                                <a href="<?= $info_ticket['url'] ?>" 
+                                                download
+                                                class="btn btn-sm btn-outline-success">
+                                                    <i class="bi bi-download me-1"></i>
+                                                    Descargar
+                                                </a>
+                                                
+                                                <small class="text-muted">
+                                                    <?= strtoupper($info_ticket['extension']) ?> - 
+                                                    <?= $info_ticket['tamano_formateado'] ?>
+                                                </small>
+                                            <?php else: ?>
+                                                <span class="text-danger">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    Archivo no encontrado en el servidor
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                             <?php else: ?>
                             <div class="alert alert-info alert-dismissible fade show" role="alert">
                                 <i class="bi bi-info-circle me-2"></i>
@@ -1213,127 +1529,366 @@ if (isset($_GET['validar_factura']) && $_GET['validar_factura'] == 1) {
 <div class="modal fade" id="modalFletero" tabindex="-1" aria-labelledby="modalFleteroLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="POST" action="">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="modalFleteroLabel">
-                        <i class="bi bi-truck me-2"></i>Datos del Fletero
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <?php if (isset($error_flete)): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        <?= htmlspecialchars($error_flete) ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="tipo_camion" class="form-label">
-                                    <i class="bi bi-truck me-1"></i>Tipo de Unidad
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="tipo_camion" 
-                                       name="tipo_camion" 
-                                       value="<?= htmlspecialchars($flete_data['tipo_camion'] ?? '') ?>"
-                                       placeholder="Ej: Camión de 20 toneladas, Trailer, etc.">
-                                <div class="form-text">Opcional - Describe el tipo de vehículo utilizado</div>
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalFleteroLabel">
+                    <i class="bi bi-truck me-2"></i>Datos del Fletero
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Pestañas para separar las secciones -->
+            <div class="modal-body p-0">
+                <ul class="nav nav-tabs" id="fleteroTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="datos-tab" data-bs-toggle="tab" 
+                                data-bs-target="#datos" type="button" role="tab">
+                            <i class="bi bi-truck me-1"></i> Datos del Transporte
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="ticket-tab" data-bs-toggle="tab" 
+                                data-bs-target="#ticket" type="button" role="tab">
+                            <i class="bi bi-scale me-1"></i> Ticket de Báscula
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content p-3" id="fleteroTabContent">
+                    <!-- Pestaña 1: Datos del transporte -->
+                    <div class="tab-pane fade show active" id="datos" role="tabpanel">
+                        <form method="POST" action="" enctype="multipart/form-data">
+                            <input type="hidden" name="id_venta" value="<?= $id_venta ?>">
+                            
+                            <?php if (isset($error_flete)): ?>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <?= htmlspecialchars($error_flete) ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="nombre_chofer" class="form-label">
-                                    <i class="bi bi-person-badge me-1"></i>Nombre del Chofer
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="nombre_chofer" 
-                                       name="nombre_chofer" 
-                                       value="<?= htmlspecialchars($flete_data['nombre_chofer'] ?? '') ?>"
-                                       placeholder="Ej: Juan Pérez Rodríguez">
-                                <div class="form-text">Opcional - Nombre completo del conductor</div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="placas_unidad" class="form-label">
-                                    <i class="bi bi-upc-scan me-1"></i>Placas de la Unidad
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="placas_unidad" 
-                                       name="placas_unidad" 
-                                       value="<?= htmlspecialchars($flete_data['placas_unidad'] ?? '') ?>"
-                                       placeholder="Ej: ABC-123-DEF">
-                                <div class="form-text">Opcional - Número de placas del vehículo</div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="factura_transportista" class="form-label">
-                                    <i class="bi bi-receipt me-1"></i>Factura Transportista
-                                </label>
-                                <input type="text" 
-                                       class="form-control <?= isset($error_flete) ? 'is-invalid' : '' ?>" 
-                                       id="factura_transportista" 
-                                       name="factura_transportista" 
-                                       value="<?= htmlspecialchars($flete_data['factura_transportista'] ?? '') ?>"
-                                       placeholder="Ej: FT-2024-001234">
-                                <?php if (isset($error_flete)): ?>
-                                <div class="invalid-feedback">
-                                    <?= htmlspecialchars($error_flete) ?>
+                            <?php endif; ?>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="tipo_camion" class="form-label">
+                                            <i class="bi bi-truck me-1"></i>Tipo de Unidad
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="tipo_camion" 
+                                               name="tipo_camion" 
+                                               value="<?= htmlspecialchars($flete_data['tipo_camion'] ?? '') ?>"
+                                               placeholder="Ej: Camión de 20 toneladas, Trailer, etc.">
+                                        <div class="form-text">Opcional - Describe el tipo de vehículo utilizado</div>
+                                    </div>
                                 </div>
-                                <?php endif; ?>
-                                <div class="form-text">Opcional - Número de factura del transportista (debe ser único entre ventas activas)</div>
                                 
-                                <!-- Información de facturas duplicadas existentes -->
-                                <?php if ($factura_transportista_duplicada_info): ?>
-                                <div class="alert alert-warning mt-2 p-2">
-                                    <small>
-                                        <i class="bi bi-exclamation-triangle me-1"></i>
-                                        Esta factura ya está registrada en la venta con folio: 
-                                        <strong><?= htmlspecialchars($factura_transportista_duplicada_info['folio']) ?></strong>
-                                    </small>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nombre_chofer" class="form-label">
+                                            <i class="bi bi-person-badge me-1"></i>Nombre del Chofer
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="nombre_chofer" 
+                                               name="nombre_chofer" 
+                                               value="<?= htmlspecialchars($flete_data['nombre_chofer'] ?? '') ?>"
+                                               placeholder="Ej: Juan Pérez Rodríguez">
+                                        <div class="form-text">Opcional - Nombre completo del conductor</div>
+                                    </div>
                                 </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="placas_unidad" class="form-label">
+                                            <i class="bi bi-upc-scan me-1"></i>Placas de la Unidad
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="placas_unidad" 
+                                               name="placas_unidad" 
+                                               value="<?= htmlspecialchars($flete_data['placas_unidad'] ?? '') ?>"
+                                               placeholder="Ej: ABC-123-DEF">
+                                        <div class="form-text">Opcional - Número de placas del vehículo</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="factura_transportista" class="form-label">
+                                            <i class="bi bi-receipt me-1"></i>Factura Transportista
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control <?= isset($error_flete) ? 'is-invalid' : '' ?>" 
+                                               id="factura_transportista" 
+                                               name="factura_transportista" 
+                                               value="<?= htmlspecialchars($flete_data['factura_transportista'] ?? '') ?>"
+                                               placeholder="Ej: FT-2024-001234">
+                                        <?php if (isset($error_flete)): ?>
+                                        <div class="invalid-feedback">
+                                            <?= htmlspecialchars($error_flete) ?>
+                                        </div>
+                                        <?php endif; ?>
+                                        <div class="form-text">Opcional - Número de factura del transportista</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <?php if (!empty($flete_data['fecha_actualizacion_formateada'])): ?>
+                            <div class="alert alert-secondary">
+                                <i class="bi bi-clock-history me-2"></i>
+                                Última actualización: <?= htmlspecialchars($flete_data['fecha_actualizacion_formateada']) ?>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                                </button>
+                                <button type="submit" name="actualizar_flete" class="btn btn-primary">
+                                    <i class="bi bi-save me-2"></i>Guardar Cambios
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Pestaña 2: Ticket de báscula -->
+                    <div class="tab-pane fade" id="ticket" role="tabpanel">
+                        <form method="POST" action="" enctype="multipart/form-data">
+                            <input type="hidden" name="id_venta" value="<?= $id_venta ?>">
+                            
+                            <!-- Información actual del ticket -->
+                            <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): ?>
+                            <div class="alert alert-success">
+                                <h6 class="alert-heading">
+                                    <i class="bi bi-check-circle me-2"></i>Ticket registrado
+                                </h6>
+                                
+                                <?php if (!empty($flete_data['folio_ticket_bascula'])): ?>
+                                <p class="mb-1">
+                                    <strong>Folio:</strong> <?= htmlspecialchars($flete_data['folio_ticket_bascula']) ?>
+                                </p>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($flete_data['archivo_ticket'])): 
+                                    $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket']);
+                                ?>
+                                <p class="mb-1">
+                                    <strong>Archivo:</strong> 
+                                    <?php
+                                    $existe = !empty($info_ticket) && !empty($info_ticket['existe']);
+                                    $tipo = (!empty($info_ticket) && !empty($info_ticket['es_imagen'])) ? 'imagen' : 'pdf';
+                                    $url_js = addslashes($info_ticket['url'] ?? '#');
+                                    $nombre_js = addslashes($info_ticket['nombre'] ?? $flete_data['archivo_ticket']);
+                                    $icon = (!empty($info_ticket['extension']) && strtolower($info_ticket['extension']) === 'pdf') ? 'pdf' : 'image';
+                                    ?>
+                                    <a href="#" 
+                                        class="text-decoration-none <?= $existe ? '' : 'text-muted' ?>" 
+                                        onclick="<?= $existe ? "verTicket('{$url_js}','{$tipo}','{$nombre_js}');" : "return false;" ?> return false;">
+                                         <i class="bi bi-file-earmark-<?= $icon ?> me-1"></i>
+                                         <?= htmlspecialchars($info_ticket['nombre'] ?? $flete_data['archivo_ticket']) ?>
+                                    </a>
+                                    <?php if (!empty($info_ticket)): ?>
+                                        <small class="text-muted">
+                                            (<?= strtoupper($info_ticket['extension']) ?> - <?= $info_ticket['tamano_formateado'] ?>)
+                                        </small>
+                                    <?php endif; ?>
+                                </p>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($flete_data['fecha_subida_ticket_formateada'])): ?>
+                                <p class="mb-0">
+                                    <strong>Subido:</strong> <?= htmlspecialchars($flete_data['fecha_subida_ticket_formateada']) ?>
+                                </p>
                                 <?php endif; ?>
                             </div>
-                        </div>
+                            <?php else: ?>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                No hay ticket de báscula registrado.
+                            </div>
+                            <?php endif; ?>
+                            
+                            <!-- Formulario para subir/actualizar ticket -->
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="folio_ticket" class="form-label">
+                                            <i class="bi bi-ticket-detailed me-1"></i>Folio del Ticket *
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="folio_ticket" 
+                                               name="folio_ticket" 
+                                               value="<?= htmlspecialchars($flete_data['folio_ticket_bascula'] ?? '') ?>"
+                                               placeholder="Ej: TKT-001234"
+                                               required>
+                                        <div class="form-text">Número de folio del ticket de báscula</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label for="archivo_ticket" class="form-label">
+                                            <i class="bi bi-file-arrow-up me-1"></i>Archivo del Ticket
+                                        </label>
+                                        <input type="file" 
+                                               class="form-control" 
+                                               id="archivo_ticket" 
+                                               name="archivo_ticket"
+                                               accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tiff">
+                                        <div class="form-text">
+                                            Sube el ticket escaneado o fotografía (PDF, JPG, PNG, GIF, BMP, TIFF) - Máximo 5MB
+                                        </div>
+                                        
+                                        <!-- Información del archivo actual -->
+                                        <?php if (!empty($flete_data['archivo_ticket'])): 
+                                            $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket']);
+                                        ?>
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                Archivo actual: 
+                                                <strong><?= $flete_data['archivo_ticket'] ?></strong>
+                                                <?php if (!empty($info_ticket)): ?>
+                                                    (<?= strtoupper($info_ticket['extension']) ?> - <?= $info_ticket['tamano_formateado'] ?>)
+                                                <?php endif; ?>
+                                            </small>
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                Si subes un nuevo archivo, el anterior será reemplazado.
+                                            </small>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Importante:</strong> El folio del ticket debe ser único. 
+                                Verifica que no esté registrado en otra venta.
+                            </div>
+                            
+                            <div class="modal-footer">
+                                <!-- Botón para eliminar ticket (solo si existe) -->
+                                <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): ?>
+                                <button type="button" 
+                                        class="btn btn-danger" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#modalEliminarTicket">
+                                    <i class="bi bi-trash me-2"></i>Eliminar Ticket
+                                </button>
+                                <?php endif; ?>
+                                
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                                </button>
+                                <button type="submit" name="subir_ticket" class="btn btn-success">
+                                    <i class="bi bi-cloud-upload me-2"></i>
+                                    <?= empty($flete_data['folio_ticket_bascula']) ? 'Subir Ticket' : 'Actualizar Ticket' ?>
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        <strong>Nota:</strong> Los números de factura del transportista deben ser únicos entre todas las ventas activas.
-                        Si una venta está inactiva, puede tener facturas duplicadas.
-                    </div>
-                    
-                    <?php if (!empty($flete_data['fecha_actualizacion_formateada'])): ?>
-                    <div class="alert alert-secondary">
-                        <i class="bi bi-clock-history me-2"></i>
-                        Última actualización: <?= htmlspecialchars($flete_data['fecha_actualizacion_formateada']) ?>
-                    </div>
-                    <?php endif; ?>
                 </div>
-                <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar ticket -->
+<div class="modal fade" id="modalEliminarTicket" tabindex="-1" aria-labelledby="modalEliminarTicketLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalEliminarTicketLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar el ticket de báscula?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Esta acción eliminará:
+                    <ul class="mb-0 mt-1">
+                        <li>El folio del ticket</li>
+                        <li>El archivo subido</li>
+                        <li>La fecha de subida</li>
+                    </ul>
+                </div>
+                <p class="mb-0"><strong>Esta acción no se puede deshacer.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <form method="POST" action="">
+                    <input type="hidden" name="id_venta" value="<?= $id_venta ?>">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="bi bi-x-circle me-2"></i>Cancelar
                     </button>
-                    <button type="submit" name="actualizar_flete" class="btn btn-primary">
-                        <i class="bi bi-save me-2"></i>Guardar Cambios
+                    <button type="submit" name="eliminar_ticket" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>Sí, eliminar
                     </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 <?php endif; ?>
-
+<!-- Modal para visualizar tickets (imágenes y PDFs) -->
+<div class="modal fade" id="modalVerTicket" tabindex="-1" aria-labelledby="modalVerTicketLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalVerTicketLabel">
+                    <i class="bi bi-file-earmark me-2"></i>Visualizar Ticket de Báscula
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Contenedor para imagen -->
+                <div id="ticket-imagen-container" class="d-none text-center p-3">
+                    <img id="ticket-imagen" src="" class="img-fluid" style="max-height: 70vh;" 
+                         alt="Ticket de Báscula">
+                    <div class="mt-3">
+                        <a href="#" id="descargar-imagen" class="btn btn-success">
+                            <i class="bi bi-download me-2"></i>Descargar Imagen
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Contenedor para PDF -->
+                <div id="ticket-pdf-container" class="d-none" style="height: 70vh;">
+                    <iframe id="ticket-pdf" src="" frameborder="0" 
+                            style="width: 100%; height: 100%;"></iframe>
+                    <div class="mt-3 text-center">
+                        <a href="#" id="descargar-pdf" class="btn btn-success">
+                            <i class="bi bi-download me-2"></i>Descargar PDF
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Contenedor para error -->
+                <div id="ticket-error-container" class="d-none text-center p-5">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    <h4 class="mt-3">No se puede visualizar el archivo</h4>
+                    <p>El archivo no está disponible para visualización.</p>
+                    <a href="#" id="descargar-generico" class="btn btn-primary">
+                        <i class="bi bi-download me-2"></i>Intentar Descargar
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cerrar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="imprimirTicket()">
+                    <i class="bi bi-printer me-2"></i>Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Estilos específicos para ERP compacto -->
 <style>
 :root {
@@ -1468,11 +2023,210 @@ body {
 .form-label i {
     font-size: 0.9rem;
 }
-</style>
+/* Estilos para las pestañas del modal del fletero */
+.nav-tabs .nav-link {
+    color: #495057;
+    font-weight: 500;
+    border: none;
+    padding: 0.75rem 1rem;
+}
 
+.nav-tabs .nav-link.active {
+    color: #0dcaf0;
+    background-color: transparent;
+    border-bottom: 2px solid #0dcaf0;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #0dcaf0;
+    background-color: rgba(13, 202, 240, 0.05);
+}
+
+/* Estilos para el campo de archivo */
+.form-control[type="file"] {
+    padding: 0.375rem 0.75rem;
+}
+
+.form-control[type="file"]::file-selector-button {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-right: none;
+    padding: 0.375rem 0.75rem;
+    margin: -0.375rem -0.75rem;
+    margin-right: 0.75rem;
+    color: #495057;
+    border-radius: 0.375rem 0 0 0.375rem;
+}
+
+.form-control[type="file"]:hover::file-selector-button {
+    background-color: #e9ecef;
+}
+
+/* Estilos para la vista previa del ticket */
+.ticket-preview {
+    max-width: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+}
+
+.ticket-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+}
+
+/* Estilos para la alerta de ticket */
+.alert-success .alert-heading {
+    color: #0f5132;
+}
+</style>
+<style>
+/* Estilos simplificados para ticket */
+.ticket-preview-container {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    background-color: #f8f9fa;
+}
+
+.ticket-preview-container img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.btn-ticket {
+    min-width: 80px;
+}
+
+.archivo-info {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* Estilos para el modal de visualización (si decides usar modal después) */
+.modal-ticket-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-ticket-content img {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+}
+</style>
 <script>
 // Script para mejor experiencia de usuario
 document.addEventListener('DOMContentLoaded', function() {
+
+    const archivoTicketInput = document.getElementById('archivo_ticket');
+    if (archivoTicketInput) {
+        archivoTicketInput.addEventListener('change', function() {
+            const archivo = this.files[0];
+            if (archivo) {
+                const tamanoMaximo = 5 * 1024 * 1024; // 5MB
+                if (archivo.size > tamanoMaximo) {
+                    alert('El archivo es demasiado grande. El tamaño máximo es 5MB.');
+                    this.value = '';
+                }
+                
+                // Mostrar nombre del archivo
+                const nombreArchivo = archivo.name;
+                const extension = nombreArchivo.split('.').pop().toLowerCase();
+                const extensionesPermitidas = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'];
+                
+                if (!extensionesPermitidas.includes(extension)) {
+                    alert('Tipo de archivo no permitido. Solo se aceptan: PDF, JPG, PNG, GIF, BMP, TIFF.');
+                    this.value = '';
+                }
+            }
+        });
+    }
+    
+    // Validar folio del ticket
+    const folioTicketInput = document.getElementById('folio_ticket');
+    if (folioTicketInput) {
+        folioTicketInput.addEventListener('blur', function() {
+            this.value = this.value.trim().toUpperCase();
+        });
+    }
+    
+    // Prevenir envío duplicado
+    const formularioTicket = document.querySelector('form[name="subir_ticket"]');
+    if (formularioTicket) {
+        formularioTicket.addEventListener('submit', function(e) {
+            const botonSubmit = this.querySelector('button[name="subir_ticket"]');
+            if (botonSubmit) {
+                botonSubmit.disabled = true;
+                botonSubmit.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Subiendo...';
+            }
+        });
+    }
+    
+    // Auto-focus en la pestaña activa
+    const modalFletero = document.getElementById('modalFletero');
+    if (modalFletero) {
+        modalFletero.addEventListener('shown.bs.modal', function() {
+            const pestañaActiva = this.querySelector('.nav-link.active');
+            if (pestañaActiva && pestañaActiva.id === 'ticket-tab') {
+                const folioInput = document.getElementById('folio_ticket');
+                if (folioInput) {
+                    setTimeout(() => folioInput.focus(), 100);
+                }
+            }
+        });
+    }
+    
+    // Confirmar antes de eliminar
+    const botonEliminarTicket = document.querySelector('button[name="eliminar_ticket"]');
+    if (botonEliminarTicket) {
+        botonEliminarTicket.addEventListener('click', function(e) {
+            if (!confirm('¿Estás completamente seguro de eliminar el ticket? Esta acción no se puede deshacer.')) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // Vista previa de imagen (opcional)
+    const previsualizarImagen = function(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            const extension = input.files[0].name.split('.').pop().toLowerCase();
+            
+            if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'].includes(extension)) {
+                reader.onload = function(e) {
+                    // Crear o actualizar vista previa
+                    let preview = document.getElementById('ticket-preview');
+                    if (!preview) {
+                        preview = document.createElement('div');
+                        preview.id = 'ticket-preview';
+                        preview.className = 'ticket-preview mt-2';
+                        input.parentNode.appendChild(preview);
+                    }
+                    
+                    preview.innerHTML = `
+                        <img src="${e.target.result}" class="img-thumbnail" style="max-height: 200px;">
+                        <div class="mt-1 small text-muted">
+                            Vista previa - ${input.files[0].name}
+                        </div>
+                    `;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    };
+    
+    // Activar vista previa si se desea
+    if (archivoTicketInput) {
+        archivoTicketInput.addEventListener('change', function() {
+            previsualizarImagen(this);
+        });
+    }
     // Cerrar ventana con tecla ESC
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
@@ -1623,4 +2377,103 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+</script>
+<script>
+// Función MEJORADA para ver el ticket en modal
+function verTicket(url, tipo, nombreArchivo = '') {
+    // Limpiar contenedores anteriores
+    document.getElementById('ticket-imagen-container').classList.add('d-none');
+    document.getElementById('ticket-pdf-container').classList.add('d-none');
+    document.getElementById('ticket-error-container').classList.add('d-none');
+    
+    // Configurar URLs de descarga
+    document.getElementById('descargar-imagen').href = url;
+    document.getElementById('descargar-pdf').href = url;
+    document.getElementById('descargar-generico').href = url;
+    
+    if (tipo === 'imagen') {
+        // Para imágenes: mostrar en modal
+        document.getElementById('ticket-imagen-container').classList.remove('d-none');
+        document.getElementById('ticket-imagen').src = url;
+        
+        // Actualizar título del modal
+        document.getElementById('modalVerTicketLabel').innerHTML = 
+            '<i class="bi bi-image me-2"></i>Ticket de Báscula - ' + (nombreArchivo || 'Imagen');
+        
+    } else if (tipo === 'pdf') {
+        // Para PDF: mostrar en iframe
+        document.getElementById('ticket-pdf-container').classList.remove('d-none');
+        document.getElementById('ticket-pdf').src = url + '#view=FitH&toolbar=0&navpanes=0';
+        
+        // Actualizar título del modal
+        document.getElementById('modalVerTicketLabel').innerHTML = 
+            '<i class="bi bi-file-earmark-pdf me-2"></i>Ticket de Báscula - ' + (nombreArchivo || 'PDF');
+        
+    } else {
+        // Para otros tipos: mostrar mensaje de error
+        document.getElementById('ticket-error-container').classList.remove('d-none');
+        
+        // Actualizar título del modal
+        document.getElementById('modalVerTicketLabel').innerHTML = 
+            '<i class="bi bi-exclamation-triangle me-2"></i>No se puede visualizar';
+    }
+    
+    // Mostrar el modal
+    const modal = new bootstrap.Modal(document.getElementById('modalVerTicket'));
+    modal.show();
+}
+
+// Función para imprimir el ticket actual
+function imprimirTicket() {
+    const imagen = document.getElementById('ticket-imagen');
+    const pdfIframe = document.getElementById('ticket-pdf');
+    
+    if (!imagen.classList.contains('d-none')) {
+        // Imprimir imagen
+        const ventanaImpresion = window.open('', '_blank');
+        ventanaImpresion.document.write(`
+            <html>
+                <head>
+                    <title>Imprimir Ticket</title>
+                    <style>
+                        body { margin: 0; padding: 20px; }
+                        img { max-width: 100%; height: auto; }
+                        @media print {
+                            body { padding: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <img src="${imagen.src}">
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            setTimeout(function() {
+                                window.close();
+                            }, 500);
+                        };
+                    <\/script>
+                </body>
+            </html>
+        `);
+        ventanaImpresion.document.close();
+        
+    } else if (!pdfIframe.classList.contains('d-none')) {
+        // Imprimir PDF (el iframe ya tiene su propio control de impresión)
+        try {
+            pdfIframe.contentWindow.print();
+        } catch (e) {
+            alert('No se pudo imprimir el PDF. Intenta descargarlo e imprimirlo manualmente.');
+        }
+    }
+}
+
+// Función para rotar imagen (opcional)
+function rotarImagen(grados) {
+    const imagen = document.getElementById('ticket-imagen');
+    const rotacionActual = parseInt(imagen.style.transform.replace('rotate(', '').replace('deg)', '')) || 0;
+    const nuevaRotacion = rotacionActual + grados;
+    imagen.style.transform = `rotate(${nuevaRotacion}deg)`;
+    imagen.style.transition = 'transform 0.3s ease';
+}
 </script>
