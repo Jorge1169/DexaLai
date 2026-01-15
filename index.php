@@ -600,18 +600,7 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
 </div>
 
 <!-- Contenido principal -->
-<style>
-    <?php
-    // Determinar qué logo mostrar
-    $logoZona = '0'; // Logo por defecto
-    if (isset($_SESSION['selected_zone']) && $_SESSION['selected_zone'] > 0) {
-        $logoZona = $_SESSION['selected_zone'];
-    } elseif ($zonasPermitidas !== 'todas' && !empty($zonasPermitidas)) {
-        $logoZona = $zonasPermitidas[0];
-    }
-    ?>
-</style>
-
+ 
 <nav class="navbar navbar-expand-lg encabezado">
     <div class="container-fluid">
         <div class="d-flex align-items-center w-100">
@@ -619,12 +608,7 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
             <button id="menu-btn" class="menu-btn-header me-2 me-md-3">
                 <i class="bi bi-list fs-5"></i>
             </button>
-            
-            <!-- Logo -->
-            <a class="navbar-brand me-auto me-md-3" href="?p=inicio">
-                <img src="img/logos/logo<?= $logoZona ?>.png" alt="Logo" class="img-fluid">
-            </a>
-            
+
             <!-- Fecha -->
             <div class="date-display me-2 me-md-3 d-none d-lg-block">
                 <i class="bi bi-calendar2"></i> <?= $fecha_formateada ?>

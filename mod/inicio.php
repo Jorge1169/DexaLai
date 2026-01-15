@@ -123,7 +123,7 @@ if ($tipoZonaActual === 'MEO') {
     $resumenMes = obtenerResumenMensualMEO($conn_mysql, $zona_seleccionada);
     
     ?>
-    <div class="container py-5">
+    <div class="container py-4">
         <!-- HEADER -->
         <div class="row mb-4">
             <div class="col-12">
@@ -139,7 +139,11 @@ if ($tipoZonaActual === 'MEO') {
                                         <i class="bi bi-shield-check me-1"></i> Materiales Especiales y Operaciones
                                     </span>
                                     <span class="badge bg-primary">
-                                        <i class="bi bi-calendar me-1"></i> <?= date('F Y') ?>
+                                        <?php
+                                        $fmt = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'LLLL yyyy');
+                                        $fecha_es = $fmt->format(new DateTime());
+                                        ?>
+                                        <i class="bi bi-calendar me-1"></i> <?= htmlspecialchars(ucfirst($fecha_es)) ?>
                                     </span>
                                 </p>
                             </div>
@@ -934,7 +938,7 @@ function obtenerResumenMensualMEO($conn_mysql, $zona_seleccionada) {
 
 if ($tipoZonaActual === 'NOR') {
 // ============================================================================
-// DASHBOARD PARA ZONAS NOR (EL CÓDIGO ORIGINAL)
+// DASHBOARD PARA ZONAS NOR - DISEÑO ACTUALIZADO
 // ============================================================================
 
 // Título de la página
@@ -1001,7 +1005,6 @@ $ultimasRecolecciones = $conn_mysql->query("
     WHERE r.status = '1'" . ($zona_seleccionada != '0' ? " AND r.zona = '$zona_seleccionada'" : "") . "
     ORDER BY r.fecha_r DESC, r.id_recol DESC LIMIT 5");
 
-
 // CONSULTA PARA RECOLECCIONES CON FACTURA FLETE RECHAZADA
 $recolecciones_rechazadas = $conn_mysql->query("
     SELECT 
@@ -1026,29 +1029,43 @@ $recolecciones_rechazadas = $conn_mysql->query("
 
 $total_rechazadas = $recolecciones_rechazadas->num_rows;
 ?>
-<div class="container py-3" data-zona-tipo="<?= $tipoZonaActual ?>">
+<div class="container py-4" data-zona-tipo="<?= $tipoZonaActual ?>">
     
-    <!-- HEADER CON TÍTULO Y ZONA -->
+    <!-- HEADER -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <?php if($nombre_zona): ?>
-                        <div class="d-flex align-items-center zona-badge">
-                            <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle me-2">
-                                <i class="bi bi-geo-alt me-1"></i> Zona: <?= htmlspecialchars($nombre_zona) ?>
-                            </span>
+            <div class="card border-0 shadow rounded-4">
+                <div class="card-header encabezado-col border-0 py-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="fw-bold text-light mb-1">
+                                <i class="bi bi-truck me-2"></i>Dashboard - <?= htmlspecialchars($nombre_zona) ?>
+                            </h2>
+                            <p class="text-light mb-0">
+                                <span class="badge bg-success me-2">
+                                    <i class="bi bi-clipboard-data me-1"></i> Recolección Tradicional
+                                </span>
+                                <span class="badge bg-primary">
+                                    <?php
+                                        $fmt = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'LLLL yyyy');
+                                        $fecha_es = $fmt->format(new DateTime());
+                                    ?>
+                                    <i class="bi bi-calendar me-1"></i> <?= htmlspecialchars(ucfirst($fecha_es)) ?>
+                                </span>
+                            </p>
                         </div>
-                    <?php endif; ?>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="text-muted small"><?= date('d/m/Y') ?></span>
+                        <div>
+                            <small class="text-light">
+                                <i class="bi bi-clock me-1"></i> Actualizado: <?= date('H:i') ?>
+                            </small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- TARJETAS DE MÉTRICAS PRINCIPALES -->
+    <!-- MÉTRICAS PRINCIPALES -->
     <div class="row mb-4 g-3">
         <?php 
         $metricas_principales = [
@@ -1090,7 +1107,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
         <?php foreach ($metricas_principales as $metrica): ?>
         <div class="col-xl-3 col-md-6">
             <a href="?p=<?= $metrica['link'] ?>" class="text-decoration-none">
-                <div class="card border-0 shadow-sm h-100 hover-lift">
+                <div class="card border-0 shadow h-100 hover-lift">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
@@ -1118,8 +1135,8 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
     <div class="row mb-4">
         <div class="col-12">
             <?php if ($aviso_precios > 0 || $aviso_sin_precio > 0 || $aviso_fleteros > 0): ?>
-            <div class="card border-warning-subtle shadow-sm">
-                <div class="card-header bg-warning-subtle border-0 py-3">
+            <div class="card border-0 shadow">
+                <div class="card-header border-0 py-3">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-exclamation-triangle-fill text-warning me-2 fs-5"></i>
                         <h5 class="mb-0">Alertas del Sistema</h5>
@@ -1133,15 +1150,15 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                         <?php if ($aviso_precios > 0): ?>
                         <div class="col-md-4">
                             <a href="?p=productos&filtro=caducando" class="text-decoration-none">
-                                <div class="d-flex align-items-center p-3 rounded border border-warning-subtle hover-lift">
-                                    <div class="bg-warning-subtle p-2 rounded me-3">
-                                        <i class="bi bi-calendar-x text-warning fs-4"></i>
+                                <div class="card border border-warning-subtle bg-warning-subtle hover-lift">
+                                    <div class="card-body text-center p-2">
+                                        <div class="mb-1">
+                                            <i class="bi bi-calendar-x text-warning fs-1"></i>
+                                        </div>
+                                        <h3 class="text-warning mb-2"><?= $aviso_precios ?></h3>
+                                        <p class="text-warning-emphasis mb-0">Precios por Caducar</p>
+                                        <small class="text-muted">Productos</small>
                                     </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="text-warning mb-1">Precios por Caducar</h6>
-                                        <p class="text-muted small mb-0"><?= $aviso_precios ?> productos</p>
-                                    </div>
-                                    <i class="bi bi-chevron-right text-warning"></i>
                                 </div>
                             </a>
                         </div>
@@ -1150,15 +1167,15 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                         <?php if ($aviso_sin_precio > 0): ?>
                         <div class="col-md-4">
                             <a href="?p=productos&filtro=sinprecio" class="text-decoration-none">
-                                <div class="d-flex align-items-center p-3 rounded border border-danger-subtle hover-lift">
-                                    <div class="bg-danger-subtle p-2 rounded me-3">
-                                        <i class="bi bi-tag text-danger fs-4"></i>
+                                <div class="card border border-danger-subtle bg-danger-subtle hover-lift">
+                                    <div class="card-body text-center p-2">
+                                        <div class="mb-1">
+                                            <i class="bi bi-tag text-danger fs-1"></i>
+                                        </div>
+                                        <h3 class="text-danger mb-2"><?= $aviso_sin_precio ?></h3>
+                                        <p class="text-danger-emphasis mb-0">Sin Precio Actual</p>
+                                        <small class="text-muted">Productos</small>
                                     </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="text-danger mb-1">Sin Precio Actual</h6>
-                                        <p class="text-muted small mb-0"><?= $aviso_sin_precio ?> productos</p>
-                                    </div>
-                                    <i class="bi bi-chevron-right text-danger"></i>
                                 </div>
                             </a>
                         </div>
@@ -1167,15 +1184,15 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                         <?php if ($aviso_fleteros > 0): ?>
                         <div class="col-md-4">
                             <a href="?p=transportes&filtro=sincorreo" class="text-decoration-none">
-                                <div class="d-flex align-items-center p-3 rounded border border-info-subtle hover-lift">
-                                    <div class="bg-info-subtle p-2 rounded me-3">
-                                        <i class="bi bi-envelope text-info fs-4"></i>
+                                <div class="card border border-info-subtle bg-info-subtle hover-lift">
+                                    <div class="card-body text-center p-2">
+                                        <div class="mb-1">
+                                            <i class="bi bi-envelope text-info fs-1"></i>
+                                        </div>
+                                        <h3 class="text-info mb-2"><?= $aviso_fleteros ?></h3>
+                                        <p class="text-info-emphasis mb-0">Fleteros sin Correo</p>
+                                        <small class="text-muted">Transportes</small>
                                     </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="text-info mb-1">Fleteros sin Correo</h6>
-                                        <p class="text-muted small mb-0"><?= $aviso_fleteros ?> transportes</p>
-                                    </div>
-                                    <i class="bi bi-chevron-right text-info"></i>
                                 </div>
                             </a>
                         </div>
@@ -1191,8 +1208,8 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
     <?php if ($total_rechazadas > 0): ?>
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card border-danger-subtle shadow-sm">
-                <div class="card-header bg-danger-subtle border-0 py-3">
+            <div class="card border-0 shadow">
+                <div class="card-header border-0 py-3 bg-danger-subtle">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <i class="bi bi-exclamation-octagon-fill text-danger me-2 fs-5"></i>
@@ -1261,7 +1278,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                         </table>
                     </div>
                 </div>
-                <div class="card-footer bg-danger-subtle border-0 py-3">
+                <div class="card-footer border-0 py-3 bg-danger-subtle">
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-muted">
                             <i class="bi bi-info-circle me-1"></i>
@@ -1280,7 +1297,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
     <!-- SECCIÓN DE ESTADO DE RECOLECCIONES -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow">
                 <div class="card-header border-0 py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-clipboard-data me-2 text-primary"></i>Estado de Recolecciones</h5>
@@ -1344,7 +1361,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
     <!-- REPORTE FINANCIERO -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow">
                 <div class="card-header border-0 py-3">
                     <h5 class="mb-0"><i class="bi bi-graph-up me-2 text-primary"></i>Reporte Financiero <?= $nombre_zona ? " - $nombre_zona" : "" ?></h5>
                 </div>
@@ -1353,7 +1370,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                         <div class="col-md-8">
                             <div class="d-flex flex-wrap align-items-center gap-3">
                                 <div class="input-group" style="max-width: 300px;">
-                                    <span class="input-group-text border-end-0">
+                                    <span class="input-group-text border-end-0 bg-light">
                                         <i class="bi bi-calendar text-muted"></i>
                                     </span>
                                     <input id="dt_mvI" type="date" class="form-control border-start-0" 
@@ -1362,7 +1379,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                                 </div>
                                 
                                 <div class="input-group" style="max-width: 300px;">
-                                    <span class="input-group-text border-end-0">
+                                    <span class="input-group-text border-end-0 bg-light">
                                         <i class="bi bi-calendar text-muted"></i>
                                     </span>
                                     <input id="dt_mvF" type="date" class="form-control border-start-0" 
@@ -1395,9 +1412,9 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
     </div>
 
     <!-- ÚLTIMAS RECOLECCIONES -->
-    <div class="row">
+    <div class="row mb-4">
         <div class="col-12">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow h-100">
                 <div class="card-header border-0 py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Últimas Recolecciones</h5>
@@ -1467,6 +1484,16 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                                     </td>
                                 </tr>
                                 <?php endwhile; ?>
+                                <?php if ($ultimasRecolecciones->num_rows == 0): ?>
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="bi bi-clipboard-data display-6 opacity-25"></i>
+                                            <p class="mt-2">No hay recolecciones recientes</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
@@ -1476,6 +1503,92 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                         <small class="text-muted">
                             Mostrando las 5 recolecciones más recientes
                         </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESUMEN DEL MES -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow">
+                <div class="card-header border-0 py-3">
+                    <h5 class="mb-0"><i class="bi bi-calendar2-month me-2 text-primary"></i>Resumen del Mes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                <div class="bg-primary-subtle p-3 rounded-circle me-3">
+                                    <i class="bi bi-truck text-primary fs-3"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-1">Total Recolecciones</h5>
+                                    <p class="text-muted mb-0">
+                                        <strong><?= $stats['recolecciones_mes'] ?></strong> este mes
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                <div class="bg-success-subtle p-3 rounded-circle me-3">
+                                    <i class="bi bi-check-circle text-success fs-3"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-1">Completadas</h5>
+                                    <p class="text-muted mb-0">
+                                        <strong><?= $stats['recolecciones_completas_mes'] ?></strong> recolecciones
+                                        <br>
+                                        <small>Remisión y factura completas</small>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                <div class="bg-warning-subtle p-3 rounded-circle me-3">
+                                    <i class="bi bi-clock text-warning fs-3"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-1">Pendientes</h5>
+                                    <p class="text-muted mb-0">
+                                        <strong><?= $stats['recolecciones_pendientes'] ?></strong> recolecciones
+                                        <br>
+                                        <small>Faltan documentos por subir</small>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <div class="text-center p-2">
+                                <div class="fs-4 text-primary"><?= $stats['proveedores_activos'] ?></div>
+                                <small class="text-muted">Proveedores</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-2">
+                                <div class="fs-4 text-success"><?= $stats['clientes_activos'] ?></div>
+                                <small class="text-muted">Clientes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-2">
+                                <div class="fs-4 text-warning"><?= $stats['productos_activos'] ?></div>
+                                <small class="text-muted">Productos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-2">
+                                <div class="fs-4 text-info"><?= $stats['transportes_activos'] ?></div>
+                                <small class="text-muted">Fleteros</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
