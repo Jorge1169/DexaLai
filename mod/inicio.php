@@ -576,11 +576,669 @@ if ($tipoZonaActual === 'MEO') {
     return;
 }
 // ============================================================================
-// FUNCIONES PARA EL DASHBOARD MEO
+// ESCENARIO 2: ZONA MEO SELECCIONADA - Mostrar dashboard MEO
+// ============================================================================
+if ($tipoZonaActual === 'MEO') {
+    // Obtener nombre de la zona MEO seleccionada
+    $zona_query = $conn_mysql->query("SELECT nom FROM zonas WHERE id_zone = '$zona_seleccionada'");
+    $zona_data = mysqli_fetch_array($zona_query);
+    $nombre_zona = $zona_data['nom'] ?? '';
+    
+    // Obtener parámetro del mes (si existe)
+    $mes_param = isset($_GET['mes']) ? $_GET['mes'] : date('Y-m');
+    
+    // Validar formato del mes (YYYY-MM)
+    if (!preg_match('/^\d{4}-\d{2}$/', $mes_param)) {
+        $mes_param = date('Y-m');
+    }
+    
+    // Crear objeto DateTime para el mes seleccionado
+    $mes_actual = DateTime::createFromFormat('Y-m', $mes_param);
+    if (!$mes_actual) {
+        $mes_actual = new DateTime();
+        $mes_param = $mes_actual->format('Y-m');
+    }
+    
+    // Calcular mes anterior y siguiente
+    $mes_anterior = clone $mes_actual;
+    $mes_anterior->modify('-1 month');
+    
+    $mes_siguiente = clone $mes_actual;
+    $mes_siguiente->modify('+1 month');
+    
+    // Verificar si el mes siguiente es futuro
+    $mes_actual_num = intval($mes_actual->format('Ym'));
+    $mes_siguiente_num = intval($mes_siguiente->format('Ym'));
+    $mes_actual_actual = intval(date('Ym'));
+    
+    $es_mes_futuro = $mes_siguiente_num > $mes_actual_actual;
+    
+    // Obtener estadísticas MEO para el dashboard del mes seleccionado
+    $stats = obtenerEstadisticasMEO($conn_mysql, $zona_seleccionada, $mes_param);
+    
+    // Obtener últimas captaciones y ventas del mes seleccionado
+    $ultimasCaptaciones = obtenerUltimasCaptaciones($conn_mysql, $zona_seleccionada, 5, $mes_param);
+    $ultimasVentas = obtenerUltimasVentas($conn_mysql, $zona_seleccionada, 5, $mes_param);
+    
+    // Obtener resumen mensual
+    $resumenMes = obtenerResumenMensualMEO($conn_mysql, $zona_seleccionada, $mes_param);
+    
+    // Formatear nombre del mes en español
+    $fmt = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'LLLL yyyy');
+    $nombre_mes = ucfirst($fmt->format($mes_actual));
+    
+    ?>
+    <div class="container py-4">
+        <!-- HEADER CON NAVEGACIÓN DE MESES -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow rounded-4">
+                    <div class="card-header encabezado-col border-0 py-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h2 class="fw-bold text-light mb-1">
+                                    <i class="bi bi-box-seam me-2"></i>Dashboard - <?= htmlspecialchars($nombre_zona) ?>
+                                </h2>
+                                <p class="text-light mb-0">
+                                    <span class="badge bg-success me-2">
+                                        <i class="bi bi-shield-check me-1"></i> Materiales Especiales y Operaciones
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center justify-content-end">
+                                    <!-- Selector de mes rápido -->
+                                    <div class="me-3">
+                                        <div class="dropdown">
+                                            <button class="btn btn-light dropdown-toggle" type="button" id="mesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="bi bi-calendar-month me-2"></i><?= htmlspecialchars($nombre_mes) ?>
+                                            </button>
+                                            <ul class="dropdown-menu" aria-labelledby="mesDropdown">
+                                                <?php
+                                                // Generar opciones para los últimos 12 meses
+                                                $hoy = new DateTime();
+                                                for ($i = 0; $i < 12; $i++) {
+                                                    $mes_opcion = clone $hoy;
+                                                    $mes_opcion->modify("-$i months");
+                                                    $mes_valor = $mes_opcion->format('Y-m');
+                                                    $mes_nombre = ucfirst($fmt->format($mes_opcion));
+                                                    $activo = ($mes_valor === $mes_param) ? 'active' : '';
+                                                    ?>
+                                                    <li>
+                                                        <a class="dropdown-item <?= $activo ?>" href="?p=<?= $_GET['p'] ?? 'index' ?>&zona=<?= $zona_seleccionada ?>&mes=<?= $mes_valor ?>">
+                                                            <?= $mes_nombre ?>
+                                                        </a>
+                                                    </li>
+                                                    <?php
+                                                }
+                                                ?>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item" href="?p=<?= $_GET['p'] ?? 'index' ?>&zona=<?= $zona_seleccionada ?>&mes=<?= date('Y-m') ?>">
+                                                        <i class="bi bi-arrow-clockwise me-2"></i>Mes actual
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Navegación por flechas -->
+                                    <div class="btn-group" role="group">
+                                        <a href="?p=<?= $_GET['p'] ?? 'index' ?>&zona=<?= $zona_seleccionada ?>&mes=<?= $mes_anterior->format('Y-m') ?>" 
+                                           class="btn btn-outline-light">
+                                            <i class="bi bi-chevron-left"></i>
+                                        </a>
+                                        
+                                        <button type="button" class="btn btn-light" style="min-width: 120px;">
+                                            <i class="bi bi-calendar3 me-2"></i><?= $mes_actual->format('M Y') ?>
+                                        </button>
+                                        
+                                        <a href="?p=<?= $_GET['p'] ?? 'index' ?>&zona=<?= $zona_seleccionada ?>&mes=<?= $mes_siguiente->format('Y-m') ?>" 
+                                           class="btn btn-outline-light <?= $es_mes_futuro ? 'disabled' : '' ?>"
+                                           <?= $es_mes_futuro ? 'aria-disabled="true"' : '' ?>>
+                                            <i class="bi bi-chevron-right"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Información adicional -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="text-light">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Mostrando datos del período: <?= htmlspecialchars($nombre_mes) ?>
+                                        </small>
+                                    </div>
+                                    <div>
+                                        <small class="text-light">
+                                            <i class="bi bi-clock me-1"></i> Actualizado: <?= date('H:i') ?>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESUMEN DEL MES ACTUAL -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow">
+                    <div class="card-header border-0 py-3 bg-primary-subtle">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 text-primary-emphasis">
+                                <i class="bi bi-calendar2-check me-2"></i>Resumen del Mes - <?= htmlspecialchars($nombre_mes) ?>
+                            </h5>
+                            <span class="badge bg-primary">
+                                <?= $mes_actual->format('d/m/Y') === date('d/m/Y') ? 'Mes en curso' : 'Mes histórico' ?>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded mb-3">
+                                    <div class="text-primary fs-1"><?= $stats['total_captaciones'] ?></div>
+                                    <small class="text-muted">Captaciones</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded mb-3">
+                                    <div class="text-success fs-1"><?= $stats['total_ventas'] ?></div>
+                                    <small class="text-muted">Ventas</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded mb-3">
+                                    <div class="text-warning fs-1"><?= number_format($stats['total_kilos_captados'], 0) ?></div>
+                                    <small class="text-muted">Kilos captados</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded mb-3">
+                                    <div class="text-info fs-1"><?= number_format($stats['total_kilos_vendidos'], 0) ?></div>
+                                    <small class="text-muted">Kilos vendidos</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MÉTRICAS PRINCIPALES -->
+        <div class="row mb-4 g-3">
+            <?php 
+            $metricas_principales = [
+                [
+                    'titulo' => 'Total Captaciones', 
+                    'valor' => $stats['total_captaciones'], 
+                    'icono' => 'inbox-fill', 
+                    'color' => 'primary',
+                    'desc' => 'Mes seleccionado',
+                    'link' => 'captacion'
+                ],
+                [
+                    'titulo' => 'Total Ventas', 
+                    'valor' => $stats['total_ventas'], 
+                    'icono' => 'cart-check', 
+                    'color' => 'success',
+                    'desc' => 'Mes seleccionado',
+                    'link' => 'ventas'
+                ],
+                [
+                    'titulo' => 'Material Captado', 
+                    'valor' => number_format($stats['total_kilos_captados'], 2), 
+                    'icono' => 'boxes', 
+                    'color' => 'warning',
+                    'desc' => 'Kilos totales',
+                    'link' => 'captacion'
+                ],
+                [
+                    'titulo' => 'Material Vendido', 
+                    'valor' => number_format($stats['total_kilos_vendidos'], 2), 
+                    'icono' => 'truck', 
+                    'color' => 'info',
+                    'desc' => 'Kilos totales',
+                    'link' => 'ventas'
+                ],
+            ];
+            ?>
+
+            <?php foreach ($metricas_principales as $metrica): ?>
+            <div class="col-xl-3 col-md-6">
+                <a href="?p=<?= $metrica['link'] ?>" class="text-decoration-none">
+                    <div class="card border-0 shadow h-100 hover-lift">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2"><?= $metrica['titulo'] ?></h6>
+                                    <h2 class="mb-1 text-<?= $metrica['color'] ?>"><?= $metrica['valor'] ?></h2>
+                                    <p class="text-muted small mb-0"><?= $metrica['desc'] ?></p>
+                                </div>
+                                <div class="bg-<?= $metrica['color'] ?>-subtle p-3 rounded-circle">
+                                    <i class="bi bi-<?= $metrica['icono'] ?> text-<?= $metrica['color'] ?> fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="small text-muted">
+                                    <i class="bi bi-arrow-right-circle me-1"></i> Ver detalles
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- RESUMEN FINANCIERO -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow">
+                    <div class="card-header border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-graph-up me-2 text-primary"></i>Resumen Financiero</h5>
+                            <small class="text-muted"><?= htmlspecialchars($nombre_mes) ?></small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <a href="?p=captacion" class="text-decoration-none">
+                                    <div class="card border border-primary-subtle bg-primary-subtle hover-lift">
+                                        <div class="card-body text-center p-4">
+                                            <div class="mb-3">
+                                                <i class="bi bi-cash-coin text-primary fs-1"></i>
+                                            </div>
+                                            <h3 class="text-primary mb-2">$<?= number_format($stats['costo_total_captaciones'], 2) ?></h3>
+                                            <p class="text-primary-emphasis mb-0">Costo Captaciones</p>
+                                            <small class="text-muted">Inversión en materiales</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <a href="?p=ventas" class="text-decoration-none">
+                                    <div class="card border border-success-subtle bg-success-subtle hover-lift">
+                                        <div class="card-body text-center p-4">
+                                            <div class="mb-3">
+                                                <i class="bi bi-currency-dollar text-success fs-1"></i>
+                                            </div>
+                                            <h3 class="text-success mb-2">$<?= number_format($stats['ingreso_total_ventas'], 2) ?></h3>
+                                            <p class="text-success-emphasis mb-0">Ingreso Ventas</p>
+                                            <small class="text-muted">Ventas totales</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card border border-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?>-subtle bg-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?>-subtle hover-lift">
+                                    <div class="card-body text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="bi bi-graph-up-arrow text-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?> fs-1"></i>
+                                        </div>
+                                        <h3 class="text-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?> mb-2">
+                                            $<?= number_format($stats['utilidad_neta'], 2) ?>
+                                        </h3>
+                                        <p class="text-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?>-emphasis mb-0">Utilidad Neta</p>
+                                        <small class="text-muted">
+                                            <?= $stats['utilidad_neta'] >= 0 ? 'Ganancia' : 'Pérdida' ?> del mes
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                    <div>
+                                        <small class="text-muted">Costo por Kilo</small>
+                                        <h6 class="mb-0">$<?= number_format($stats['costo_por_kilo'], 4) ?></h6>
+                                    </div>
+                                    <i class="bi bi-coin text-warning fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                    <div>
+                                        <small class="text-muted">Precio Venta por Kilo</small>
+                                        <h6 class="mb-0">$<?= number_format($stats['precio_venta_por_kilo'], 4) ?></h6>
+                                    </div>
+                                    <i class="bi bi-tag text-info fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                    <div>
+                                        <small class="text-muted">Margen por Kilo</small>
+                                        <h6 class="mb-0 text-<?= $stats['margen_por_kilo'] >= 0 ? 'success' : 'danger' ?>">
+                                            $<?= number_format($stats['margen_por_kilo'], 4) ?>
+                                        </h6>
+                                    </div>
+                                    <i class="bi bi-percent text-<?= $stats['margen_por_kilo'] >= 0 ? 'success' : 'danger' ?> fs-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE ACTIVIDAD RECIENTE -->
+        <div class="row mb-4">
+            <!-- ÚLTIMAS CAPTACIONES -->
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow h-100">
+                    <div class="card-header border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-inbox me-2 text-primary"></i>Últimas Captaciones</h5>
+                            <a href="?p=captacion" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-list me-1"></i> Ver todas
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Folio</th>
+                                        <th>Fecha</th>
+                                        <th>Proveedor</th>
+                                        <th>Kilos</th>
+                                        <th>Costo</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($ultimasCaptaciones)): ?>
+                                        <?php foreach ($ultimasCaptaciones as $captacion): ?>
+                                        <tr class="hover-lift">
+                                            <td class="ps-4">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="bg-primary-subtle p-2 rounded me-3">
+                                                        <i class="bi bi-inbox text-primary"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong><?= htmlspecialchars($captacion['folio']) ?></strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted"><?= $captacion['fecha'] ?></span>
+                                            </td>
+                                            <td>
+                                                <small><?= htmlspecialchars($captacion['proveedor']) ?></small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning bg-opacity-10 text-warning-emphasis">
+                                                    <?= number_format($captacion['kilos'], 2) ?> kg
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="text-success fw-semibold">
+                                                    $<?= number_format($captacion['costo'], 2) ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="?p=V_captacion&id=<?= $captacion['id'] ?>" 
+                                                   class="btn btn-sm btn-outline-primary"
+                                                   title="Ver detalles" target="_blank">
+                                                   <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <div class="text-muted">
+                                                    <i class="bi bi-inbox display-6 opacity-25"></i>
+                                                    <p class="mt-2">No hay captaciones en <?= htmlspecialchars($nombre_mes) ?></p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ÚLTIMAS VENTAS -->
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow h-100">
+                    <div class="card-header border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-cart me-2 text-success"></i>Últimas Ventas</h5>
+                            <a href="?p=ventas" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-list me-1"></i> Ver todas
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Folio</th>
+                                        <th>Fecha</th>
+                                        <th>Cliente</th>
+                                        <th>Kilos</th>
+                                        <th>Total</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($ultimasVentas)): ?>
+                                        <?php foreach ($ultimasVentas as $venta): ?>
+                                        <tr class="hover-lift">
+                                            <td class="ps-4">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="bg-success-subtle p-2 rounded me-3">
+                                                        <i class="bi bi-cart-check text-success"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong><?= htmlspecialchars($venta['folio']) ?></strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted"><?= $venta['fecha'] ?></span>
+                                            </td>
+                                            <td>
+                                                <small><?= htmlspecialchars($venta['cliente']) ?></small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info bg-opacity-10 text-info-emphasis">
+                                                    <?= number_format($venta['kilos'], 2) ?> kg
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="text-success fw-semibold">
+                                                    $<?= number_format($venta['total'], 2) ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="?p=V_venta&id=<?= $venta['id'] ?>" 
+                                                   class="btn btn-sm btn-outline-success"
+                                                   title="Ver detalles" target="_blank">
+                                                   <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <div class="text-muted">
+                                                    <i class="bi bi-cart display-6 opacity-25"></i>
+                                                    <p class="mt-2">No hay ventas en <?= htmlspecialchars($nombre_mes) ?></p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESUMEN DETALLADO -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-0 shadow">
+                    <div class="card-header border-0 py-3">
+                        <h5 class="mb-0"><i class="bi bi-calendar2-month me-2 text-primary"></i>Resumen Detallado - <?= htmlspecialchars($nombre_mes) ?></h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                    <div class="bg-primary-subtle p-3 rounded-circle me-3">
+                                        <i class="bi bi-arrow-down-circle text-primary fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">Entradas</h5>
+                                        <p class="text-muted mb-0">
+                                            <strong><?= $resumenMes['entradas_captaciones'] ?></strong> captaciones
+                                            <br>
+                                            <span class="text-success">$<?= number_format($resumenMes['costo_entradas'], 2) ?></span> invertido
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                    <div class="bg-success-subtle p-3 rounded-circle me-3">
+                                        <i class="bi bi-arrow-up-circle text-success fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">Salidas</h5>
+                                        <p class="text-muted mb-0">
+                                            <strong><?= $resumenMes['salidas_ventas'] ?></strong> ventas
+                                            <br>
+                                            <span class="text-success">$<?= number_format($resumenMes['ingreso_salidas'], 2) ?></span> generado
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                    <div class="bg-<?= $resumenMes['balance'] >= 0 ? 'success' : 'danger' ?>-subtle p-3 rounded-circle me-3">
+                                        <i class="bi bi-arrow-left-right text-<?= $resumenMes['balance'] >= 0 ? 'success' : 'danger' ?> fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">Balance</h5>
+                                        <p class="text-muted mb-0">
+                                            <strong class="text-<?= $resumenMes['balance'] >= 0 ? 'success' : 'danger' ?>">
+                                                $<?= number_format($resumenMes['balance'], 2) ?>
+                                            </strong> neto
+                                            <br>
+                                            <small>Ingresos - Costos</small>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Stats -->
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <div class="text-center p-2">
+                                    <div class="fs-4 text-primary"><?= $resumenMes['promedio_captaciones_dia'] ?></div>
+                                    <small class="text-muted">Captaciones/día</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-2">
+                                    <div class="fs-4 text-success"><?= $resumenMes['promedio_ventas_dia'] ?></div>
+                                    <small class="text-muted">Ventas/día</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-2">
+                                    <div class="fs-4 text-warning"><?= number_format($resumenMes['kilos_promedio_captacion'], 2) ?></div>
+                                    <small class="text-muted">Kilos/captación</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-2">
+                                    <div class="fs-4 text-info"><?= number_format($resumenMes['valor_promedio_venta'], 2) ?></div>
+                                    <small class="text-muted">Valor/venta</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Script para manejar la navegación por teclado -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Navegación con teclado
+        document.addEventListener('keydown', function(e) {
+            // Ignorar si estamos en un input o textarea
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // Flecha izquierda: mes anterior
+            if (e.key === 'ArrowLeft') {
+                const prevLink = document.querySelector('a[href*="mes="]:has(.bi-chevron-left)');
+                if (prevLink && !prevLink.classList.contains('disabled')) {
+                    window.location.href = prevLink.href;
+                }
+            }
+            
+            // Flecha derecha: mes siguiente (si no es futuro)
+            if (e.key === 'ArrowRight') {
+                const nextLink = document.querySelector('a[href*="mes="]:has(.bi-chevron-right)');
+                if (nextLink && !nextLink.classList.contains('disabled')) {
+                    window.location.href = nextLink.href;
+                }
+            }
+            
+            // Tecla M: seleccionar mes
+            if (e.key === 'm' || e.key === 'M') {
+                document.getElementById('mesDropdown').click();
+            }
+        });
+        
+        // Actualizar URL para compartir
+        const currentUrl = new URL(window.location.href);
+        if (!currentUrl.searchParams.has('mes')) {
+            currentUrl.searchParams.set('mes', '<?= $mes_param ?>');
+            window.history.replaceState({}, '', currentUrl.toString());
+        }
+    });
+    </script>
+    <?php
+    // NO usar exit() - dejar que se siga cargando el resto de la página
+    // Solo terminar la ejecución de este archivo
+    return;
+}
+// ============================================================================
+// FUNCIONES PARA EL DASHBOARD MEO (ACTUALIZADAS CON PARÁMETRO DE MES)
 // ============================================================================
 
-function obtenerEstadisticasMEO($conn_mysql, $zona_seleccionada) {
-    $mes_actual = date('Y-m');
+function obtenerEstadisticasMEO($conn_mysql, $zona_seleccionada, $mes = null) {
+    $mes_actual = $mes ?? date('Y-m');
     
     // CONSULTA SEPARADA PARA CAPTACIONES (PRODUCTOS)
     $captaciones_productos_query = "
@@ -656,7 +1314,7 @@ function obtenerEstadisticasMEO($conn_mysql, $zona_seleccionada) {
     
     $ingreso_productos = floatval($ventas_productos_data['ingreso_productos']);
     $ingreso_flete = floatval($ventas_fletes_data['ingreso_flete_total']);
-    $ingreso_total_ventas = $ingreso_productos - $ingreso_flete; // Asumiendo que el flete es un costo en ventas
+    $ingreso_total_ventas = $ingreso_productos - $ingreso_flete;
     
     $utilidad_neta = $ingreso_total_ventas - $costo_total_captaciones;
     
@@ -685,8 +1343,12 @@ function obtenerEstadisticasMEO($conn_mysql, $zona_seleccionada) {
     ];
 }
 
-
-function obtenerUltimasCaptaciones($conn_mysql, $zona_seleccionada, $limit = 5) {
+function obtenerUltimasCaptaciones($conn_mysql, $zona_seleccionada, $limit = 5, $mes = null) {
+    $where_mes = "";
+    if ($mes) {
+        $where_mes = "AND DATE_FORMAT(c.fecha_captacion, '%Y-%m') = '$mes'";
+    }
+    
     $query = "
         SELECT 
             c.id_captacion,
@@ -719,6 +1381,7 @@ function obtenerUltimasCaptaciones($conn_mysql, $zona_seleccionada, $limit = 5) 
         ) fletes ON c.id_captacion = fletes.id_captacion
         WHERE c.zona = '$zona_seleccionada' 
         AND c.status = 1
+        $where_mes
         GROUP BY c.id_captacion, c.folio, c.fecha_captacion, z.cod, p.rs
         ORDER BY c.fecha_captacion DESC, c.id_captacion DESC
         LIMIT $limit
@@ -743,8 +1406,12 @@ function obtenerUltimasCaptaciones($conn_mysql, $zona_seleccionada, $limit = 5) 
     return $captaciones;
 }
 
-
-function obtenerUltimasVentas($conn_mysql, $zona_seleccionada, $limit = 5) {
+function obtenerUltimasVentas($conn_mysql, $zona_seleccionada, $limit = 5, $mes = null) {
+    $where_mes = "";
+    if ($mes) {
+        $where_mes = "AND DATE_FORMAT(v.fecha_venta, '%Y-%m') = '$mes'";
+    }
+    
     $query = "
         SELECT 
             v.id_venta,
@@ -777,6 +1444,7 @@ function obtenerUltimasVentas($conn_mysql, $zona_seleccionada, $limit = 5) {
         ) fletes ON v.id_venta = fletes.id_venta
         WHERE v.zona = '$zona_seleccionada' 
         AND v.status = 1
+        $where_mes
         GROUP BY v.id_venta, v.folio, v.fecha_venta, z.cod, c.nombre
         ORDER BY v.fecha_venta DESC, v.id_venta DESC
         LIMIT $limit
@@ -801,9 +1469,12 @@ function obtenerUltimasVentas($conn_mysql, $zona_seleccionada, $limit = 5) {
     return $ventas;
 }
 
-function obtenerResumenMensualMEO($conn_mysql, $zona_seleccionada) {
-    $mes_actual = date('Y-m');
-    $dias_mes = date('t');
+function obtenerResumenMensualMEO($conn_mysql, $zona_seleccionada, $mes = null) {
+    $mes_actual = $mes ?? date('Y-m');
+    
+    // Obtener el número de días en el mes
+    $fecha_mes = DateTime::createFromFormat('Y-m', $mes_actual);
+    $dias_mes = $fecha_mes ? $fecha_mes->format('t') : date('t');
     
     // CAPTACIONES - Consulta separada para productos
     $captaciones_productos_query = "
