@@ -111,149 +111,455 @@ if ($tipoZonaActual === 'MEO') {
     $zona_query = $conn_mysql->query("SELECT nom FROM zonas WHERE id_zone = '$zona_seleccionada'");
     $zona_data = mysqli_fetch_array($zona_query);
     $nombre_zona = $zona_data['nom'] ?? '';
+    
+    // Obtener estadísticas MEO para el dashboard
+    $stats = obtenerEstadisticasMEO($conn_mysql, $zona_seleccionada);
+    
+    // Obtener últimas captaciones y ventas
+    $ultimasCaptaciones = obtenerUltimasCaptaciones($conn_mysql, $zona_seleccionada, 5);
+    $ultimasVentas = obtenerUltimasVentas($conn_mysql, $zona_seleccionada, 5);
+    
+    // Obtener resumen mensual
+    $resumenMes = obtenerResumenMensualMEO($conn_mysql, $zona_seleccionada);
+    
     ?>
     <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card border-0 shadow-lg rounded-4">
-                    <div class="card-header bg-primary-subtle border-0 py-4">
+        <!-- HEADER -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow rounded-4">
+                    <div class="card-header encabezado-col border-0 py-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h2 class="fw-bold text-primary mb-1">
-                                    <i class="bi bi-box-seam me-2"></i>Dashboard MEO
+                                <h2 class="fw-bold text-light mb-1">
+                                    <i class="bi bi-box-seam me-2"></i>Dashboard - <?= htmlspecialchars($nombre_zona) ?>
                                 </h2>
                                 <p class="text-muted mb-0">
-                                    Zona: <span class="badge bg-primary"><?= htmlspecialchars($nombre_zona) ?></span>
-                                    <span class="badge bg-success ms-2">
-                                        <i class="bi bi-shield-check me-1"></i> MEO
+                                    <span class="badge bg-success me-2">
+                                        <i class="bi bi-shield-check me-1"></i> Materiales Especiales y Operaciones
+                                    </span>
+                                    <span class="badge bg-primary">
+                                        <i class="bi bi-calendar me-1"></i> <?= date('F Y') ?>
                                     </span>
                                 </p>
                             </div>
                             <div>
-                                <small class="text-muted">
-                                    <i class="bi bi-calendar me-1"></i><?= date('d/m/Y') ?>
+                                <small class="text- Actualizado">
+                                    <i class="bi bi-clock me-1"></i> Actualizado: <?= date('H:i') ?>
                                 </small>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="card-body p-5">
-                        <div class="text-center mb-5">
-                            <i class="bi bi-tools display-1 text-warning mb-4"></i>
-                            <h3 class="fw-bold text-primary mb-3">Dashboard en Construcción</h3>
-                            <p class="text-muted fs-5">
-                                Estamos trabajando en el dashboard especializado para zonas MEO (Materiales Especiales y Operaciones).
-                            </p>
-                        </div>
-                        
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="card border border-primary-subtle h-100 hover-lift">
-                                    <div class="card-body p-4">
-                                        <div class="d-flex align-items-start">
-                                            <div class="bg-primary-subtle p-3 rounded-circle me-3">
-                                                <i class="bi bi-box-seam text-primary fs-3"></i>
-                                            </div>
-                                            <div>
-                                                <h5 class="text-primary-emphasis mb-2">Almacenes MEO</h5>
-                                                <p class="text-muted small mb-3">
-                                                    Gestión de inventario y control de materiales especiales en almacenes.
-                                                </p>
-                                                <a href="?p=almacenes_info" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-arrow-right me-1"></i> Acceder
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="card border border-success-subtle h-100 hover-lift">
-                                    <div class="card-body p-4">
-                                        <div class="d-flex align-items-start">
-                                            <div class="bg-success-subtle p-3 rounded-circle me-3">
-                                                <i class="bi bi-cart-check text-success fs-3"></i>
-                                            </div>
-                                            <div>
-                                                <h5 class="text-success-emphasis mb-2">Ventas MEO</h5>
-                                                <p class="text-muted small mb-3">
-                                                    Sistema de ventas y transacciones para materiales especiales.
-                                                </p>
-                                                <a href="?p=ventas" class="btn btn-sm btn-outline-success">
-                                                    <i class="bi bi-arrow-right me-1"></i> Acceder
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="card border border-info-subtle h-100 hover-lift">
-                                    <div class="card-body p-4">
-                                        <div class="d-flex align-items-start">
-                                            <div class="bg-info-subtle p-3 rounded-circle me-3">
-                                                <i class="bi bi-clipboard-data text-info fs-3"></i>
-                                            </div>
-                                            <div>
-                                                <h5 class="text-info-emphasis mb-2">Captación MEO</h5>
-                                                <p class="text-muted small mb-3">
-                                                    Sistema de captación para materiales especiales.
-                                                </p>
-                                                <a href="?p=captacion" class="btn btn-sm btn-outline-info">
-                                                    <i class="bi bi-arrow-right me-1"></i> Acceder
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="card border border-warning-subtle h-100 hover-lift">
-                                    <div class="card-body p-4">
-                                        <div class="d-flex align-items-start">
-                                            <div class="bg-warning-subtle p-3 rounded-circle me-3">
-                                                <i class="bi bi-graph-up text-warning fs-3"></i>
-                                            </div>
-                                            <div>
-                                                <h5 class="text-warning-emphasis mb-2">Reportes MEO</h5>
-                                                <p class="text-muted small mb-3">
-                                                    Próximamente: Reportes especializados para gestión MEO.
-                                                </p>
-                                                <button class="btn btn-sm btn-outline-warning" disabled>
-                                                    <i class="bi bi-clock me-1"></i> Próximamente
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="alert alert-warning border-0 bg-warning-subtle mt-5">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-lightning-charge-fill text-warning fs-4 me-3"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- MÉTRICAS PRINCIPALES -->
+        <div class="row mb-4 g-3">
+            <?php 
+            $metricas_principales = [
+                [
+                    'titulo' => 'Total Captaciones', 
+                    'valor' => $stats['total_captaciones'], 
+                    'icono' => 'inbox-fill', 
+                    'color' => 'primary',
+                    'desc' => 'Mes actual',
+                    'link' => 'captacion'
+                ],
+                [
+                    'titulo' => 'Total Ventas', 
+                    'valor' => $stats['total_ventas'], 
+                    'icono' => 'cart-check', 
+                    'color' => 'success',
+                    'desc' => 'Mes actual',
+                    'link' => 'ventas'
+                ],
+                [
+                    'titulo' => 'Material Captado', 
+                    'valor' => number_format($stats['total_kilos_captados'], 2), 
+                    'icono' => 'boxes', 
+                    'color' => 'warning',
+                    'desc' => 'Kilos totales',
+                    'link' => 'captacion'
+                ],
+                [
+                    'titulo' => 'Material Vendido', 
+                    'valor' => number_format($stats['total_kilos_vendidos'], 2), 
+                    'icono' => 'truck', 
+                    'color' => 'info',
+                    'desc' => 'Kilos totales',
+                    'link' => 'ventas'
+                ],
+            ];
+            ?>
+
+            <?php foreach ($metricas_principales as $metrica): ?>
+            <div class="col-xl-3 col-md-6">
+                <a href="?p=<?= $metrica['link'] ?>" class="text-decoration-none">
+                    <div class="card border-0 shadow h-100 hover-lift">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <p class="mb-1 fw-semibold">Próximas Funcionalidades:</p>
-                                    <ul class="mb-0">
-                                        <li>Dashboard con métricas específicas MEO</li>
-                                        <li>Reportes financieros para materiales especiales</li>
-                                        <li>Control de calidad y certificaciones</li>
-                                        <li>Integración con sistemas externos</li>
-                                    </ul>
+                                    <h6 class="text-muted mb-2"><?= $metrica['titulo'] ?></h6>
+                                    <h2 class="mb-1 text-<?= $metrica['color'] ?>"><?= $metrica['valor'] ?></h2>
+                                    <p class="text-muted small mb-0"><?= $metrica['desc'] ?></p>
+                                </div>
+                                <div class="bg-<?= $metrica['color'] ?>-subtle p-3 rounded-circle">
+                                    <i class="bi bi-<?= $metrica['icono'] ?> text-<?= $metrica['color'] ?> fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="small text-muted">
+                                    <i class="bi bi-arrow-right-circle me-1"></i> Ver detalles
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- RESUMEN FINANCIERO -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow">
+                    <div class="card-header border-0 py-3">
+                        <h5 class="mb-0"><i class="bi bi-graph-up me-2 text-primary"></i>Resumen Financiero MEO</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <a href="?p=captacion" class="text-decoration-none">
+                                    <div class="card border border-primary-subtle bg-primary-subtle hover-lift">
+                                        <div class="card-body text-center p-4">
+                                            <div class="mb-3">
+                                                <i class="bi bi-cash-coin text-primary fs-1"></i>
+                                            </div>
+                                            <h3 class="text-primary mb-2">$<?= number_format($stats['costo_total_captaciones'], 2) ?></h3>
+                                            <p class="text-primary-emphasis mb-0">Costo Captaciones</p>
+                                            <small class="text-muted">Inversión en materiales</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <a href="?p=ventas" class="text-decoration-none">
+                                    <div class="card border border-success-subtle bg-success-subtle hover-lift">
+                                        <div class="card-body text-center p-4">
+                                            <div class="mb-3">
+                                                <i class="bi bi-currency-dollar text-success fs-1"></i>
+                                            </div>
+                                            <h3 class="text-success mb-2">$<?= number_format($stats['ingreso_total_ventas'], 2) ?></h3>
+                                            <p class="text-success-emphasis mb-0">Ingreso Ventas</p>
+                                            <small class="text-muted">Ventas totales</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card border border-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?>-subtle bg-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?>-subtle hover-lift">
+                                    <div class="card-body text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="bi bi-graph-up-arrow text-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?> fs-1"></i>
+                                        </div>
+                                        <h3 class="text-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?> mb-2">
+                                            $<?= number_format($stats['utilidad_neta'], 2) ?>
+                                        </h3>
+                                        <p class="text-<?= $stats['utilidad_neta'] >= 0 ? 'success' : 'danger' ?>-emphasis mb-0">Utilidad Neta</p>
+                                        <small class="text-muted">
+                                            <?= $stats['utilidad_neta'] >= 0 ? 'Ganancia' : 'Pérdida' ?> del mes
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                    <div>
+                                        <small class="text-muted">Costo por Kilo</small>
+                                        <h6 class="mb-0">$<?= number_format($stats['costo_por_kilo'], 4) ?></h6>
+                                    </div>
+                                    <i class="bi bi-coin text-warning fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                    <div>
+                                        <small class="text-muted">Precio Venta por Kilo</small>
+                                        <h6 class="mb-0">$<?= number_format($stats['precio_venta_por_kilo'], 4) ?></h6>
+                                    </div>
+                                    <i class="bi bi-tag text-info fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                    <div>
+                                        <small class="text-muted">Margen por Kilo</small>
+                                        <h6 class="mb-0 text-<?= $stats['margen_por_kilo'] >= 0 ? 'success' : 'danger' ?>">
+                                            $<?= number_format($stats['margen_por_kilo'], 4) ?>
+                                        </h6>
+                                    </div>
+                                    <i class="bi bi-percent text-<?= $stats['margen_por_kilo'] >= 0 ? 'success' : 'danger' ?> fs-4"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="card-footer bg-light border-0 py-4">
-                        <div class="text-center">
-                            <small class="text-muted">
-                                <i class="bi bi-clock-history me-1"></i>
-                                Dashboard MEO - En desarrollo - Versión Beta
-                            </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE ACTIVIDAD RECIENTE -->
+        <div class="row mb-4">
+            <!-- ÚLTIMAS CAPTACIONES -->
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow h-100">
+                    <div class="card-header border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-inbox me-2 text-primary"></i>Últimas Captaciones</h5>
+                            <a href="?p=captacion" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-list me-1"></i> Ver todas
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Folio</th>
+                                        <th>Fecha</th>
+                                        <th>Proveedor</th>
+                                        <th>Kilos</th>
+                                        <th>Costo</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($ultimasCaptaciones)): ?>
+                                        <?php foreach ($ultimasCaptaciones as $captacion): ?>
+                                        <tr class="hover-lift">
+                                            <td class="ps-4">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="bg-primary-subtle p-2 rounded me-3">
+                                                        <i class="bi bi-inbox text-primary"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong><?= htmlspecialchars($captacion['folio']) ?></strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted"><?= $captacion['fecha'] ?></span>
+                                            </td>
+                                            <td>
+                                                <small><?= htmlspecialchars($captacion['proveedor']) ?></small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning bg-opacity-10 text-warning-emphasis">
+                                                    <?= number_format($captacion['kilos'], 2) ?> kg
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="text-success fw-semibold">
+                                                    $<?= number_format($captacion['costo'], 2) ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="?p=V_captacion&id=<?= $captacion['id'] ?>" 
+                                                   class="btn btn-sm btn-outline-primary"
+                                                   title="Ver detalles" target="_blank">
+                                                   <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <div class="text-muted">
+                                                    <i class="bi bi-inbox display-6 opacity-25"></i>
+                                                    <p class="mt-2">No hay captaciones recientes</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ÚLTIMAS VENTAS -->
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow h-100">
+                    <div class="card-header border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-cart me-2 text-success"></i>Últimas Ventas</h5>
+                            <a href="?p=ventas" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-list me-1"></i> Ver todas
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Folio</th>
+                                        <th>Fecha</th>
+                                        <th>Cliente</th>
+                                        <th>Kilos</th>
+                                        <th>Total</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($ultimasVentas)): ?>
+                                        <?php foreach ($ultimasVentas as $venta): ?>
+                                        <tr class="hover-lift">
+                                            <td class="ps-4">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="bg-success-subtle p-2 rounded me-3">
+                                                        <i class="bi bi-cart-check text-success"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong><?= htmlspecialchars($venta['folio']) ?></strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted"><?= $venta['fecha'] ?></span>
+                                            </td>
+                                            <td>
+                                                <small><?= htmlspecialchars($venta['cliente']) ?></small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info bg-opacity-10 text-info-emphasis">
+                                                    <?= number_format($venta['kilos'], 2) ?> kg
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="text-success fw-semibold">
+                                                    $<?= number_format($venta['total'], 2) ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="?p=V_venta&id=<?= $venta['id'] ?>" 
+                                                   class="btn btn-sm btn-outline-success"
+                                                   title="Ver detalles" target="_blank">
+                                                   <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <div class="text-muted">
+                                                    <i class="bi bi-cart display-6 opacity-25"></i>
+                                                    <p class="mt-2">No hay ventas recientes</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESUMEN MENSUAL -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-0 shadow">
+                    <div class="card-header border-0 py-3">
+                        <h5 class="mb-0"><i class="bi bi-calendar2-month me-2 text-primary"></i>Resumen del Mes</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                    <div class="bg-primary-subtle p-3 rounded-circle me-3">
+                                        <i class="bi bi-arrow-down-circle text-primary fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">Entradas</h5>
+                                        <p class="text-muted mb-0">
+                                            <strong><?= $resumenMes['entradas_captaciones'] ?></strong> captaciones
+                                            <br>
+                                            <span class="text-success">$<?= number_format($resumenMes['costo_entradas'], 2) ?></span> invertido
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                    <div class="bg-success-subtle p-3 rounded-circle me-3">
+                                        <i class="bi bi-arrow-up-circle text-success fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">Salidas</h5>
+                                        <p class="text-muted mb-0">
+                                            <strong><?= $resumenMes['salidas_ventas'] ?></strong> ventas
+                                            <br>
+                                            <span class="text-success">$<?= number_format($resumenMes['ingreso_salidas'], 2) ?></span> generado
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center p-3 border rounded mb-3">
+                                    <div class="bg-<?= $resumenMes['balance'] >= 0 ? 'success' : 'danger' ?>-subtle p-3 rounded-circle me-3">
+                                        <i class="bi bi-arrow-left-right text-<?= $resumenMes['balance'] >= 0 ? 'success' : 'danger' ?> fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">Balance</h5>
+                                        <p class="text-muted mb-0">
+                                            <strong class="text-<?= $resumenMes['balance'] >= 0 ? 'success' : 'danger' ?>">
+                                                $<?= number_format($resumenMes['balance'], 2) ?>
+                                            </strong> neto
+                                            <br>
+                                            <small>Ingresos - Costos</small>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Stats -->
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <div class="text-center p-2">
+                                    <div class="fs-4 text-primary"><?= $resumenMes['promedio_captaciones_dia'] ?></div>
+                                    <small class="text-muted">Captaciones/día</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-2">
+                                    <div class="fs-4 text-success"><?= $resumenMes['promedio_ventas_dia'] ?></div>
+                                    <small class="text-muted">Ventas/día</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-2">
+                                    <div class="fs-4 text-warning"><?= number_format($resumenMes['kilos_promedio_captacion'], 2) ?></div>
+                                    <small class="text-muted">Kilos/captación</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-2">
+                                    <div class="fs-4 text-info"><?= number_format($resumenMes['valor_promedio_venta'], 2) ?></div>
+                                    <small class="text-muted">Valor/venta</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -265,6 +571,367 @@ if ($tipoZonaActual === 'MEO') {
     // Solo terminar la ejecución de este archivo
     return;
 }
+// ============================================================================
+// FUNCIONES PARA EL DASHBOARD MEO
+// ============================================================================
+
+function obtenerEstadisticasMEO($conn_mysql, $zona_seleccionada) {
+    $mes_actual = date('Y-m');
+    
+    // CONSULTA SEPARADA PARA CAPTACIONES (PRODUCTOS)
+    $captaciones_productos_query = "
+        SELECT 
+            COUNT(DISTINCT c.id_captacion) as total_captaciones,
+            COALESCE(SUM(cd.total_kilos), 0) as total_kilos,
+            COALESCE(SUM(p.precio * cd.total_kilos), 0) as costo_productos
+        FROM captacion c
+        LEFT JOIN captacion_detalle cd ON c.id_captacion = cd.id_captacion AND cd.status = 1
+        LEFT JOIN precios p ON cd.id_pre_compra = p.id_precio
+        WHERE c.zona = '$zona_seleccionada' 
+        AND c.status = 1
+        AND DATE_FORMAT(c.fecha_captacion, '%Y-%m') = '$mes_actual'
+    ";
+    
+    $captaciones_productos_data = $conn_mysql->query($captaciones_productos_query)->fetch_assoc();
+    
+    // CONSULTA SEPARADA PARA FLETES DE CAPTACIONES
+    $captaciones_fletes_query = "
+        SELECT 
+            COUNT(DISTINCT cf.id_captacion) as captaciones_con_flete,
+            COALESCE(SUM(pf.precio), 0) as costo_flete_total
+        FROM captacion c
+        LEFT JOIN captacion_flete cf ON c.id_captacion = cf.id_captacion
+        LEFT JOIN precios pf ON cf.id_pre_flete = pf.id_precio
+        WHERE c.zona = '$zona_seleccionada' 
+        AND c.status = 1
+        AND DATE_FORMAT(c.fecha_captacion, '%Y-%m') = '$mes_actual'
+        AND cf.id_captacion IS NOT NULL
+    ";
+    
+    $captaciones_fletes_data = $conn_mysql->query($captaciones_fletes_query)->fetch_assoc();
+    
+    // CONSULTA SEPARADA PARA VENTAS (PRODUCTOS)
+    $ventas_productos_query = "
+        SELECT 
+            COUNT(DISTINCT v.id_venta) as total_ventas,
+            COALESCE(SUM(vd.total_kilos), 0) as total_kilos,
+            COALESCE(SUM(p.precio * vd.total_kilos), 0) as ingreso_productos
+        FROM ventas v
+        LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta AND vd.status = 1
+        LEFT JOIN precios p ON vd.id_pre_venta = p.id_precio
+        WHERE v.zona = '$zona_seleccionada' 
+        AND v.status = 1
+        AND DATE_FORMAT(v.fecha_venta, '%Y-%m') = '$mes_actual'
+    ";
+    
+    $ventas_productos_data = $conn_mysql->query($ventas_productos_query)->fetch_assoc();
+    
+    // CONSULTA SEPARADA PARA FLETES DE VENTAS
+    $ventas_fletes_query = "
+        SELECT 
+            COUNT(DISTINCT vf.id_venta) as ventas_con_flete,
+            COALESCE(SUM(pf.precio), 0) as ingreso_flete_total
+        FROM ventas v
+        LEFT JOIN venta_flete vf ON v.id_venta = vf.id_venta
+        LEFT JOIN precios pf ON vf.id_pre_flete = pf.id_precio
+        WHERE v.zona = '$zona_seleccionada' 
+        AND v.status = 1
+        AND DATE_FORMAT(v.fecha_venta, '%Y-%m') = '$mes_actual'
+        AND vf.id_venta IS NOT NULL
+    ";
+    
+    $ventas_fletes_data = $conn_mysql->query($ventas_fletes_query)->fetch_assoc();
+    
+    // Calcular totales combinados
+    $total_kilos_captados = floatval($captaciones_productos_data['total_kilos']);
+    $total_kilos_vendidos = floatval($ventas_productos_data['total_kilos']);
+    
+    $costo_productos = floatval($captaciones_productos_data['costo_productos']);
+    $costo_flete = floatval($captaciones_fletes_data['costo_flete_total']);
+    $costo_total_captaciones = $costo_productos + $costo_flete;
+    
+    $ingreso_productos = floatval($ventas_productos_data['ingreso_productos']);
+    $ingreso_flete = floatval($ventas_fletes_data['ingreso_flete_total']);
+    $ingreso_total_ventas = $ingreso_productos - $ingreso_flete; // Asumiendo que el flete es un costo en ventas
+    
+    $utilidad_neta = $ingreso_total_ventas - $costo_total_captaciones;
+    
+    // Calcular promedios
+    $costo_por_kilo = $total_kilos_captados > 0 ? $costo_total_captaciones / $total_kilos_captados : 0;
+    $precio_venta_por_kilo = $total_kilos_vendidos > 0 ? $ingreso_total_ventas / $total_kilos_vendidos : 0;
+    $margen_por_kilo = $precio_venta_por_kilo - $costo_por_kilo;
+    
+    return [
+        'total_captaciones' => intval($captaciones_productos_data['total_captaciones']),
+        'total_ventas' => intval($ventas_productos_data['total_ventas']),
+        'total_kilos_captados' => $total_kilos_captados,
+        'total_kilos_vendidos' => $total_kilos_vendidos,
+        'costo_total_captaciones' => $costo_total_captaciones,
+        'costo_productos_captaciones' => $costo_productos,
+        'costo_flete_captaciones' => $costo_flete,
+        'captaciones_con_flete' => intval($captaciones_fletes_data['captaciones_con_flete']),
+        'ingreso_total_ventas' => $ingreso_total_ventas,
+        'ingreso_productos_ventas' => $ingreso_productos,
+        'ingreso_flete_ventas' => $ingreso_flete,
+        'ventas_con_flete' => intval($ventas_fletes_data['ventas_con_flete']),
+        'utilidad_neta' => $utilidad_neta,
+        'costo_por_kilo' => $costo_por_kilo,
+        'precio_venta_por_kilo' => $precio_venta_por_kilo,
+        'margen_por_kilo' => $margen_por_kilo
+    ];
+}
+
+
+function obtenerUltimasCaptaciones($conn_mysql, $zona_seleccionada, $limit = 5) {
+    $query = "
+        SELECT 
+            c.id_captacion,
+            CONCAT('C-', z.cod, '-', DATE_FORMAT(c.fecha_captacion, '%y%m'), LPAD(c.folio, 4, '0')) as folio,
+            DATE_FORMAT(c.fecha_captacion, '%d/%m/%Y') as fecha,
+            p.rs as proveedor,
+            COALESCE(productos.total_kilos, 0) as kilos,
+            COALESCE(productos.costo_productos, 0) as costo_productos,
+            COALESCE(fletes.costo_flete, 0) as costo_flete,
+            (COALESCE(productos.costo_productos, 0) + COALESCE(fletes.costo_flete, 0)) as costo_total
+        FROM captacion c
+        LEFT JOIN zonas z ON c.zona = z.id_zone
+        LEFT JOIN proveedores p ON c.id_prov = p.id_prov
+        LEFT JOIN (
+            SELECT 
+                cd.id_captacion,
+                SUM(cd.total_kilos) as total_kilos,
+                SUM(pc.precio * cd.total_kilos) as costo_productos
+            FROM captacion_detalle cd
+            LEFT JOIN precios pc ON cd.id_pre_compra = pc.id_precio
+            WHERE cd.status = 1
+            GROUP BY cd.id_captacion
+        ) productos ON c.id_captacion = productos.id_captacion
+        LEFT JOIN (
+            SELECT 
+                cf.id_captacion,
+                pf.precio as costo_flete
+            FROM captacion_flete cf
+            LEFT JOIN precios pf ON cf.id_pre_flete = pf.id_precio
+        ) fletes ON c.id_captacion = fletes.id_captacion
+        WHERE c.zona = '$zona_seleccionada' 
+        AND c.status = 1
+        GROUP BY c.id_captacion, c.folio, c.fecha_captacion, z.cod, p.rs
+        ORDER BY c.fecha_captacion DESC, c.id_captacion DESC
+        LIMIT $limit
+    ";
+    
+    $result = $conn_mysql->query($query);
+    $captaciones = [];
+    
+    while ($row = $result->fetch_assoc()) {
+        $captaciones[] = [
+            'id' => $row['id_captacion'],
+            'folio' => $row['folio'],
+            'fecha' => $row['fecha'],
+            'proveedor' => $row['proveedor'],
+            'kilos' => floatval($row['kilos']),
+            'costo' => floatval($row['costo_total']),
+            'costo_productos' => floatval($row['costo_productos']),
+            'costo_flete' => floatval($row['costo_flete'])
+        ];
+    }
+    
+    return $captaciones;
+}
+
+
+function obtenerUltimasVentas($conn_mysql, $zona_seleccionada, $limit = 5) {
+    $query = "
+        SELECT 
+            v.id_venta,
+            CONCAT('V-', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) as folio,
+            DATE_FORMAT(v.fecha_venta, '%d/%m/%Y') as fecha,
+            c.nombre as cliente,
+            COALESCE(productos.total_kilos, 0) as kilos,
+            COALESCE(productos.ingreso_productos, 0) as ingreso_productos,
+            COALESCE(fletes.ingreso_flete, 0) as ingreso_flete,
+            (COALESCE(productos.ingreso_productos, 0) - COALESCE(fletes.ingreso_flete, 0)) as ingreso_total
+        FROM ventas v
+        LEFT JOIN zonas z ON v.zona = z.id_zone
+        LEFT JOIN clientes c ON v.id_cliente = c.id_cli
+        LEFT JOIN (
+            SELECT 
+                vd.id_venta,
+                SUM(vd.total_kilos) as total_kilos,
+                SUM(p.precio * vd.total_kilos) as ingreso_productos
+            FROM venta_detalle vd
+            LEFT JOIN precios p ON vd.id_pre_venta = p.id_precio
+            WHERE vd.status = 1
+            GROUP BY vd.id_venta
+        ) productos ON v.id_venta = productos.id_venta
+        LEFT JOIN (
+            SELECT 
+                vf.id_venta,
+                pf.precio as ingreso_flete
+            FROM venta_flete vf
+            LEFT JOIN precios pf ON vf.id_pre_flete = pf.id_precio
+        ) fletes ON v.id_venta = fletes.id_venta
+        WHERE v.zona = '$zona_seleccionada' 
+        AND v.status = 1
+        GROUP BY v.id_venta, v.folio, v.fecha_venta, z.cod, c.nombre
+        ORDER BY v.fecha_venta DESC, v.id_venta DESC
+        LIMIT $limit
+    ";
+    
+    $result = $conn_mysql->query($query);
+    $ventas = [];
+    
+    while ($row = $result->fetch_assoc()) {
+        $ventas[] = [
+            'id' => $row['id_venta'],
+            'folio' => $row['folio'],
+            'fecha' => $row['fecha'],
+            'cliente' => $row['cliente'],
+            'kilos' => floatval($row['kilos']),
+            'total' => floatval($row['ingreso_total']),
+            'ingreso_productos' => floatval($row['ingreso_productos']),
+            'ingreso_flete' => floatval($row['ingreso_flete'])
+        ];
+    }
+    
+    return $ventas;
+}
+
+function obtenerResumenMensualMEO($conn_mysql, $zona_seleccionada) {
+    $mes_actual = date('Y-m');
+    $dias_mes = date('t');
+    
+    // CAPTACIONES - Consulta separada para productos
+    $captaciones_productos_query = "
+        SELECT 
+            COUNT(DISTINCT c.id_captacion) as total_captaciones,
+            COALESCE(SUM(p.precio * cd.total_kilos), 0) as costo_productos
+        FROM captacion c
+        LEFT JOIN captacion_detalle cd ON c.id_captacion = cd.id_captacion AND cd.status = 1
+        LEFT JOIN precios p ON cd.id_pre_compra = p.id_precio
+        WHERE c.zona = '$zona_seleccionada' 
+        AND c.status = 1
+        AND DATE_FORMAT(c.fecha_captacion, '%Y-%m') = '$mes_actual'
+    ";
+    
+    $captaciones_productos_data = $conn_mysql->query($captaciones_productos_query)->fetch_assoc();
+    
+    // CAPTACIONES - Consulta separada para fletes
+    $captaciones_fletes_query = "
+        SELECT 
+            COALESCE(SUM(pf.precio), 0) as costo_flete
+        FROM captacion c
+        LEFT JOIN captacion_flete cf ON c.id_captacion = cf.id_captacion
+        LEFT JOIN precios pf ON cf.id_pre_flete = pf.id_precio
+        WHERE c.zona = '$zona_seleccionada' 
+        AND c.status = 1
+        AND DATE_FORMAT(c.fecha_captacion, '%Y-%m') = '$mes_actual'
+        AND cf.id_captacion IS NOT NULL
+    ";
+    
+    $captaciones_fletes_data = $conn_mysql->query($captaciones_fletes_query)->fetch_assoc();
+    
+    // VENTAS - Consulta separada para productos
+    $ventas_productos_query = "
+        SELECT 
+            COUNT(DISTINCT v.id_venta) as total_ventas,
+            COALESCE(SUM(p.precio * vd.total_kilos), 0) as ingreso_productos
+        FROM ventas v
+        LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta AND vd.status = 1
+        LEFT JOIN precios p ON vd.id_pre_venta = p.id_precio
+        WHERE v.zona = '$zona_seleccionada' 
+        AND v.status = 1
+        AND DATE_FORMAT(v.fecha_venta, '%Y-%m') = '$mes_actual'
+    ";
+    
+    $ventas_productos_data = $conn_mysql->query($ventas_productos_query)->fetch_assoc();
+    
+    // VENTAS - Consulta separada para fletes
+    $ventas_fletes_query = "
+        SELECT 
+            COALESCE(SUM(pf.precio), 0) as ingreso_flete
+        FROM ventas v
+        LEFT JOIN venta_flete vf ON v.id_venta = vf.id_venta
+        LEFT JOIN precios pf ON vf.id_pre_flete = pf.id_precio
+        WHERE v.zona = '$zona_seleccionada' 
+        AND v.status = 1
+        AND DATE_FORMAT(v.fecha_venta, '%Y-%m') = '$mes_actual'
+        AND vf.id_venta IS NOT NULL
+    ";
+    
+    $ventas_fletes_data = $conn_mysql->query($ventas_fletes_query)->fetch_assoc();
+    
+    // Calcular totales
+    $costo_entradas_total = floatval($captaciones_productos_data['costo_productos']) + 
+                           floatval($captaciones_fletes_data['costo_flete']);
+    
+    $ingreso_salidas_total = floatval($ventas_productos_data['ingreso_productos']) - 
+                            floatval($ventas_fletes_data['ingreso_flete']);
+    
+    // Kilos promedio por captación
+    $kilos_promedio = "
+        SELECT 
+            COALESCE(AVG(total_kilos), 0) as promedio_kilos
+        FROM (
+            SELECT COALESCE(SUM(cd.total_kilos), 0) as total_kilos
+            FROM captacion c
+            LEFT JOIN captacion_detalle cd ON c.id_captacion = cd.id_captacion AND cd.status = 1
+            WHERE c.zona = '$zona_seleccionada' 
+            AND c.status = 1
+            AND DATE_FORMAT(c.fecha_captacion, '%Y-%m') = '$mes_actual'
+            GROUP BY c.id_captacion
+        ) as subquery
+    ";
+    
+    $kilos_data = $conn_mysql->query($kilos_promedio)->fetch_assoc();
+    
+    // Valor promedio por venta
+    $valor_promedio = "
+        SELECT 
+            COALESCE(AVG(total_venta), 0) as promedio_valor
+        FROM (
+            SELECT 
+                v.id_venta,
+                COALESCE(SUM(p.precio * vd.total_kilos), 0) - 
+                COALESCE(pf.precio, 0) as total_venta
+            FROM ventas v
+            LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta AND vd.status = 1
+            LEFT JOIN precios p ON vd.id_pre_venta = p.id_precio
+            LEFT JOIN venta_flete vf ON v.id_venta = vf.id_venta
+            LEFT JOIN precios pf ON vf.id_pre_flete = pf.id_precio
+            WHERE v.zona = '$zona_seleccionada' 
+            AND v.status = 1
+            AND DATE_FORMAT(v.fecha_venta, '%Y-%m') = '$mes_actual'
+            GROUP BY v.id_venta, pf.precio
+        ) as subquery
+    ";
+    
+    $valor_data = $conn_mysql->query($valor_promedio)->fetch_assoc();
+    
+    // Calcular promedios diarios
+    $total_captaciones = intval($captaciones_productos_data['total_captaciones']);
+    $total_ventas = intval($ventas_productos_data['total_ventas']);
+    
+    $promedio_captaciones_dia = $dias_mes > 0 ? round($total_captaciones / $dias_mes, 1) : 0;
+    $promedio_ventas_dia = $dias_mes > 0 ? round($total_ventas / $dias_mes, 1) : 0;
+    
+    return [
+        'entradas_captaciones' => $total_captaciones,
+        'costo_entradas' => $costo_entradas_total,
+        'costo_entradas_productos' => floatval($captaciones_productos_data['costo_productos']),
+        'costo_entradas_flete' => floatval($captaciones_fletes_data['costo_flete']),
+        'salidas_ventas' => $total_ventas,
+        'ingreso_salidas' => $ingreso_salidas_total,
+        'ingreso_salidas_productos' => floatval($ventas_productos_data['ingreso_productos']),
+        'ingreso_salidas_flete' => floatval($ventas_fletes_data['ingreso_flete']),
+        'balance' => $ingreso_salidas_total - $costo_entradas_total,
+        'promedio_captaciones_dia' => $promedio_captaciones_dia,
+        'promedio_ventas_dia' => $promedio_ventas_dia,
+        'kilos_promedio_captacion' => floatval($kilos_data['promedio_kilos']),
+        'valor_promedio_venta' => floatval($valor_data['promedio_valor'])
+    ];
+}
+
 if ($tipoZonaActual === 'NOR') {
 // ============================================================================
 // DASHBOARD PARA ZONAS NOR (EL CÓDIGO ORIGINAL)
