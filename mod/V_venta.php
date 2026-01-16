@@ -463,10 +463,24 @@ function construirURLFactura($factura_numero, $fecha_factura, $planta_zona, $tip
     
     $mes_nombre = $meses[$numero_mes];
     
-    if ($tipo == 'FAC' || $tipo == 'FV') {
-        return "https://glama.esasacloud.com/doctos/{$planta_zona}/FACTURAS/{$ano}/{$mes_nombre}/SIGN_{$factura_numero}.pdf";
+    $current_year = intval(date('Y'));
+    $es_ano_pasado = (intval($ano) === $current_year - 1);
+    
+    $tipo_upper = strtoupper($tipo);
+    if ($es_ano_pasado) {
+        // Usar dominio OLD para facturas/remisiones del año pasado
+        if ($tipo_upper == 'FAC' || $tipo_upper == 'FV') {
+            return "https://olddocs.esasacloud.com/olddocs-01/cpu27/{$planta_zona}/FACTURAS/{$ano}/{$mes_nombre}/SIGN_{$factura_numero}.pdf";
+        } else {
+            return "https://olddocs.esasacloud.com/olddocs-01/cpu27/{$planta_zona}/REMISIONES/{$ano}/{$mes_nombre}/SIGN_{$factura_numero}.pdf";
+        }
     } else {
-        return "https://glama.esasacloud.com/doctos/{$planta_zona}/REMISIONES/{$ano}/{$mes_nombre}/SIGN_{$factura_numero}.pdf";
+        // Dominio actual
+        if ($tipo_upper == 'FAC' || $tipo_upper == 'FV') {
+            return "https://glama.esasacloud.com/doctos/{$planta_zona}/FACTURAS/{$ano}/{$mes_nombre}/SIGN_{$factura_numero}.pdf";
+        } else {
+            return "https://glama.esasacloud.com/doctos/{$planta_zona}/REMISIONES/{$ano}/{$mes_nombre}/SIGN_{$factura_numero}.pdf";
+        }
     }
 }
 function validarFacturaVenta($id_venta, $conn_mysql) {
@@ -840,6 +854,9 @@ if (isset($_POST['eliminar_ticket'])) {
                             <button class="btn btn-secondary btn-sm">
                                 <i class="bi bi-printer me-1"></i>
                             </button>
+                            <a href="doc/remision.php?id=<?= $id_venta ?>" target="_blank" class="btn btn-primary btn-sm">
+                                <i class="bi bi-file-text me-1"></i>Remisión
+                            </a>
                         </div>
                     </div>
                 </div>
