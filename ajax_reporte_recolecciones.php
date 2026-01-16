@@ -381,11 +381,15 @@ while ($row = $result->fetch_assoc()) {
             $numero_mesA = date('m', strtotime($fecha_v)) - 1;
             $anoA = date('Y', strtotime($fecha_v));
             $planta = $row['planta_zona'] ?? 'default';
+            // Seleccionar base de URL según si la factura pertenece al año actual o es anterior
+            $base_actual = 'https://glama.esasacloud.com/doctos/';
+            $base_antiguo = 'https://olddocs.esasacloud.com/olddocs-01/cpu27/';
+            $base = ($anoA != date('Y')) ? $base_antiguo : $base_actual;
 
             if ($row['factura_remision'] == 'FAC') {
-                $url_principal = 'https://glama.esasacloud.com/doctos/'.$planta.'/FACTURAS/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$row['factura_v'].'.pdf';
+                $url_principal = $base . $planta.'/FACTURAS/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$row['factura_v'].'.pdf';
             } else {
-                $url_principal = 'https://glama.esasacloud.com/doctos/'.$planta.'/REMISIONES/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$row['factura_v'].'.pdf';
+                $url_principal = $base . $planta.'/REMISIONES/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$row['factura_v'].'.pdf';
             }
 
             $factura_venta_principal = '<a href="'.htmlspecialchars($url_principal).'" target="_blank" class="badge badge-documento bg-success text-decoration-none" title="Factura de venta">'.htmlspecialchars($row['factura_v']).'</a>';

@@ -240,48 +240,6 @@ $complemento_existe = !empty($recoleccion['factura_complemento']);
 $existePDFComplemento = false;
 $url_complemento = '';
 
-if ($complemento_existe) {
-    // NUEVO: Verificar si existe el PDF del complemento (solo si existe en BD)
-    $mesesA = array("ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE");
-    $numero_mesA = date('m', strtotime($recoleccion['fecha_complemento'])) - 1;
-    $anoA = date('Y', strtotime($recoleccion['fecha_complemento']));
-    $url_complemento = 'https://glama.esasacloud.com/doctos/'.$recoleccion['planta_zona'].'/FACTURAS/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$recoleccion['factura_complemento'].'.pdf';
-
-    // Función para validar si existe el archivo remoto del complemento
-    function urlExistsComplemento($url) {
-        if (empty($url) || strpos($url, 'SIGN_') === false) {
-            return false;
-        }
-        
-        $ch = curl_init($url);
-        
-        // Configurar cURL para ser más rápido
-        curl_setopt_array($ch, [
-            CURLOPT_NOBODY => true,          // Solo HEAD request, más rápido
-            CURLOPT_FOLLOWLOCATION => true,  // Seguir redirecciones
-            CURLOPT_TIMEOUT => 5,           // Timeout de 5 segundos
-            CURLOPT_CONNECTTIMEOUT => 3,    // Timeout de conexión de 3 segundos
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; FacturaChecker/1.0)',
-            CURLOPT_SSL_VERIFYPEER => false, // Para evitar problemas SSL
-            CURLOPT_RETURNTRANSFER => true
-        ]);
-        
-        curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        return ($httpCode === 200);
-    }
-
-    $existePDFComplemento = urlExistsComplemento($url_complemento);
-
-    // Actualizar estado del complemento si existe
-    if ($recoleccion['comprobar_complemento'] == '0' && $existePDFComplemento) {
-        $conn_mysql->query("UPDATE recoleccion SET Vcomp_com = '1' WHERE id_recol = '$id_recoleccion'");
-        $recoleccion['comprobar_complemento'] = '1';
-    }
-}
-
 // codigo
 
 $folio_completo = $recoleccion['cod_zona'] . "-" . date('ym', strtotime($recoleccion['fecha_r'])) . str_pad($recoleccion['folio'], 4, '0', STR_PAD_LEFT);
@@ -303,14 +261,21 @@ $alguna_remision_completa = $remision_completa || $remixtac_completa;
 $mesesA = array("ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE");
 $numero_mesA = date('m', strtotime($recoleccion['fecha_v'])) - 1;
 $anoA = date('Y', strtotime($recoleccion['fecha_v']));
+
+// Seleccionar base de URL según si la factura pertenece al año actual o es anterior
+$base_actual = 'https://glama.esasacloud.com/doctos/';
+$base_antiguo = 'https://olddocs.esasacloud.com/olddocs-01/cpu27/';
+$base = ($anoA != date('Y')) ? $base_antiguo : $base_actual;
+
 if ($recoleccion['factura_remision'] == 'FAC') {
-    $url = 'https://glama.esasacloud.com/doctos/'.$recoleccion['planta_zona'].'/FACTURAS/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$recoleccion['factura_v'].'.pdf';
-}else{
-    $url = 'https://glama.esasacloud.com/doctos/'.$recoleccion['planta_zona'].'/REMISIONES/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$recoleccion['factura_v'].'.pdf';
+    $url = $base . $recoleccion['planta_zona'] . '/FACTURAS/' . $anoA . '/' . $mesesA[$numero_mesA] . '/SIGN_' . $recoleccion['factura_v'] . '.pdf';
+} else {
+    $url = $base . $recoleccion['planta_zona'] . '/REMISIONES/' . $anoA . '/' . $mesesA[$numero_mesA] . '/SIGN_' . $recoleccion['factura_v'] . '.pdf';
 }
 
 // Función para validar si existe el archivo remoto
 function urlExists($url) {
+    if (empty($url)) return false;
     $ch = curl_init($url);
     
     // Configurar cURL para ser más rápido

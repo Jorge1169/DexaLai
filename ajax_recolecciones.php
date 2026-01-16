@@ -203,12 +203,15 @@ while ($row = mysqli_fetch_assoc($result)) {
         $mesesA = array("ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE");
         $numero_mesA = date('m', strtotime($row['fecha_v'])) - 1;
         $anoA = date('Y', strtotime($row['fecha_v']));
+        $base_actual = 'https://glama.esasacloud.com/doctos/';
+        $base_antiguo = 'https://olddocs.esasacloud.com/olddocs-01/cpu27/';
+        $base = ($anoA != date('Y')) ? $base_antiguo : $base_actual;
 
         if ($row['factura_remision'] == 'FAC') {
 
-        $url_principal = 'https://glama.esasacloud.com/doctos/'.$row['planta_zona'].'/FACTURAS/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$row['factura_v'].'.pdf';
+        $url_principal = $base .$row['planta_zona'].'/FACTURAS/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$row['factura_v'].'.pdf';
         }else{
-            $url_principal = 'https://glama.esasacloud.com/doctos/'.$row['planta_zona'].'/REMISIONES/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$row['factura_v'].'.pdf';
+            $url_principal = $base .$row['planta_zona'].'/REMISIONES/'.$anoA.'/'.$mesesA[$numero_mesA].'/SIGN_'.$row['factura_v'].'.pdf';
         }
 
         $factura_principal = '<a href="'.$url_principal.'" target="_blank" class="link-underline link-underline-opacity-0 text-success fw-bold" title="Factura de venta">'.$row['factura_v'].' <i class="bi bi-file-earmark-pdf-fill"></i></a>';
