@@ -199,7 +199,10 @@ if (isset($_POST['guardar_venta'])) {
             $FleteData = [
                 'id_venta' => $id_venta,
                 'id_fletero' => $idFletero,
-                'id_pre_flete' => $precio_flete
+                'id_pre_flete' => $precio_flete,
+                'tipo_camion'=> $_POST['tipo_camion'] ?? null,
+                'nombre_chofer'=> $_POST['nombre_chofer'] ?? null,
+                'placas_unidad'=> $_POST['placas_unidad'] ?? null
             ];
             
             $columnsFlete = implode(', ', array_keys($FleteData));
@@ -469,13 +472,13 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                     </div>
                 </div>
                 
-                <!-- SECCIÓN 4: Fletero y Tipo de Flete -->
+                <!-- SECCIÓN 4: Fletero y Tipo de Flete (con campos opcionales para unidad/chofer/placas) -->
                 <div class="form-section shadow-sm mb-4">
                     <h5 class="section-header">Fletero y Tipo de Flete</h5>
                     <div class="row g-3">
                         <div class="col-md-4" id="resulfLE">
                             <label for="idFletero" class="form-label">Fletero</label>
-                            <select class="form-select" name="idFletero" id="idFletero" onchange="cargarPrecioFleteVenta()" required>
+                            <select class="form-select" name="idFletero" id="idFletero" onchange="cargarPrecioFleteVenta()">
                                 <option selected disabled value="">Selecciona un transportista...</option>
                                 <?php
                                 if ($zona_seleccionada == 0) {
@@ -494,7 +497,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                         </div>
                         <div class="col-md-3" id="TipoFlete">
                             <label for="tipo_flete" class="form-label">Tipo de Flete</label>
-                            <select class="form-select" name="tipo_flete" id="tipo_flete" onchange="cargarPrecioFleteVenta()" required>
+                            <select class="form-select" name="tipo_flete" id="tipo_flete" onchange="cargarPrecioFleteVenta()">
                                 <option selected disabled value="">Selecciona tipo...</option>
                                 <option value="MFT">Por tonelada (MEO)</option>
                                 <option value="MFV">Por viaje (MEO)</option>
@@ -505,6 +508,30 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                             <select class="form-select" disabled>
                                 <option>Selecciona fletero y tipo</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Campos opcionales: Tipo de Unidad, Nombre del Chofer, Placas de la Unidad -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4">
+                            <label for="tipo_camion" class="form-label">Tipo de Unidad <small class="text-muted">(Opcional)</small></label>
+                            <select class="form-select" name="tipo_camion" id="tipo_camion">
+                                <option value="">-- No especificar --</option>
+                                <option value="TRACTO">Tractocamión</option>
+                                <option value="CAJA">Caja Seca</option>
+                                <option value="SENCILLA">Sencilla</option>
+                                <option value="3_5T">Camión 3.5T</option>
+                                <option value="TORTON">Torton</option>
+                                <option value="OTRO">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="nombre_chofer" class="form-label">Nombre del Chofer <small class="text-muted">(Opcional)</small></label>
+                            <input type="text" name="nombre_chofer" id="nombre_chofer" class="form-control" placeholder="Nombre del chofer">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="placas_unidad" class="form-label">Placas de la Unidad <small class="text-muted">(Opcional)</small></label>
+                            <input type="text" name="placas_unidad" id="placas_unidad" class="form-control" placeholder="XXX-0000">
                         </div>
                     </div>
                 </div>
