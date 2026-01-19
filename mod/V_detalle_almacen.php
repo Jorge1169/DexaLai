@@ -331,20 +331,11 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                         <i class="bi bi-building me-2"></i>
                         Detalle del Almacén
                     </h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="?p=almacenes_info">Almacenes</a></li>
-                            <li class="breadcrumb-item active">Detalle</li>
-                        </ol>
-                    </nav>
                 </div>
                 <div>
                     <a href="?p=almacenes_info" class="btn btn-modern btn-secondary">
                         <i class="bi bi-arrow-left me-2"></i> Volver a Lista
                     </a>
-                    <button class="btn btn-modern btn-outline-primary ms-2" onclick="window.print()">
-                        <i class="bi bi-printer me-2"></i> Imprimir Reporte
-                    </button>
                 </div>
             </div>
         </div>
