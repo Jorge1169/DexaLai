@@ -138,13 +138,13 @@ if ($tipoZonaActual === 'MEO') {
                                     <span class="badge bg-success me-2">
                                         <i class="bi bi-shield-check me-1"></i> Materiales Especiales y Operaciones
                                     </span>
-                                    <span class="badge bg-primary">
+                                    <!--<span class="badge bg-primary">
                                         <?php
-                                        $fmt = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'LLLL yyyy');
-                                        $fecha_es = $fmt->format(new DateTime());
+                                        //$fmt = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'LLLL yyyy');
+                                        //$fecha_es = $fmt->format(new DateTime());
                                         ?>
                                         <i class="bi bi-calendar me-1"></i> <?= htmlspecialchars(ucfirst($fecha_es)) ?>
-                                    </span>
+                                    </span>-->
                                 </p>
                             </div>
                             <div>
@@ -1716,13 +1716,13 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                                 <span class="badge bg-success me-2">
                                     <i class="bi bi-clipboard-data me-1"></i> Recolección Tradicional
                                 </span>
-                                <span class="badge bg-primary">
+                                <!--<span class="badge bg-primary">
                                     <?php
-                                        $fmt = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'LLLL yyyy');
-                                        $fecha_es = $fmt->format(new DateTime());
+                                        //$fmt = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'LLLL yyyy');
+                                        //$fecha_es = $fmt->format(new DateTime());
                                     ?>
                                     <i class="bi bi-calendar me-1"></i> <?= htmlspecialchars(ucfirst($fecha_es)) ?>
-                                </span>
+                                </span>-->
                             </p>
                         </div>
                         <div>
