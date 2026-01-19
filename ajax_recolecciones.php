@@ -350,7 +350,17 @@ while ($row = mysqli_fetch_assoc($result)) {
     // Generar folio completo
     $folio_completo = $row['cod_zona'] . "-" . date('ym', strtotime($row['fecha_r'])) . str_pad($row['folio'], 4, '0', STR_PAD_LEFT);
 
+    //comprovar ticket de remision
+
+    $url_comprobacion_remision = '';
     $remision0 = $row['remision_recoleccion'];
+    
+    if ($row['remi_compro'] == 1) {
+        $url_comprobacion_remision = "https://globaltycloud.com.mx:4013/externo/laisa/bascula/ticket.aspx?&rem=" . urlencode($row['remision']);
+        $remision0 = '<a href="'.$url_comprobacion_remision.'" target="_blank" class="link-underline link-underline-opacity-0 text-success fw-bold" title="Remisión '.$row['remision'].'"><i class="bi bi-ticket"></i>'.$row['remision'].'</a>';
+    } else {
+        $url_comprobacion_remision = '';
+    }
     
     // Preparar datos para DataTables
     $data[] = [

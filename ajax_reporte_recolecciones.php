@@ -442,6 +442,18 @@ while ($row = $result->fetch_assoc()) {
         $TipoFleAler = '<span class="badge bg-primary">T</span>';
     }
 
+    //comprovar ticket de remision
+
+    $url_comprobacion_remision = '';
+    $remision0 = $row['remision_compra'];
+    
+    if ($row['remi_compro'] == 1) {
+        $url_comprobacion_remision = "https://globaltycloud.com.mx:4013/externo/laisa/bascula/ticket.aspx?&rem=" . urlencode($row['remision']);
+        $remision0 = '<a href="'.$url_comprobacion_remision.'" target="_blank" class="link-underline link-underline-opacity-0 text-success fw-bold" title="Remisión '.$row['remision'].'"><i class="bi bi-ticket"></i>'.$row['remision'].'</a>';
+    } else {
+        $url_comprobacion_remision = '';
+    }
+
     // Fecha formateada
     $fecha_recoleccion = !empty($row['fecha_r']) ? date('Y-m-d', strtotime($row['fecha_r'])) : '';
 
@@ -455,21 +467,21 @@ while ($row = $result->fetch_assoc()) {
         number_format($peso_prov, 2) . ' kg', // 6 - Peso Compra
         '$' . number_format($precio_compra, 2), // 7 - Precio Compra
         '$' . number_format($total_compra, 2), // 8 - Total Compra
-        $row['remision_compra'],
-        $factura_compra, // 9 - Factura Compra
-        $contra_recibo_compra, // 10 - C.R Compra
-        number_format($peso_fle, 2) . ' kg', // 11 - Peso Flete
-        '$' . number_format($row['precio_flete_base'] ?? 0, 2).' '.$TipoFleAler, // 12 - Precio Flete
-        '$' . number_format($precio_por_kilo, 4), // 13 - NUEVO: Precio Flete por Kilo (4 decimales)
-        '$' . number_format($precio_flete_real, 2), // 14 - Importe Flete
-        $factura_flete, // 15 - Factura Flete
-        $contra_recibo_flete, // 16 - C.R Flete
-        '$' . number_format($precio_venta, 2), // 17 - Precio Venta
-        '$' . number_format($total_venta, 2), // 18 - Total Venta
-        $factura_venta, // 19 - Factura Venta
-        '$' . number_format($utilidad_estimada, 2), // 20 - Utilidad
-        $fecha_recoleccion, // 21 - Fecha
-        $row['id_recol'] ?? 0 // 22 - ID (oculto)
+        $remision0, // 9 - Remisión Compra
+        $factura_compra, // 10 - Factura Compra
+        $contra_recibo_compra, // 11 - C.R Compra
+        number_format($peso_fle, 2) . ' kg', // 12 - Peso Flete
+        '$' . number_format($row['precio_flete_base'] ?? 0, 2).' '.$TipoFleAler, // 13 - Precio Flete
+        '$' . number_format($precio_por_kilo, 4), // 14 - NUEVO: Precio Flete por Kilo (4 decimales)
+        '$' . number_format($precio_flete_real, 2), // 15 - Importe Flete
+        $factura_flete, // 16 - Factura Flete
+        $contra_recibo_flete, // 17 - C.R Flete
+        '$' . number_format($precio_venta, 2), // 18 - Precio Venta
+        '$' . number_format($total_venta, 2), // 19 - Total Venta
+        $factura_venta, // 20 - Factura Venta
+        '$' . number_format($utilidad_estimada, 2), // 21 - Utilidad
+        $fecha_recoleccion, // 22 - Fecha
+        $row['id_recol'] ?? 0 // 23 - ID (oculto)
     ];
 } // CIERRA EL BUCLE WHILE AQUÍ
 

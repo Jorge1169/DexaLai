@@ -383,6 +383,8 @@ if (isset($_POST['guardar_prov'])) {
     // Actualizar los datos
     $conn_mysql->query("UPDATE recoleccion SET remision = '$remision', remixtac = '$remixtac', peso_prov = '$peso_proveedor' WHERE id_recol = '$id_recoleccion'");
     
+    $conn_mysql->query("UPDATE recoleccion SET remi_compro = '0' WHERE id_recol = '$id_recoleccion'");
+    
     $mensaje = "Datos del proveedor actualizados con éxito";
     if (!$alguna_remision_completa) {
         $mensaje = "Datos del proveedor agregados con éxito a la orden de recolección";
@@ -684,6 +686,161 @@ if ($tiene_factura_flete && $tiene_peso_flete) {
 
 // Verificar si es N/A (factura vacía pero precio_flete = 0)
 $es_na = (!$tiene_factura_flete && $recoleccion['precio_flete'] == 0);
+// FUNCIÓN PARA VERIFICAR PDF DE REMISIÓN CON PLANTA
+function verificarPDFRemision($remision, $planta_zona = 'laisa') {
+    if (empty($remision)) {
+        return false;
+    }
+    
+    // URL dinámica basada en la planta
+    $url = "https://globaltycloud.com.mx:4013/externo/" . urlencode($planta_zona) . "/bascula/ticket.aspx?&rem=" . urlencode($remision);
+    
+    $ch = curl_init($url);
+    
+    // CONFIGURACIÓN OPTIMIZADA PARA SERVIDORES LENTOS
+    curl_setopt_array($ch, [
+        CURLOPT_NOBODY => true,           // Solo HEAD request, más rápido
+        CURLOPT_FOLLOWLOCATION => true,   // Seguir redirecciones
+        CURLOPT_TIMEOUT => 8,            // Timeout aumentado a 8 segundos
+        CURLOPT_CONNECTTIMEOUT => 4,     // Timeout de conexión aumentado
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; PDFChecker/1.0)',
+        CURLOPT_SSL_VERIFYPEER => false,  // Para evitar problemas SSL
+        CURLOPT_SSL_VERIFYHOST => false,  // Para evitar problemas SSL
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FAILONERROR => true,      // Falla en errores HTTP
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1, // Usar HTTP 1.1
+        CURLOPT_ENCODING => '',          // Aceptar cualquier encoding
+    ]);
+    
+    $start_time = microtime(true);
+    $result = curl_exec($ch);
+    
+    // Si hay error, intentar con método alternativo más rápido
+    if (curl_errno($ch)) {
+        $error_msg = curl_error($ch);
+        curl_close($ch);
+        
+        // INTENTO ALTERNATIVO: Método más liviano
+        return verificarPDFRemisionAlternativo($remision, $planta_zona);
+    }
+    
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $total_time = microtime(true) - $start_time;
+    
+    curl_close($ch);
+    
+    // Log para debugging (opcional)
+    error_log("PDF Check - Planta: $planta_zona, Remisión: $remision, HTTP: $httpCode, Time: " . round($total_time, 2) . "s");
+    
+    // Verificar si es un PDF (código 200 y content-type pdf o aplicación/octet-stream)
+    if ($httpCode === 200) {
+        // Aceptar varios tipos de content-type que podrían ser PDF
+        $pdfContentTypes = ['pdf', 'application/pdf', 'application/octet-stream', 'binary/octet-stream'];
+        
+        foreach ($pdfContentTypes as $pdfType) {
+            if (stripos($contentType, $pdfType) !== false) {
+                return true;
+            }
+        }
+        
+        // Si no detecta content-type PDF pero la respuesta es 200, hacer verificación adicional
+        if (empty($contentType) || stripos($contentType, 'text/html') === false) {
+            // Podría ser un PDF aunque el content-type no lo indique
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// MÉTODO ALTERNATIVO más rápido para servidores lentos
+function verificarPDFRemisionAlternativo($remision, $planta_zona = 'laisa') {
+    if (empty($remision)) {
+        return false;
+    }
+    
+    $url = "https://globaltycloud.com.mx:4013/externo/" . urlencode($planta_zona) . "/bascula/ticket.aspx?&rem=" . urlencode($remision);
+    
+    // Usar file_get_contents con contexto (más rápido en algunos casos)
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'HEAD',
+            'timeout' => 5,
+            'header' => "User-Agent: Mozilla/5.0 (compatible; PDFChecker/1.0)\r\n"
+        ],
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+        ]
+    ]);
+    
+    try {
+        $headers = get_headers($url, 1, $context);
+        
+        if ($headers && isset($headers[0])) {
+            // Verificar código HTTP 200
+            if (strpos($headers[0], '200') !== false) {
+                // Verificar content-type
+                if (isset($headers['Content-Type'])) {
+                    $contentType = is_array($headers['Content-Type']) ? 
+                                 $headers['Content-Type'][0] : $headers['Content-Type'];
+                    
+                    if (stripos($contentType, 'pdf') !== false || 
+                        stripos($contentType, 'application/octet-stream') !== false) {
+                        return true;
+                    }
+                }
+                return true; // Si es 200 pero no sabemos el content-type, asumir que existe
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error alternativo verificando PDF (Planta: $planta_zona): " . $e->getMessage());
+    }
+    
+    return false;
+}
+
+// NUEVA FUNCIONALIDAD: Verificar automáticamente PDF de remisión
+// Solo si remi_compro es 0 y existe una remisión
+if ($recoleccion['remi_compro'] == 0 && !empty($recoleccion['remision'])) {
+    // EJECUCIÓN ASÍNCRONA PARA NO BLOQUEAR LA CARGA
+    $shouldCheckPDF = true;
+    
+    // Intentar verificar sin limitaciones de intentos
+    set_time_limit(10); // Aumentar timeout para esta operación
+    
+    try {
+        // Pasar la planta_zona como parámetro
+        $existePDFRemision = @verificarPDFRemision(
+            $recoleccion['remision'], 
+            $recoleccion['planta_zona']
+        );
+        
+        if ($existePDFRemision) {
+            // Actualizar remi_compro a 1
+            $conn_mysql->query("UPDATE recoleccion SET remi_compro = '1' WHERE id_recol = '$id_recoleccion'");
+            
+            // Actualizar el array local para reflejar el cambio
+            $recoleccion['remi_compro'] = 1;
+            
+            // Opcional: Log de actividad
+            logActivity('REC', 'PDF de remisión encontrado y marcado como comprobado: ' . 
+                       $recoleccion['remision'] . ' (Planta: ' . $recoleccion['planta_zona'] . ')');
+        }
+    } catch (Exception $e) {
+        error_log("Error verificando PDF (Planta: " . $recoleccion['planta_zona'] . "): " . $e->getMessage());
+        // No hacer nada, se intentará en la próxima carga
+    }
+    
+    set_time_limit(30); // Restaurar timeout
+}
+$url_comprobacion_remision = '';
+if ($recoleccion['remi_compro'] == '1') {
+    $url_comprobacion_remision = "https://globaltycloud.com.mx:4013/externo/".$recoleccion['planta_zona']."/bascula/ticket.aspx?&rem=" . urlencode($recoleccion['remision']);
+} else {
+    $url_comprobacion_remision = '';
+}
 ?>
 
 <div class="container mt-2">
@@ -893,6 +1050,17 @@ $es_na = (!$tiene_factura_flete && $recoleccion['precio_flete'] == 0);
                                         <?php endif; ?>
                                     </div>
                                 </div>
+
+                                <?php if($recoleccion['remi_compro'] == 1):?>
+                                    <div class="list-group-item px-0 py-1">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted">Ticket de compro</span>
+                                            <a href="<?=$url_comprobacion_remision?>" target="_blank" class="btn btn-sm btn-success py-0">
+                                                <i class="bi bi-ticket"></i> Ver Ticket
+                                            </a>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
 
                                 <!-- Remisiones y peso compactos - VERSIÓN CON REMIXTAC -->
                                 <div class="list-group-item px-0 py-1">
