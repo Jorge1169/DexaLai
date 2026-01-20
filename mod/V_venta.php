@@ -854,9 +854,13 @@ if (isset($_POST['eliminar_ticket'])) {
                             <button class="btn btn-secondary btn-sm">
                                 <i class="bi bi-printer me-1"></i>
                             </button>
-                            <a href="doc/remision.php?id=<?= $id_venta ?>" target="_blank" class="btn btn-primary btn-sm">
-                                <i class="bi bi-file-text me-1"></i>Remisión
-                            </a>
+                            <?php if ($flete_data['tipo_camion'] != null and $flete_data['placas_unidad'] != null and $flete_data['nombre_chofer'] != null) {
+                               ?>
+                                <a href="doc/remision.php?id=<?= $id_venta ?>" target="_blank" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-file-text me-1"></i>Remisión
+                                </a>
+                               <?php 
+                            }?>
                         </div>
                     </div>
                 </div>
