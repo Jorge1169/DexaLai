@@ -426,41 +426,45 @@ body {
     border-color: rgba(255, 255, 255, 0.2);
     transform: scale(1.05);
 }
+
 .encabezado .inicio-btn-copy {
-        background: rgba(255, 255, 255, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: white;
-        width: 70px;
-        text-decoration: none;
-        height: 44px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(5px);
-    }
-    .encabezado .inicio-btn-copy:hover {
-        background: rgba(255, 255, 255, 0.25);
-        border-color: rgba(255, 255, 255, 0.2);
-        transform: scale(1.05);
-    }
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    width: 70px;
+    text-decoration: none;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.encabezado .inicio-btn-copy:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
 
 .encabezado .user-dropdown .btn {
-    color: white;
-    font-weight: 500;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+    background: rgba(255, 255, 255, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    text-decoration: none;
     border-radius: 12px;
-    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.3s ease;
     backdrop-filter: blur(5px);
 }
 
 .encabezado .user-dropdown .btn:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%);
+    background: rgba(255, 255, 255, 0.25);
     border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
+    transform: scale(1.05);
 }
 
 .encabezado .user-dropdown .dropdown-menu {
@@ -515,8 +519,8 @@ body {
 
 .encabezado .zone-selector .sleczone:hover {
     background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
 }
 
 .encabezado .zone-selector .sleczone:focus {
@@ -934,7 +938,6 @@ td {
 /* ============================================
    LOADERS Y MODALES
    ============================================ */
-
 .fullscreen-loader {
     position: fixed;
     top: 0;
@@ -1009,7 +1012,14 @@ td {
 .modal[data-bs-backdrop="static"] .modal-content {
     pointer-events: all;
 }
-
+/* Hoveers para inicio */
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+}
 /* ============================================
    CLASES DE COLORES DE UTILIDAD
    ============================================ */

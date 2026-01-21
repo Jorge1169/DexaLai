@@ -434,7 +434,7 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                         <div class="col-md-5">
                             <label class="form-label fw-semibold">Seleccionar Mes y Año</label>
                             <div class="input-group input-group-modern">
-                                <span class="input-group-text bg-light">
+                                <span class="input-group-text">
                                     <i class="bi bi-calendar3"></i>
                                 </span>
                                 <input type="month" name="fecha" id="fecha_mes" 

@@ -513,7 +513,7 @@ function moduloDisponibleParaZona($modulo, $conn_mysql) {
                 'reporte_recole', 
                 'importar_recolecciones', 
                 'reportes_actividad',
-                'ia_test', 
+                //'ia_test', 
                 'usuarios', 'V_usuarios', 'E_usuario', 'N_usuario','sudo_login','sudo_logout','salir'],
         
         'MEO' => ['inicio','clientes','V_cliente','E_Cliente','N_cliente','N_direccion','E_direccion',
@@ -525,6 +525,7 @@ function moduloDisponibleParaZona($modulo, $conn_mysql) {
                   'V_usuarios', 'E_usuario', 'N_usuario',
                   'almacenes','N_almacen','V_almacen','E_almacen','N_direccion_almacen','E_direccion_almacen',
                   'ventas','N_venta','V_venta','E_venta',
+                  'reportes_actividad',
                   'usuarios', 'V_usuarios', 'E_usuario', 'N_usuario','sudo_login','sudo_logout','salir'],
         
         // Puedes agregar más tipos aquí
@@ -570,7 +571,7 @@ function mostrarSeccionMenu($seccion, $conn_mysql) {
     // Definir qué secciones mostrar para cada tipo de zona
     $seccionesPorTipo = [
         'NOR' => ['catalogos', 'flujo', 'reportes', 'utilerias', 'usuarios'],
-        'MEO' => ['catalogos', 'flujo','reportes', 'usuarios'],
+        'MEO' => ['catalogos', 'flujo','reportes', 'utilerias', 'usuarios'],
         // 'MEO' no muestra 'utilerias'
     ];
     

@@ -609,32 +609,10 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
                 <i class="bi bi-list fs-5"></i>
             </button>
             <!-- BOTÓN PARA REGRESAR AL INDEX - AGREGADO -->
-            <a href="./" class="inicio-btn-copy me-2 me-md-3" 
-               title="Ir al inicio">
+            <a href="./" class="inicio-btn-copy me-2 me-md-3" title="Ir al inicio">
                 <i class="bi bi-house-door me-1"></i>
                 <span class="d-none d-md-inline">Inicio</span>
             </a>
-            <style>
-                .encabezado .inicio-btn-copy {
-                    background: rgba(255, 255, 255, 0.15);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    color: white;
-                    width: 70px;
-                    text-decoration: none;
-                    height: 44px;
-                    border-radius: 12px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                    backdrop-filter: blur(5px);
-                }
-                .encabezado .inicio-btn-copy:hover {
-                    background: rgba(255, 255, 255, 0.25);
-                    border-color: rgba(255, 255, 255, 0.2);
-                    transform: scale(1.05);
-                }
-            </style>
             <!-- Fecha -->
             <div class="date-display me-2 me-md-3 d-none d-lg-block">
                 <i class="bi bi-calendar2"></i> <?= $fecha_formateada ?>

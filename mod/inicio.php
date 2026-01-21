@@ -2041,7 +2041,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                         <div class="col-md-8">
                             <div class="d-flex flex-wrap align-items-center gap-3">
                                 <div class="input-group" style="max-width: 300px;">
-                                    <span class="input-group-text border-end-0 bg-light">
+                                    <span class="input-group-text border-end-0">
                                         <i class="bi bi-calendar text-muted"></i>
                                     </span>
                                     <input id="dt_mvI" type="date" class="form-control border-start-0" 
@@ -2050,7 +2050,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                                 </div>
                                 
                                 <div class="input-group" style="max-width: 300px;">
-                                    <span class="input-group-text border-end-0 bg-light">
+                                    <span class="input-group-text">
                                         <i class="bi bi-calendar text-muted"></i>
                                     </span>
                                     <input id="dt_mvF" type="date" class="form-control border-start-0" 
@@ -2272,49 +2272,6 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
 ?>
 
 <!-- Utilidades de Bootstrap 5 -->
-<style>
-    .hover-lift {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .hover-lift:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
-    }
-    
-    .bg-purple-subtle {
-        background-color: #e0d4f7 !important;
-    }
-    .bg-orange-subtle {
-        background-color: #ffe5d0 !important;
-    }
-    .bg-teal-subtle {
-        background-color: #d2f4ea !important;
-    }
-    .bg-indigo-subtle {
-        background-color: #e0d4f7 !important;
-    }
-    
-    .text-purple {
-        color: #6f42c1 !important;
-    }
-    .text-orange {
-        color: #fd7e14 !important;
-    }
-    .text-teal {
-        color: #20c997 !important;
-    }
-    .text-indigo {
-        color: #6610f2 !important;
-    }
-    
-    .card {
-        border-radius: 0.75rem;
-    }
-    
-    .table td, .table th {
-        vertical-align: middle;
-    }
-</style>
 
 <script>
     function pre1(){
