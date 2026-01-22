@@ -367,14 +367,14 @@ $zona_actual = $_SESSION['selected_zone'] ?? '0';
                                 <!-- Tab de precios activos -->
                                 <div class="tab-pane fade show active" id="activos" role="tabpanel">
                                     <!-- Acciones rápidas -->
-                                    <div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
-                                        <div>
+                                    <div class="alert alert-info d-flex justify-content-between align-items-center mb-3" >
+                                        <div <?= $perm['sub_precios'];?>>
                                             <i class="bi bi-lightning me-2"></i>
                                             <strong>Acciones rápidas:</strong> 
                                             <span class="ms-2">Extender vigencias fácilmente</span>
                                         </div>
                                         <div class="d-flex gap-2">
-                                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalExtenderTodos">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalExtenderTodos" <?= $perm['sub_precios'];?>>
                                                 <i class="bi bi-calendar-plus me-1"></i>Extender Todos
                                             </button>
                                         </div>

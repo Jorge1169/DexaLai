@@ -2050,7 +2050,7 @@ $total_rechazadas = $recolecciones_rechazadas->num_rows;
                                 </div>
                                 
                                 <div class="input-group" style="max-width: 300px;">
-                                    <span class="input-group-text">
+                                    <span class="input-group-text border-end-0">
                                         <i class="bi bi-calendar text-muted"></i>
                                     </span>
                                     <input id="dt_mvF" type="date" class="form-control border-start-0" 

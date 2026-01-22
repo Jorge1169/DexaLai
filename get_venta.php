@@ -138,7 +138,6 @@ if ($accion == 'bodegas_almacen_venta' && isset($_POST['idAlmacen'])) {
     ?>
     <label for="bodgeAlm" class="form-label">Bodega del Almacén</label>
     <select class="form-select" name="bodgeAlm" id="bodgeAlm" required>
-        <option value="" disabled selected>Selecciona una bodega...</option>
         <?php
         if ($BodAlm0 && $BodAlm0->num_rows > 0) {
             while ($BodAlm1 = mysqli_fetch_array($BodAlm0)) {
@@ -164,7 +163,6 @@ if ($accion == 'bodegas_cliente' && isset($_POST['idCliente'])) {
     ?>
     <label for="bodgeCli" class="form-label">Bodega del Cliente</label>
     <select class="form-select" name="bodgeCli" id="bodgeCli" required>
-        <option value="" disabled selected>Selecciona una bodega...</option>
         <?php
         if ($BodCli0 && $BodCli0->num_rows > 0) {
             while ($BodCli1 = mysqli_fetch_array($BodCli0)) {
