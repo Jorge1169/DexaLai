@@ -247,7 +247,7 @@ $stmt_detalle->execute();
 $detalles = $stmt_detalle->get_result();
 
 // Obtener información del flete (incluyendo nuevos campos)
-$sql_flete = "SELECT vf.*, 
+$sql_flete = "SELECT vf.*,
                      p.precio as precio_flete,
                      CASE 
                          WHEN p.tipo = 'MFT' THEN 'Por tonelada'
@@ -571,8 +571,9 @@ if (isset($_GET['validar_factura']) && $_GET['validar_factura'] == 1) {
  * Función simplificada para subir ticket
  */
 function subirTicketBascula($archivo_temporal, $nombre_original, $id_venta, $folio_ticket) {
-    // Ruta ABSOLUTAMENTE SIMPLE y directa
-    $directorio_base = $_SERVER['DOCUMENT_ROOT'] . '/DexaLai/uploads/ticket/';
+    // Obtener la ruta base del proyecto de forma dinámica
+    // Usar la misma estructura que en tu otro módulo que funciona
+    $directorio_base = __DIR__ . '/../uploads/ticket/';
     
     // Verificar y crear directorios si no existen
     if (!is_dir($directorio_base)) {
@@ -583,7 +584,10 @@ function subirTicketBascula($archivo_temporal, $nombre_original, $id_venta, $fol
     
     // Verificar que el directorio sea escribible
     if (!is_writable($directorio_base)) {
-        return ['error' => 'El directorio no tiene permisos de escritura: ' . $directorio_base];
+        // Intentar cambiar permisos
+        if (!chmod($directorio_base, 0755)) {
+            return ['error' => 'El directorio no tiene permisos de escritura: ' . $directorio_base];
+        }
     }
     
     // Validar que sea un archivo válido
@@ -611,26 +615,57 @@ function subirTicketBascula($archivo_temporal, $nombre_original, $id_venta, $fol
     $nombre_archivo = 'ticket_' . $id_venta . '_' . $folio_limpio . '_' . time() . '.' . $extension;
     $ruta_completa = $directorio_base . $nombre_archivo;
     
-    // Debug: Verificar ruta (solo para desarrollo)
-    // error_log("Intentando subir archivo a: " . $ruta_completa);
-    
     // Mover archivo
     if (move_uploaded_file($archivo_temporal, $ruta_completa)) {
-        // URL relativa para guardar en BD y acceder desde web
-        $url_relativa = '/DexaLai/uploads/ticket/' . $nombre_archivo;
-        
+        // Para guardar en BD, usar solo el nombre del archivo
         return [
             'success' => true,
             'nombre_archivo' => $nombre_archivo,
             'ruta_completa' => $ruta_completa,
-            'url' => $url_relativa,
-            'url_absoluta' => 'http://' . $_SERVER['HTTP_HOST'] . $url_relativa
+            'url_relativa' => 'uploads/ticket/' . $nombre_archivo
         ];
     } else {
         $error_info = error_get_last();
         return ['error' => 'Error al mover el archivo: ' . ($error_info['message'] ?? 'Error desconocido')];
     }
 }
+function optimizarImagenParaHosting($tmp_path, $dest_path, $mime_type) {
+    switch ($mime_type) {
+        case 'image/jpeg':
+        case 'image/jpg':
+            $image = imagecreatefromjpeg($tmp_path);
+            if (!$image) throw new Exception('No se pudo procesar la imagen JPEG');
+            imagejpeg($image, $dest_path, 85); // Calidad 85%
+            imagedestroy($image);
+            break;
+            
+        case 'image/png':
+            $image = imagecreatefrompng($tmp_path);
+            if (!$image) throw new Exception('No se pudo procesar la imagen PNG');
+            imagesavealpha($image, true);
+            imagepng($image, $dest_path, 8); // Compresión 8/9
+            imagedestroy($image);
+            break;
+            
+        case 'image/webp':
+            $image = imagecreatefromwebp($tmp_path);
+            if (!$image) throw new Exception('No se pudo procesar la imagen WebP');
+            imagewebp($image, $dest_path, 85);
+            imagedestroy($image);
+            break;
+            
+        case 'image/gif':
+            // Para GIFs, simplemente mover
+            move_uploaded_file($tmp_path, $dest_path);
+            break;
+            
+        default:
+            throw new Exception('Tipo de imagen no soportado para optimización');
+    }
+    
+    return true;
+}
+
 
 /**
  * Función simplificada para obtener información del ticket
@@ -692,7 +727,7 @@ function eliminarTicketArchivo($nombre_archivo) {
     }
     
     // Misma ruta consistente
-    $directorio_base = $_SERVER['DOCUMENT_ROOT'] . '/DexaLai/uploads/ticket/';
+    $directorio_base = __DIR__ . '/../uploads/ticket/';
     $ruta_archivo = $directorio_base . $nombre_archivo;
     
     if (file_exists($ruta_archivo) && is_file($ruta_archivo)) {
@@ -736,54 +771,102 @@ if (isset($_POST['subir_ticket'])) {
     
     $archivo_temporal = $_FILES['archivo_ticket']['tmp_name'];
     $nombre_original = $_FILES['archivo_ticket']['name'];
+    $tamano_archivo = $_FILES['archivo_ticket']['size'];
     
-    // Subir archivo (versión simplificada)
-    $resultado = subirTicketBascula($archivo_temporal, $nombre_original, $id_venta, $folio_ticket);
+    // Determinar tipo MIME real
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $tipo_mime = finfo_file($finfo, $archivo_temporal);
+    finfo_close($finfo);
     
-    if (isset($resultado['error'])) {
-        alert("Error al subir el ticket: " . $resultado['error'], 2, "V_venta&id=$id_venta");
+    // Tipos de archivo permitidos
+    $tipos_permitidos = [
+        'image/jpeg' => 'jpg',
+        'image/jpg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'application/pdf' => 'pdf'
+    ];
+    
+    if (!array_key_exists($tipo_mime, $tipos_permitidos)) {
+        alert("Tipo de archivo no permitido. Solo JPG, PNG, GIF o PDF", 2, "V_venta&id=$id_venta");
         exit;
     }
     
-    // Si hay archivo anterior, eliminarlo
-    $sql_anterior = "SELECT archivo_ticket FROM venta_flete WHERE id_venta = ?";
-    $stmt_anterior = $conn_mysql->prepare($sql_anterior);
-    $stmt_anterior->bind_param('i', $id_venta);
-    $stmt_anterior->execute();
-    $result_anterior = $stmt_anterior->get_result();
-    
-    if ($result_anterior->num_rows > 0) {
-        $anterior = $result_anterior->fetch_assoc();
-        if (!empty($anterior['archivo_ticket'])) {
-            eliminarTicketArchivo($anterior['archivo_ticket']);
-        }
+    // Validar tamaño (5MB máximo)
+    if ($tamano_archivo > (5 * 1024 * 1024)) {
+        alert("El archivo es demasiado grande. Máximo 5MB", 2, "V_venta&id=$id_venta");
+        exit;
     }
     
-    // Actualizar en base de datos
-    $sql_update = "UPDATE venta_flete 
-                   SET folio_ticket_bascula = ?,
-                       archivo_ticket = ?,
-                       fecha_subida_ticket = NOW()
-                   WHERE id_venta = ?";
-    
-    $stmt_update = $conn_mysql->prepare($sql_update);
-    if ($stmt_update) {
+    try {
+        // Si hay archivo anterior, eliminarlo
+        $sql_anterior = "SELECT archivo_ticket FROM venta_flete WHERE id_venta = ?";
+        $stmt_anterior = $conn_mysql->prepare($sql_anterior);
+        $stmt_anterior->bind_param('i', $id_venta);
+        $stmt_anterior->execute();
+        $result_anterior = $stmt_anterior->get_result();
+        
+        if ($result_anterior->num_rows > 0) {
+            $anterior = $result_anterior->fetch_assoc();
+            if (!empty($anterior['archivo_ticket'])) {
+                eliminarTicketArchivo($anterior['archivo_ticket']);
+            }
+        }
+        
+        // Preparar directorio y nombre de archivo
+        $directorio_base = __DIR__ . '/../uploads/ticket/';
+        if (!is_dir($directorio_base)) {
+            mkdir($directorio_base, 0755, true);
+        }
+        
+        // Crear nombre único para el archivo
+        $extension = $tipos_permitidos[$tipo_mime];
+        $folio_limpio = preg_replace('/[^a-zA-Z0-9]/', '_', $folio_ticket);
+        $nombre_archivo = 'ticket_' . $id_venta . '_' . $folio_limpio . '_' . time() . '.' . $extension;
+        $ruta_completa = $directorio_base . $nombre_archivo;
+        
+        // Procesar el archivo según su tipo
+        if ($tipo_mime === 'application/pdf') {
+            // Para PDFs, simplemente mover
+            if (!move_uploaded_file($archivo_temporal, $ruta_completa)) {
+                throw new Exception('Error al mover el archivo PDF');
+            }
+        } else {
+            // Para imágenes, optimizar
+            optimizarImagenParaHosting($archivo_temporal, $ruta_completa, $tipo_mime);
+        }
+        
+        // Actualizar en base de datos
+        $sql_update = "UPDATE venta_flete 
+                       SET folio_ticket_bascula = ?,
+                           archivo_ticket = ?,
+                           fecha_subida_ticket = NOW()
+                       WHERE id_venta = ?";
+        
+        $stmt_update = $conn_mysql->prepare($sql_update);
+        if (!$stmt_update) {
+            throw new Exception('Error al preparar la consulta SQL');
+        }
+        
         $stmt_update->bind_param('ssi', 
             $folio_ticket,
-            $resultado['nombre_archivo'],
+            $nombre_archivo,
             $id_venta
         );
         
         if ($stmt_update->execute()) {
-            alert("Ticket de báscula guardado correctamente", 1, "V_venta&id=$id_venta");
+            alert("✅ Ticket de báscula guardado correctamente", 1, "V_venta&id=$id_venta");
             exit;
         } else {
-            alert("Error al guardar en la base de datos", 2, "V_venta&id=$id_venta");
+            throw new Exception('Error al guardar en la base de datos: ' . $stmt_update->error);
         }
-    } else {
-        alert("Error en la consulta SQL", 2, "V_venta&id=$id_venta");
+        
+    } catch (Exception $e) {
+        alert("❌ Error al subir el ticket: " . $e->getMessage(), 2, "V_venta&id=$id_venta");
+        exit;
     }
 }
+
 
 // Procesar eliminación de ticket - VERSIÓN SIMPLIFICADA
 if (isset($_POST['eliminar_ticket'])) {
@@ -815,13 +898,14 @@ if (isset($_POST['eliminar_ticket'])) {
         $stmt_delete->bind_param('i', $id_venta);
         
         if ($stmt_delete->execute()) {
-            alert("Ticket de báscula eliminado correctamente", 1, "V_venta&id=$id_venta");
+            alert("✅ Ticket de báscula eliminado correctamente", 1, "V_venta&id=$id_venta");
             exit;
         } else {
-            alert("Error al eliminar el ticket", 2, "V_venta&id=$id_venta");
+            alert("❌ Error al eliminar el ticket de la base de datos", 2, "V_venta&id=$id_venta");
         }
     }
 }
+
 ?>
 
 <div class="container-fluid px-3 py-3" style="max-width: 1400px; margin: 0 auto;">
@@ -1289,6 +1373,53 @@ if (isset($_POST['eliminar_ticket'])) {
                                 <small class="text-muted d-block">Costo total</small>
                                 <strong class="text-info">$<?= number_format($total_flete, 2) ?></strong>
                             </div>
+                            
+                            <!-- Nuevo: Información del Ticket de Báscula -->
+                            <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): 
+                                $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket'] ?? '');
+                                $tiene_ticket = !empty($info_ticket);
+                            ?>
+                            <div class="col-12 mt-3 pt-3 border-top">
+                                <h6 class="small text-muted mb-2">
+                                    <i class="bi bi-scale me-1"></i>Ticket de Báscula
+                                </h6>
+                                
+                                <div class="row g-2 align-items-center">
+                                    <?php if (!empty($flete_data['folio_ticket_bascula'])): ?>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Folio</small>
+                                        <strong><?= htmlspecialchars($flete_data['folio_ticket_bascula']) ?></strong>
+                                    </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($flete_data['archivo_ticket'])): ?>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Archivo</small>
+                                        <?php if ($tiene_ticket): 
+                                        ?>
+                                        <button type="button" class="btn btn-sm btn-outline-info d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#ModalTicket">
+                                            Ver Ticket
+                                        </button>
+
+                                        <?php else: ?>
+                                        <span class="text-danger small">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                            Archivo no encontrado
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($flete_data['fecha_subida_ticket_formateada'])): ?>
+                                    <div class="col-12">
+                                        <small class="text-muted d-block">Subido</small>
+                                        <span class="small"><?= htmlspecialchars($flete_data['fecha_subida_ticket_formateada']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                            
                             <?php if ($flete_data['tipo_flete'] == 'Por tonelada'): ?>
                             <div class="col-12 mt-2">
                                 <small class="text-muted d-block">Precio por tonelada</small>
@@ -1298,66 +1429,6 @@ if (isset($_POST['eliminar_ticket'])) {
                         </div>
                     </div>
                     
-                    <!-- Ticket de báscula -->
-                    <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): ?>
-                    <div class="border rounded p-3 bg-success bg-opacity-10">
-                        <h6 class="fw-bold mb-3 text-success">
-                            <i class="bi bi-scale me-2"></i>Ticket de Báscula
-                        </h6>
-                        
-                        <?php if (!empty($flete_data['folio_ticket_bascula'])): ?>
-                        <div class="mb-2">
-                            <small class="text-muted d-block">Folio del ticket</small>
-                            <strong><?= htmlspecialchars($flete_data['folio_ticket_bascula']) ?></strong>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($flete_data['archivo_ticket'])): 
-                            $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket']);
-                        ?>
-                        <div>
-                            <small class="text-muted d-block">Archivo adjunto</small>
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <?php if ($info_ticket && $info_ticket['existe']): ?>
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-primary me-2" 
-                                            onclick="verTicket('<?= $info_ticket['url'] ?>', '<?= $info_ticket['es_imagen'] ? 'imagen' : 'pdf' ?>', '<?= addslashes($info_ticket['nombre']) ?>')">
-                                        <i class="bi bi-eye me-1"></i>
-                                        Ver
-                                    </button>
-                                    <a href="<?= $info_ticket['url'] ?>" 
-                                       download
-                                       class="btn btn-sm btn-outline-success">
-                                        <i class="bi bi-download me-1"></i>
-                                        Descargar
-                                    </a>
-                                    <?php else: ?>
-                                    <span class="text-danger small">
-                                        <i class="bi bi-exclamation-triangle me-1"></i>
-                                        Archivo no encontrado
-                                    </span>
-                                    <?php endif; ?>
-                                </div>
-                                <?php if ($info_ticket): ?>
-                                <small class="text-muted">
-                                    <?= strtoupper($info_ticket['extension']) ?>
-                                </small>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($flete_data['fecha_subida_ticket_formateada'])): ?>
-                        <div class="mt-2 pt-2 border-top">
-                            <small class="text-muted">
-                                <i class="bi bi-clock me-1"></i>
-                                Subido: <?= htmlspecialchars($flete_data['fecha_subida_ticket_formateada']) ?>
-                            </small>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php endif; ?>
                     
                     <!-- Botón para editar -->
                     <div class="mt-4 pt-3 border-top text-center">
@@ -1614,7 +1685,38 @@ if (isset($_POST['eliminar_ticket'])) {
         </div>
     </div>
 </div>
+ <div class="modal fade" id="ModalTicket" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header">
+            <h1 class="modal-title fs-5" id="exampleModalLabel">Ticket de báscula <?= $flete_data['folio_ticket_bascula'] ?></h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <?php
+            $nombre_archivo = $flete_data['archivo_ticket'];
+            // Usando pathinfo (más robusto y recomendado)
+            $extension_pathinfo = pathinfo($nombre_archivo, PATHINFO_EXTENSION);
+            if ($extension_pathinfo == 'pdf') {
+                ?>
+                <iframe src="uploads/ticket/<?= $flete_data['archivo_ticket'] ?>" 
+                        style="width:100%; height:500px;" frameborder="0">
+                        </iframe>
 
+                <?php
+            } else {
+                ?>
+                <img src="uploads/ticket/<?= $flete_data['archivo_ticket'] ?>" alt="Ticket de Báscula" class="img-fluid">  
+                <?php
+            }
+            ?>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+        </div>
+    </div>
+</div>
 <!-- Modal para editar datos del fletero -->
 <?php if ($flete->num_rows > 0): ?>
 <div class="modal fade" id="modalFletero" tabindex="-1" aria-labelledby="modalFleteroLabel" aria-hidden="true">
@@ -1766,24 +1868,10 @@ if (isset($_POST['eliminar_ticket'])) {
                                 ?>
                                 <p class="mb-1">
                                     <strong>Archivo:</strong> 
-                                    <?php
-                                    $existe = !empty($info_ticket) && !empty($info_ticket['existe']);
-                                    $tipo = (!empty($info_ticket) && !empty($info_ticket['es_imagen'])) ? 'imagen' : 'pdf';
-                                    $url_js = addslashes($info_ticket['url'] ?? '#');
-                                    $nombre_js = addslashes($info_ticket['nombre'] ?? $flete_data['archivo_ticket']);
-                                    $icon = (!empty($info_ticket['extension']) && strtolower($info_ticket['extension']) === 'pdf') ? 'pdf' : 'image';
-                                    ?>
-                                    <a href="#" 
-                                        class="text-decoration-none <?= $existe ? '' : 'text-muted' ?>" 
-                                        onclick="<?= $existe ? "verTicket('{$url_js}','{$tipo}','{$nombre_js}');" : "return false;" ?> return false;">
-                                         <i class="bi bi-file-earmark-<?= $icon ?> me-1"></i>
+                                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#ModalTicket">
+                                        <i class="bi bi-file-earmark-image me-1"></i>
                                          <?= htmlspecialchars($info_ticket['nombre'] ?? $flete_data['archivo_ticket']) ?>
-                                    </a>
-                                    <?php if (!empty($info_ticket)): ?>
-                                        <small class="text-muted">
-                                            (<?= strtoupper($info_ticket['extension']) ?> - <?= $info_ticket['tamano_formateado'] ?>)
-                                        </small>
-                                    <?php endif; ?>
+                                    </button>
                                 </p>
                                 <?php endif; ?>
                                 
@@ -1827,9 +1915,9 @@ if (isset($_POST['eliminar_ticket'])) {
                                                class="form-control" 
                                                id="archivo_ticket" 
                                                name="archivo_ticket"
-                                               accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tiff">
+                                               accept=".jpg,.jpeg,.png,.gif,.bmp,.tiff">
                                         <div class="form-text">
-                                            Sube el ticket escaneado o fotografía (PDF, JPG, PNG, GIF, BMP, TIFF) - Máximo 5MB
+                                            Sube el ticket fotografía (JPG, PNG, GIF, BMP, TIFF) - Máximo 5MB
                                         </div>
                                         
                                         <!-- Información del archivo actual -->
@@ -1841,7 +1929,6 @@ if (isset($_POST['eliminar_ticket'])) {
                                                 Archivo actual: 
                                                 <strong><?= $flete_data['archivo_ticket'] ?></strong>
                                                 <?php if (!empty($info_ticket)): ?>
-                                                    (<?= strtoupper($info_ticket['extension']) ?> - <?= $info_ticket['tamano_formateado'] ?>)
                                                 <?php endif; ?>
                                             </small>
                                             <br>
@@ -1926,247 +2013,7 @@ if (isset($_POST['eliminar_ticket'])) {
     </div>
 </div>
 <?php endif; ?>
-<!-- Modal para visualizar tickets (imágenes y PDFs) -->
-<div class="modal fade" id="modalVerTicket" tabindex="-1" aria-labelledby="modalVerTicketLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="modalVerTicketLabel">
-                    <i class="bi bi-file-earmark me-2"></i>Visualizar Ticket de Báscula
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-0">
-                <!-- Contenedor para imagen -->
-                <div id="ticket-imagen-container" class="d-none text-center p-3">
-                    <img id="ticket-imagen" src="" class="img-fluid" style="max-height: 70vh;" 
-                         alt="Ticket de Báscula">
-                    <div class="mt-3">
-                        <a href="#" id="descargar-imagen" class="btn btn-success">
-                            <i class="bi bi-download me-2"></i>Descargar Imagen
-                        </a>
-                    </div>
-                </div>
-                
-                <!-- Contenedor para PDF -->
-                <div id="ticket-pdf-container" class="d-none" style="height: 70vh;">
-                    <iframe id="ticket-pdf" src="" frameborder="0" 
-                            style="width: 100%; height: 100%;"></iframe>
-                    <div class="mt-3 text-center">
-                        <a href="#" id="descargar-pdf" class="btn btn-success">
-                            <i class="bi bi-download me-2"></i>Descargar PDF
-                        </a>
-                    </div>
-                </div>
-                
-                <!-- Contenedor para error -->
-                <div id="ticket-error-container" class="d-none text-center p-5">
-                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
-                    <h4 class="mt-3">No se puede visualizar el archivo</h4>
-                    <p>El archivo no está disponible para visualización.</p>
-                    <a href="#" id="descargar-generico" class="btn btn-primary">
-                        <i class="bi bi-download me-2"></i>Intentar Descargar
-                    </a>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle me-2"></i>Cerrar
-                </button>
-                <button type="button" class="btn btn-primary" onclick="imprimirTicket()">
-                    <i class="bi bi-printer me-2"></i>Imprimir
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-<style>
-:root {
-    --erp-border-radius: 10px;
-    --erp-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    --erp-shadow-hover: 0 4px 12px rgba(0,0,0,0.12);
-}
 
-body {
-    background-color: #f8fafc;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-.card {
-    border-radius: var(--erp-border-radius);
-    border: 1px solid #e2e8f0;
-    box-shadow: var(--erp-shadow);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card:hover {
-    box-shadow: var(--erp-shadow-hover);
-}
-
-.card-header {
-    background-color: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.badge {
-    font-weight: 500;
-    padding: 0.35em 0.65em;
-    border-radius: 6px;
-}
-
-.btn {
-    border-radius: 8px;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-}
-
-.btn-sm {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.875rem;
-}
-
-.alert-sm {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    border-radius: 8px;
-}
-
-.border-start {
-    border-left-width: 3px !important;
-}
-
-/* Colores personalizados */
-.bg-primary.bg-opacity-10 {
-    background-color: rgba(13, 110, 253, 0.1) !important;
-}
-
-.bg-success.bg-opacity-10 {
-    background-color: rgba(25, 135, 84, 0.1) !important;
-}
-
-.bg-info.bg-opacity-10 {
-    background-color: rgba(13, 202, 240, 0.1) !important;
-}
-
-.bg-warning.bg-opacity-10 {
-    background-color: rgba(255, 193, 7, 0.1) !important;
-}
-
-/* Tipografía mejorada */
-h1, h2, h3, h4, h5, h6 {
-    font-weight: 600;
-}
-
-.text-muted {
-    color: #64748b !important;
-}
-
-/* Mejoras para tablas */
-.table {
-    --bs-table-bg: transparent;
-    --bs-table-striped-bg: #f8f9fa;
-}
-
-.table th {
-    font-weight: 600;
-    color: #475569;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-size: 0.75rem;
-    border-bottom: 2px solid #e2e8f0;
-}
-
-.table td {
-    padding: 1rem 0.75rem;
-    vertical-align: middle;
-    border-color: #e2e8f0;
-}
-
-/* Mejoras para badges */
-.badge.bg-opacity-20 {
-    opacity: 1;
-}
-
-/* Mejoras para modal */
-.modal-content {
-    border-radius: 12px;
-    border: none;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.modal-header {
-    border-radius: 12px 12px 0 0;
-    padding: 1.25rem 1.5rem;
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-/* Responsividad mejorada */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding: 1rem !important;
-    }
-    
-    .card-body {
-        padding: 1rem !important;
-    }
-    
-    .btn {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-    
-    .d-flex {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .modal-dialog {
-        margin: 0.5rem;
-    }
-}
-
-/* Efectos hover */
-.btn-outline-primary:hover {
-    transform: translateY(-1px);
-}
-
-.card:hover {
-    transform: translateY(-2px);
-}
-
-/* Scroll personalizado */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-/* Animaciones sutiles */
-.fade-in {
-    animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-</style>
 
 <script>
 // Script para mejor experiencia de usuario
@@ -2425,103 +2272,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-</script>
-<script>
-// Función MEJORADA para ver el ticket en modal
-function verTicket(url, tipo, nombreArchivo = '') {
-    // Limpiar contenedores anteriores
-    document.getElementById('ticket-imagen-container').classList.add('d-none');
-    document.getElementById('ticket-pdf-container').classList.add('d-none');
-    document.getElementById('ticket-error-container').classList.add('d-none');
-    
-    // Configurar URLs de descarga
-    document.getElementById('descargar-imagen').href = url;
-    document.getElementById('descargar-pdf').href = url;
-    document.getElementById('descargar-generico').href = url;
-    
-    if (tipo === 'imagen') {
-        // Para imágenes: mostrar en modal
-        document.getElementById('ticket-imagen-container').classList.remove('d-none');
-        document.getElementById('ticket-imagen').src = url;
-        
-        // Actualizar título del modal
-        document.getElementById('modalVerTicketLabel').innerHTML = 
-            '<i class="bi bi-image me-2"></i>Ticket de Báscula - ' + (nombreArchivo || 'Imagen');
-        
-    } else if (tipo === 'pdf') {
-        // Para PDF: mostrar en iframe
-        document.getElementById('ticket-pdf-container').classList.remove('d-none');
-        document.getElementById('ticket-pdf').src = url + '#view=FitH&toolbar=0&navpanes=0';
-        
-        // Actualizar título del modal
-        document.getElementById('modalVerTicketLabel').innerHTML = 
-            '<i class="bi bi-file-earmark-pdf me-2"></i>Ticket de Báscula - ' + (nombreArchivo || 'PDF');
-        
-    } else {
-        // Para otros tipos: mostrar mensaje de error
-        document.getElementById('ticket-error-container').classList.remove('d-none');
-        
-        // Actualizar título del modal
-        document.getElementById('modalVerTicketLabel').innerHTML = 
-            '<i class="bi bi-exclamation-triangle me-2"></i>No se puede visualizar';
-    }
-    
-    // Mostrar el modal
-    const modal = new bootstrap.Modal(document.getElementById('modalVerTicket'));
-    modal.show();
-}
 
-// Función para imprimir el ticket actual
-function imprimirTicket() {
-    const imagen = document.getElementById('ticket-imagen');
-    const pdfIframe = document.getElementById('ticket-pdf');
-    
-    if (!imagen.classList.contains('d-none')) {
-        // Imprimir imagen
-        const ventanaImpresion = window.open('', '_blank');
-        ventanaImpresion.document.write(`
-            <html>
-                <head>
-                    <title>Imprimir Ticket</title>
-                    <style>
-                        body { margin: 0; padding: 20px; }
-                        img { max-width: 100%; height: auto; }
-                        @media print {
-                            body { padding: 0; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <img src="${imagen.src}">
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                            setTimeout(function() {
-                                window.close();
-                            }, 500);
-                        };
-                    <\/script>
-                </body>
-            </html>
-        `);
-        ventanaImpresion.document.close();
-        
-    } else if (!pdfIframe.classList.contains('d-none')) {
-        // Imprimir PDF (el iframe ya tiene su propio control de impresión)
-        try {
-            pdfIframe.contentWindow.print();
-        } catch (e) {
-            alert('No se pudo imprimir el PDF. Intenta descargarlo e imprimirlo manualmente.');
-        }
-    }
-}
-
-// Función para rotar imagen (opcional)
-function rotarImagen(grados) {
-    const imagen = document.getElementById('ticket-imagen');
-    const rotacionActual = parseInt(imagen.style.transform.replace('rotate(', '').replace('deg)', '')) || 0;
-    const nuevaRotacion = rotacionActual + grados;
-    imagen.style.transform = `rotate(${nuevaRotacion}deg)`;
-    imagen.style.transition = 'transform 0.3s ease';
-}
 </script>

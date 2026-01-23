@@ -6,7 +6,7 @@ if(!isset($p)){
   $p = $p;
 }
 ?>
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html data-bs-theme="light" lang="es">
 <head>
     <meta charset="utf-8">
