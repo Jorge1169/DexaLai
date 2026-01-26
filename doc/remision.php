@@ -123,6 +123,7 @@ ob_start();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remisión <?= $venta['folio_compuesto'] ?></title>
+    <link rel="shortcut icon" href="../img/logos/logo.png"/>
     <style>
         /* Estilos para impresión */
         @media print {
@@ -571,8 +572,8 @@ ob_start();
                 <span><?= number_format($total_kilos, 2) ?> kg</span>
             </div>
             <div class="total-row total-final">
-                <span>Total rollos:</span>
-                <span><?= number_format($total_pacas, 0) ?> rollos</span>
+                <span>Total pacas:</span>
+                <span><?= number_format($total_pacas, 0) ?> pacas</span>
             </div>
         </div>
         
