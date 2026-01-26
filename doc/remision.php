@@ -5,7 +5,35 @@ session_start();
 
 // Incluir conexión a la base de datos (ajusta la ruta según tu estructura)
 require_once '../config/conexiones.php';
-
+// ============================================
+// 1. PROCESAR ACTUALIZACIÓN DE ESTADO (POST)
+// ============================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'actualizar_remision') {
+    // Verificar ID de venta
+    if (!isset($_POST['id_venta']) || empty($_POST['id_venta'])) {
+        die(json_encode(['success' => false, 'message' => 'ID de venta no válido']));
+    }
+    
+    $id_venta = intval($_POST['id_venta']);
+    
+    // Actualizar estado_remision de 1 a 0
+    $sql = "UPDATE ventas SET estado_remision = 0 WHERE id_venta = ? AND estado_remision = 1";
+    $stmt = $conn_mysql->prepare($sql);
+    $stmt->bind_param('i', $id_venta);
+    
+    if ($stmt->execute()) {
+        if ($stmt->affected_rows > 0) {
+            echo json_encode(['success' => true, 'message' => 'Documento actualizado a copia']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'El documento ya era una copia']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Error al actualizar']);
+    }
+    
+    $stmt->close();
+    exit; // Terminar ejecución aquí para la petición AJAX
+}
 // Verificar que se haya pasado un ID de venta
 if (!isset($_GET['id']) || empty($_GET['id'])) {
     die("Error: No se especificó el ID de la venta");
@@ -16,6 +44,7 @@ $id_venta = intval($_GET['id']);
 // Obtener datos de la venta
 $sql_venta = "SELECT 
     v.*,
+    v.estado_remision as estado_remision,
     CONCAT('V-', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) as folio_compuesto,
     c.cod as cod_cliente, c.nombre as nombre_cliente, c.rfc as rfc_cliente,
     a.cod as cod_almacen, a.nombre as nombre_almacen,
@@ -116,6 +145,16 @@ header('Content-Type: text/html; charset=utf-8');
 
 // Iniciar buffer de salida
 ob_start();
+
+// SABER SI ES COPIA O ORIGINAL
+$estado = $venta['estado_remision'];
+
+if ($estado == '1') {
+    $tipo_copia = 'ORIGINAL';
+} else {
+    $tipo_copia = 'COPIA';
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -140,6 +179,27 @@ ob_start();
                 padding: 0;
                 color: #000;
             }
+            body:after {
+                content: "<?= $tipo_copia ?>"; 
+                font-size: 10em;  
+                color: rgba(52, 166, 214, 0.2);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                transform: rotate(-60deg);
+                -webkit-pointer-events: none;
+                -moz-pointer-events: none;
+                -ms-pointer-events: none;
+                -o-pointer-events: none;
+                pointer-events: none;
+            }
+
             
             .no-print {
                 display: none !important;
@@ -448,6 +508,7 @@ ob_start();
         <button onclick="window.close()" style="background: #6c757d; margin-left: 10px;">
             <i class="bi bi-x-circle"></i> Cerrar
         </button>
+        <h1>Estado del documento: <?= $tipo_copia ?></h1>
     </div>  
     <div class="container">
         <!-- Encabezado con logo -->
@@ -614,20 +675,106 @@ ob_start();
     </div>
 
     <script>
-    // Auto-imprimir al cargar (opcional)
+ // Función para manejar la impresión
+    function imprimirDocumento() {
+        <?php if ($venta['estado_remision'] == '1'): ?>
+        // Si es original, actualizar primero
+        actualizarEstadoRemision();
+        <?php else: ?>
+        // Si ya es copia, solo imprimir
+        window.print();
+        <?php endif; ?>
+    }
+    
+    // Función para actualizar estado
+    function actualizarEstadoRemision() {
+        // Mostrar mensaje de carga
+        document.getElementById('mensaje-estado').innerHTML = 'Actualizando estado del documento...';
+        document.getElementById('mensaje-estado').style.display = 'block';
+        document.getElementById('mensaje-estado').style.color = 'blue';
+        
+        // Enviar petición AJAX a la MISMA página
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'accion=actualizar_remision&id_venta=<?= $id_venta ?>'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Actualizar mensaje y mostrar como COPIA
+                document.getElementById('mensaje-estado').innerHTML = '✓ Documento actualizado a COPIA';
+                document.getElementById('mensaje-estado').style.color = 'green';
+                
+                // Cambiar el título si es necesario
+                var tituloEstado = document.querySelector('.print-button h1');
+                if (tituloEstado) {
+                    tituloEstado.innerHTML = 'Estado del documento: COPIA';
+                }
+                
+                // Cambiar la marca de agua en el CSS
+                var style = document.createElement('style');
+                style.innerHTML = '@media print { body:after { content: "COPIA"; } }';
+                document.head.appendChild(style);
+                
+                // Imprimir después de actualizar
+                setTimeout(function() {
+                    window.print();
+                }, 500);
+                
+            } else {
+                document.getElementById('mensaje-estado').innerHTML = '✗ ' + data.message;
+                document.getElementById('mensaje-estado').style.color = 'orange';
+                
+                // Imprimir de todos modos
+                setTimeout(function() {
+                    window.print();
+                }, 1000);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('mensaje-estado').innerHTML = '✗ Error de conexión';
+            document.getElementById('mensaje-estado').style.color = 'red';
+            
+            // Imprimir de todos modos
+            setTimeout(function() {
+                window.print();
+            }, 1000);
+        });
+    }
+    
+    // Auto-imprimir al cargar (si quieres mantener esta opción)
     window.onload = function() {
-        // Descomentar si quieres que se imprima automáticamente
-        // setTimeout(function() {
-        //     window.print();
-        // }, 1000);
+        // Si quieres que se imprima automáticamente al cargar
+        // descomenta esta línea:
+        //setTimeout(function() { imprimirDocumento(); }, 1000);
     };
     
-    // Después de imprimir, cerrar ventana (opcional)
+    // Opción alternativa: Actualizar al imprimir automáticamente
+    window.onbeforeprint = function() {
+        <?php if ($venta['estado_remision'] == '1'): ?>
+        // Si es original y se va a imprimir, actualizar silenciosamente
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'accion=actualizar_remision&id_venta=<?= $id_venta ?>',
+            // No esperar respuesta para no bloquear la impresión
+            keepalive: true
+        });
+        <?php endif; ?>
+    };
+    
+    // Después de imprimir, opcionalmente cerrar
     window.onafterprint = function() {
-        // Descomentar si quieres cerrar después de imprimir
+        // Opcional: cerrar después de imprimir
         // setTimeout(function() {
         //     window.close();
-        // }, 500);
+        // }, 1000);
     };
     </script>
 </body>
