@@ -761,7 +761,7 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                                         <div class='fw-bold text-danger'>Venta</div>
                                                         <small class='text-muted'>
                                                             <i class='bi bi-person me-1'></i>
-                                                            {$mov['cod_cliente']} - {$mov['nombre_cliente']}
+                                                            {$mov['cod_cliente']} - {$mov['nombre_cliente']} - Folio: {$mov['folio_venta']}
                                                         </small>
                                                     ";
                                                 } else {
