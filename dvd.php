@@ -128,7 +128,7 @@
     <!-- Pantalla de carga DVD -->
     <div id="screensaver">
         <div id="dvd-logo">
-            <img id="logo-img" src="img/sujeto/sujeto3.png" alt="Logo DVD">
+            <img id="logo-img" src="img/sujeto/sujeto2.png" alt="Logo DVD">
         </div>
     </div>
 

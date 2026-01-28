@@ -9,7 +9,27 @@ ini_set('upload_max_filesize', '10M');
 ini_set('post_max_size', '12M');
 ini_set('memory_limit', '256M');
 ini_set('max_execution_time', '300');
-
+// ============================================
+// FUNCIÓN SEGURA PARA SUBIDA (INCLUYE PDFs)
+// ============================================
+function save_uploaded_stream($tmpPath, $destPath) {
+    // Intentar con streams (esto crea un nuevo archivo en la ruta destino)
+    $in  = @fopen($tmpPath, 'rb');
+    if ($in === false) {
+        return false;
+    }
+    $out = @fopen($destPath, 'wb');
+    if ($out === false) {
+        fclose($in);
+        return false;
+    }
+    // Copiar contenido
+    $copied = stream_copy_to_stream($in, $out);
+    fclose($in);
+    fclose($out);
+    // Verificar que copiado > 0 y que el archivo destino existe
+    return ($copied !== false && $copied > 0 && file_exists($destPath));
+}
 // Función para optimizar imágenes automáticamente
 function optimizarImagenParaHosting($ruta_temporal, $ruta_destino, $tipo_mime) {
     $tamaño_original = filesize($ruta_temporal);
@@ -431,70 +451,135 @@ if (isset($_POST['guardar_numeros_productos'])) {
             $tamano_comprobante = null;
             
             if (isset($_FILES['productos']['tmp_name'][$index]['comprobante']) 
-                && $_FILES['productos']['tmp_name'][$index]['comprobante'] != '') {
-                
-                $file = $_FILES['productos'];
-                $tmp_name = $file['tmp_name'][$index]['comprobante'];
-                $file_name = $file['name'][$index]['comprobante'];
-                $file_size = $file['size'][$index]['comprobante'];
-                $file_error = $file['error'][$index]['comprobante'];
-                
-                // Determinar tipo MIME real
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $file_type = finfo_file($finfo, $tmp_name);
-                finfo_close($finfo);
-                
-                // Validar tipo
-                if (!array_key_exists($file_type, $allowed_types)) {
-                    throw new Exception("Tipo de archivo '$file_type' no permitido para '$file_name'");
-                }
-                
-                // Validar errores de subida
-                if ($file_error !== UPLOAD_ERR_OK) {
-                    throw new Exception("Error al subir el archivo '$file_name' (código: $file_error)");
-                }
-                
-                // Generar nombre único para el archivo
-                $extension = $allowed_types[$file_type];
-                $new_filename = 'comprobante_' . $id_captacion . '_' . $id_detalle . '_' . time() . '.' . $extension;
-                $upload_path = $upload_dir . $new_filename;
-                
-                try {
-                    // Si es PDF, solo verificar tamaño (no podemos optimizar PDFs)
-                    if ($file_type === 'application/pdf') {
-                        if ($file_size > 1024 * 1024) {
-                            throw new Exception("El PDF es demasiado grande (" . formatBytes($file_size) . "). Máximo 1MB.");
-                        }
-                        move_uploaded_file($tmp_name, $upload_path);
-                        $tamano_comprobante = $file_size;
-                    } 
-                    // Si es imagen, optimizarla
-                    elseif (strpos($file_type, 'image/') === 0) {
-                        optimizarImagenParaHosting($tmp_name, $upload_path, $file_type);
-                        $tamano_comprobante = filesize($upload_path);
-                    }
-                    
-                    $comprobante_file = $new_filename;
-                    $tipo_comprobante = $file_type;
-                    
-                    // Eliminar archivo anterior si existe
-                    $sql_old = "SELECT comprobante_ticket FROM captacion_detalle WHERE id_detalle = ?";
-                    $stmt_old = $conn_mysql->prepare($sql_old);
-                    $stmt_old->bind_param('i', $id_detalle);
-                    $stmt_old->execute();
-                    $result_old = $stmt_old->get_result();
-                    
-                    if ($row_old = $result_old->fetch_assoc()) {
-                        $old_file = $row_old['comprobante_ticket'];
-                        if ($old_file && file_exists($upload_dir . $old_file)) {
-                            unlink($upload_dir . $old_file);
-                        }
-                    }
-                    
-                } catch (Exception $e) {
-                    throw new Exception("Error procesando '$file_name': " . $e->getMessage());
-                }
+    && $_FILES['productos']['tmp_name'][$index]['comprobante'] != '') {
+    
+    $file = $_FILES['productos'];
+    $tmp_name = $file['tmp_name'][$index]['comprobante'];
+    $file_name = $file['name'][$index]['comprobante'];
+    $file_size = $file['size'][$index]['comprobante'];
+    $file_error = $file['error'][$index]['comprobante'];
+    
+    // Determinar tipo MIME real
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $file_type = finfo_file($finfo, $tmp_name);
+    finfo_close($finfo);
+    
+    // Validar tipo
+    if (!array_key_exists($file_type, $allowed_types)) {
+        throw new Exception("Tipo de archivo '$file_type' no permitido para '$file_name'");
+    }
+    
+    // Validar errores de subida
+    if ($file_error !== UPLOAD_ERR_OK) {
+        $errores_upload = [
+            UPLOAD_ERR_INI_SIZE => 'Supera el tamaño máximo permitido por PHP',
+            UPLOAD_ERR_FORM_SIZE => 'Supera el tamaño máximo del formulario',
+            UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
+            UPLOAD_ERR_NO_FILE => 'No se seleccionó ningún archivo',
+            UPLOAD_ERR_NO_TMP_DIR => 'No existe directorio temporal',
+            UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir en el disco',
+            UPLOAD_ERR_EXTENSION => 'Extensión de PHP detuvo la subida'
+        ];
+        throw new Exception("Error al subir '$file_name': " . 
+                           ($errores_upload[$file_error] ?? "Error desconocido (código: $file_error)"));
+    }
+    
+    // Verificar que el archivo temporal existe
+    if (!file_exists($tmp_name)) {
+        throw new Exception("El archivo temporal no existe o fue eliminado");
+    }
+    
+    // Generar nombre único para el archivo
+    $extension = $allowed_types[$file_type];
+    $new_filename = 'comprobante_' . $id_captacion . '_' . $id_detalle . '_' . time() . '_' . uniqid() . '.' . $extension;
+    $upload_path = $upload_dir . $new_filename;
+    
+    try {
+        // Si es PDF, usar método seguro con fallback
+        if ($file_type === 'application/pdf') {
+            // Validar tamaño máximo (2MB para PDFs)
+            $max_pdf_size = 2 * 1024 * 1024; // 2MB
+            if ($file_size > $max_pdf_size) {
+                throw new Exception("El PDF es demasiado grande (" . formatBytes($file_size) . "). Máximo 2MB.");
             }
+            
+            // Validar que sea un PDF real
+            $pdf_header = file_get_contents($tmp_name, false, null, 0, 5);
+            if (strpos($pdf_header, '%PDF-') !== 0) {
+                throw new Exception("El archivo no parece ser un PDF válido");
+            }
+            
+            // Intentar con método seguro primero
+            echo "<script>console.log('Intentando subir PDF con save_uploaded_stream...');</script>";
+            
+            if (save_uploaded_stream($tmp_name, $upload_path)) {
+                echo "<script>console.log('PDF subido exitosamente con save_uploaded_stream');</script>";
+                $tamano_comprobante = filesize($upload_path);
+            } 
+            // Fallback a move_uploaded_file
+            else if (move_uploaded_file($tmp_name, $upload_path)) {
+                echo "<script>console.log('PDF subido con move_uploaded_file (fallback)');</script>";
+                $tamano_comprobante = filesize($upload_path);
+            } 
+            // Último intento: copia simple
+            else if (copy($tmp_name, $upload_path)) {
+                echo "<script>console.log('PDF subido con copy (último recurso)');</script>";
+                $tamano_comprobante = filesize($upload_path);
+            } 
+            else {
+                throw new Exception("No se pudo guardar el PDF en el servidor. Verifica permisos de escritura.");
+            }
+            
+            // Verificar que el archivo final existe y tiene contenido
+            if (!file_exists($upload_path) || filesize($upload_path) === 0) {
+                @unlink($upload_path); // Limpiar archivo vacío
+                throw new Exception("El PDF se guardó pero está vacío o no se pudo verificar");
+            }
+        } 
+        // Si es imagen, optimizarla
+        elseif (strpos($file_type, 'image/') === 0) {
+            try {
+                optimizarImagenParaHosting($tmp_name, $upload_path, $file_type);
+                $tamano_comprobante = filesize($upload_path);
+            } catch (Exception $e) {
+                // Si falla la optimización, intentar subir la imagen original
+                echo "<script>console.log('Falló optimización, intentando subir imagen original...');</script>";
+                if ($file_size > 1024 * 1024) {
+                    throw new Exception("La imagen es muy grande (" . formatBytes($file_size) . 
+                                      ") y no se pudo optimizar. Comprímela manualmente a menos de 1MB.");
+                }
+                if (!move_uploaded_file($tmp_name, $upload_path)) {
+                    throw new Exception("No se pudo subir la imagen: " . $e->getMessage());
+                }
+                $tamano_comprobante = $file_size;
+            }
+        }
+        
+        $comprobante_file = $new_filename;
+        $tipo_comprobante = $file_type;
+        
+        // Eliminar archivo anterior si existe
+        $sql_old = "SELECT comprobante_ticket FROM captacion_detalle WHERE id_detalle = ?";
+        $stmt_old = $conn_mysql->prepare($sql_old);
+        $stmt_old->bind_param('i', $id_detalle);
+        $stmt_old->execute();
+        $result_old = $stmt_old->get_result();
+        
+        if ($row_old = $result_old->fetch_assoc()) {
+            $old_file = $row_old['comprobante_ticket'];
+            if ($old_file && file_exists($upload_dir . $old_file)) {
+                @unlink($upload_dir . $old_file);
+            }
+        }
+        
+    } catch (Exception $e) {
+        // Limpiar archivo si se creó pero hubo error
+        if (isset($upload_path) && file_exists($upload_path)) {
+            @unlink($upload_path);
+        }
+        throw new Exception("Error procesando '$file_name': " . $e->getMessage());
+    }
+}
             
             // Construir consulta SQL dinámicamente
             if ($comprobante_file) {
@@ -664,9 +749,6 @@ if (isset($_POST['guardar_factura_flete'])) {
     }
 }
 
-// ============================================
-// CONTINÚA CON EL CÓDIGO ORIGINAL
-// ============================================
 ?>
 <div class="container py-3 px-lg-4">
     <!-- Header Principal -->
@@ -1334,7 +1416,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Números:</strong> No se pueden repetir con el mismo proveedor.<br>
-                        <strong>Comprobantes:</strong> Máximo 1MB por archivo. Formatos: JPG, PNG, PDF, WebP, GIF.
+                        <strong>Comprobantes:</strong> Máximo 1MB por archivo. Formatos: JPG, PDF, PNG, WebP, GIF.
                         Las imágenes grandes se optimizarán automáticamente.
                     </div>
 

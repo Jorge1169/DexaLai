@@ -497,7 +497,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                         </div>
                         <div class="col-md-3" id="TipoFlete">
                             <label for="tipo_flete" class="form-label">Tipo de Flete</label>
-                            <select class="form-select" name="tipo_flete" id="tipo_flete" onchange="cargarPrecioFleteVenta()">
+                            <select class="form-select" name="tipo_flete" id="tipo_flete" onchange="cargarPrecioFleteVenta()" required>
                                 <option selected disabled value="">Selecciona tipo...</option>
                                 <option value="MFT">Por tonelada (MEO)</option>
                                 <option value="MFV">Por viaje (MEO)</option>
