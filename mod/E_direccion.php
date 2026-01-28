@@ -37,9 +37,8 @@ if (isset($_POST['guardarDireccion'])) {
             'obs' => $_POST['obs'] ?? '',
             'id_direc' => $id_direccion
         ];
-
+        
         // Solo para zonas MEO: agregar datos de dirección física
-        if ($tipoZonaActual == 'MEO') {
             $DireccionData['calle'] = $_POST['calle'] ?? '';
             $DireccionData['c_postal'] = $_POST['c_postal'] ?? '';
             $DireccionData['numext'] = $_POST['numext'] ?? '';
@@ -47,7 +46,6 @@ if (isset($_POST['guardarDireccion'])) {
             $DireccionData['pais'] = $_POST['pais'] ?? 'México';
             $DireccionData['estado'] = $_POST['estado'] ?? '';
             $DireccionData['colonia'] = $_POST['colonia'] ?? '';
-        }
 
         // Actualizar bodega
         $setParts = [];
@@ -146,7 +144,7 @@ if (isset($_POST['guardarDireccion'])) {
                 </div>
 
                 <!-- SECCIÓN DE DIRECCIÓN FÍSICA (solo para MEO) -->
-                <?php if ($tipoZonaActual == 'MEO'): ?>
+                
                 <div class="form-section mt-4">
                     <h5 class="section-header text-info">
                         <i class="bi bi-geo-alt me-2"></i> Dirección Física
@@ -222,7 +220,6 @@ if (isset($_POST['guardarDireccion'])) {
                         </div>
                     </div>
                 </div>
-                <?php endif; ?>
 
                 <!-- Botones de acción -->
                 <div class="d-flex justify-content-md-end mt-4">

@@ -135,9 +135,7 @@ $tipoZonaActual = obtenerTipoZonaActual($conn_mysql); // Obtener tipo de zona ac
                             <th>Código</th>
                             <th>Nombre</th>
                             <th>Contacto</th>
-                            <?php if ($tipoZonaActual == 'MEO'): ?>
                             <th>Dirección</th>
-                            <?php endif; ?>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -161,7 +159,7 @@ $tipoZonaActual = obtenerTipoZonaActual($conn_mysql); // Obtener tipo de zona ac
                                         <strong>Email:</strong> <?= $direccion['email'] ?>
                                     </div>
                                 </td>
-                                <?php if ($tipoZonaActual == 'MEO'): ?>
+                                
                                 <td>
                                     <?php if (!empty($direccion['calle']) || !empty($direccion['colonia'])): ?>
                                     <div class="small">
@@ -185,7 +183,6 @@ $tipoZonaActual = obtenerTipoZonaActual($conn_mysql); // Obtener tipo de zona ac
                                         <span class="text-muted small">Sin dirección registrada</span>
                                     <?php endif; ?>
                                 </td>
-                                <?php endif; ?>
                                 <td class="text-center">
                                     <div class="btn-group justify-content-center">
                                         <a href="?p=E_direccion_p&id=<?= $direccion['id_direc'] ?>" class="btn btn-sm btn-outline-primary" title="Editar">

@@ -137,9 +137,7 @@ if ($id_cliente) {
                         <th>Código</th>
                         <th>Nombre</th>
                         <th>Contacto</th>
-                        <?php if ($tipoZonaActual == 'MEO'): ?>
                         <th>Dirección</th>
-                        <?php endif; ?>
                         <th>Observación</th>
                         <th>Acciones</th>
                     </tr>
@@ -164,7 +162,6 @@ if ($id_cliente) {
                                     <strong>Email:</strong> <?= $bodega['email']?>
                                 </div>
                             </td>
-                            <?php if ($tipoZonaActual == 'MEO'): ?>
                             <td>
                                 <?php if (!empty($bodega['calle']) || !empty($bodega['colonia'])): ?>
                                 <div class="small">
@@ -188,7 +185,6 @@ if ($id_cliente) {
                                     <span class="text-muted small">Sin dirección registrada</span>
                                 <?php endif; ?>
                             </td>
-                            <?php endif; ?>
                             <td><?= $bodega['obs'] ?></td>
                             <td class="text-center">
                                 <div class="btn-group justify-content-center"> 
