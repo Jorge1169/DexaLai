@@ -178,13 +178,13 @@ if ($result->num_rows > 0) {
         $data[] = [
             '', // Columna 0: Numeración
             '', // Columna 1: Acciones
-            htmlspecialchars($row['folio_compuesto'] ?? 'N/A'),
+            '<strong class="text-primary">' . htmlspecialchars($row['folio_compuesto'] ?? 'N/A').'</strong>',
             htmlspecialchars($row['fecha_formateada'] ?? 'N/A'),
-            '<strong>' . htmlspecialchars($row['cod_cliente'] ?? '') . '</strong><br>' . 
+            '<strong class="badge bg-teal bg-opacity-25 text-teal">' . htmlspecialchars($row['cod_cliente'] ?? '') . '</strong><br>' . 
             '<small>' . htmlspecialchars($row['nombre_cliente'] ?? '') . '</small>',
-            '<strong>' . htmlspecialchars($row['cod_almacen'] ?? '') . '</strong><br>' . 
+            '<strong class="badge bg-primary bg-opacity-25 text-primary">' . htmlspecialchars($row['cod_almacen'] ?? '') . '</strong><br>' . 
             '<small>' . htmlspecialchars($row['nombre_almacen'] ?? '') . '</small>',
-            number_format($total_pacas, 0),
+            '<span class="badge bg-primary rounded-pill">' . number_format($total_pacas, 0) . '</span>',
             number_format($total_kilos, 2) . ' kg',
             '<span class="text-success fw-bold">$' . number_format($total_venta, 2) . '</span>',
             '<span class="text-danger">$' . number_format($total_flete, 2) . '</span>',
