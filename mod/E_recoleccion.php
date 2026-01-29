@@ -182,11 +182,11 @@ if (isset($_POST['actualizar01'])) {
     
 } catch (mysqli_sql_exception $e) {
     $conn_mysql->rollback();
-    error_log("Error SQL: " . $e->getMessage());
+    //error_log("Error SQL: " . $e->getMessage());
     alert("Error: " . $e->getMessage(), 0, "E_recoleccion&id=" . $id_recoleccion);
 } catch (Exception $e) {
     $conn_mysql->rollback();
-    error_log("Error: " . $e->getMessage());
+    //error_log("Error: " . $e->getMessage());
     alert("Error: " . $e->getMessage(), 0, "E_recoleccion&id=" . $id_recoleccion);
 }
 }

@@ -63,9 +63,9 @@ $zona = filter_var($zona, FILTER_VALIDATE_INT, [
 ]);
 
 // DEBUG: Verificar valores recibidos (puedes comentar esto después)
-error_log("Zona recibida: " . $zona);
-error_log("Fecha inicio: " . $fechaInicio);
-error_log("Fecha fin: " . $fechaFin);
+//error_log("Zona recibida: " . $zona);
+//error_log("Fecha inicio: " . $fechaInicio);
+//error_log("Fecha fin: " . $fechaFin);
 
 // Base query
 $baseQuery = "SELECT 
@@ -132,7 +132,7 @@ if (!empty($fechaFin)) $baseQuery .= " AND r.fecha_r <= '$fechaFin 23:59:59'";
 // FILTRO ZONA MEJORADO
 if ($zona > 0) {
     $baseQuery .= " AND r.zona = " . intval($zona);
-    error_log("Aplicando filtro zona: " . $zona); // DEBUG
+    //error_log("Aplicando filtro zona: " . $zona); // DEBUG
 }
 
 if ($filtroEstado != 'todas') {

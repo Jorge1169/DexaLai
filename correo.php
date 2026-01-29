@@ -111,7 +111,7 @@ try {
     
     $mail->SMTPDebug = SMTP::DEBUG_SERVER;
     $mail->Debugoutput = function($str, $level) {
-        error_log("PHPMailer: $str");
+        //error_log("PHPMailer: $str");
     };
     
     $mail->Send();

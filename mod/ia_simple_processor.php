@@ -110,7 +110,7 @@ class SimpleAIProcessor {
         $result = $this->conn->query($sql);
         
         if (!$result) {
-            error_log("SQL Error: " . $this->conn->error . " - SQL: " . $sql);
+            //error_log("SQL Error: " . $this->conn->error . " - SQL: " . $sql);
             return null;
         }
         
@@ -195,14 +195,14 @@ Responde directamente al usuario:";
             echo "❌ La IA no pudo generar una respuesta. Intenta con otra pregunta.";
         }
     } else {
-        error_log("Groq API Error: $status - $response");
+        //error_log("Groq API Error: $status - $response");
         echo "❌ Error al conectar con el servicio de IA. Intenta nuevamente.";
     }
     
     curl_close($ch);
     
 } catch (Exception $e) {
-    error_log("Exception: " . $e->getMessage());
+    //error_log("Exception: " . $e->getMessage());
     echo "❌ Ocurrió un error inesperado. Por favor, intenta con una consulta más simple.";
 }
 ?>

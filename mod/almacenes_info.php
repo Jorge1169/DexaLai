@@ -1,4 +1,5 @@
 <?php
+// almacenes_info.php
 // Obtener todos los almacenes activos
 $sql = "SELECT a.*, z.PLANTA as nombre_zona,
                COUNT(DISTINCT ib.id_prod) as total_productos,
@@ -6,19 +7,31 @@ $sql = "SELECT a.*, z.PLANTA as nombre_zona,
         FROM almacenes a
         LEFT JOIN zonas z ON a.zona = z.id_zone
         LEFT JOIN inventario_bodega ib ON a.id_alma = ib.id_alma AND ib.total_kilos_disponible > 0
-        WHERE a.status = 1
+        WHERE a.status = 1 and a.zona = '$zona_seleccionada'
         GROUP BY a.id_alma
         ORDER BY a.zona, a.nombre";
 $result = $conn_mysql->query($sql);
+
 ?>
 
 <div class="container mt-4">
     <div class="card shadow-lg">
-        <div class="card-header encabezado-col text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-building me-2"></i>Almacenes</h5>
-            <a href="?p=captacion" class="btn btn-sm btn-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Regresar
-            </a>
+        <div class="card-header encabezado-col text-white d-flex align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-building me-2"></i>Almacenes
+            </h5>
+
+            <div class="ms-auto d-flex gap-2">
+                <a href="?p=captacion" class="btn btn-sm btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Regresar
+                </a>
+
+                <button type="button" class="btn btn-sm btn-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#vincularFacturasModal">
+                    Buscar Facturas
+                </button>
+            </div>
         </div>
         <div class="card-body">
             <!-- Tabla de almacenes -->
@@ -149,7 +162,46 @@ $result = $conn_mysql->query($sql);
         </div>
     </div>
 </div>
+<!-- Modal para vincular facturas -->
 
+<!-- Modal -->
+<div class="modal fade" id="vincularFacturasModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabel">Buscar Facturas</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="resultadoFactura">
+        <!-- Aquí se cargarán las facturas mediante AJAX -->
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <input type="hidden" id="filtroZona" value="<?= htmlspecialchars($zona_seleccionada); ?>" class="form-control" placeholder="Filtrar por zona">
+        <button type="button" class="btn btn-primary" onclick="cambiarZonaVenta()">Buscar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    // enviar zona a b_factura_a.php al precionar el boton buscar facturas
+        function cambiarZonaVenta() {
+        var zonaId = $('#filtroZona').val();
+
+        $.ajax({
+            url: 'b_factura_a.php',
+            type: 'POST',
+            data: {
+                zona: zonaId
+            },
+            success: function(response) {
+                $('#resultadoFactura').html(response);
+            }
+        });
+    }
+</script>
+<!-- Modal para vincular facturas -->
 <script>
 function filtrarAlmacenes() {
     var filtroZona = $('#filtroZona').val().toLowerCase();

@@ -16,7 +16,7 @@ $input = json_decode(file_get_contents('php://input'), true);
 $userMessage = $input['message'] ?? '';
 
 // DEBUG: Verificar si estamos recibiendo el mensaje
-error_log("DexaLai AI - Mensaje recibido: " . $userMessage);
+//error_log("DexaLai AI - Mensaje recibido: " . $userMessage);
 
 if (!$userMessage) {
     echo "¡Hola! 👋 Soy tu asistente **DexaLai** para el sistema de recolección de cartón. ¿En qué puedo ayudarte hoy?";
@@ -25,15 +25,15 @@ if (!$userMessage) {
 
 try {
     // DEBUG: Verificar conexión a BD
-    error_log("DexaLai AI - Inicializando conexión...");
+    //error_log("DexaLai AI - Inicializando conexión...");
     
     // Inicializar el procesador conversacional
     $conversationalAI = new ConversationalAIProcessor($conn_mysql);
-    error_log("DexaLai AI - Procesador inicializado");
+    //error_log("DexaLai AI - Procesador inicializado");
     
     // Procesar la consulta de forma natural
     $dbResponse = $conversationalAI->processNaturalQuery($userMessage);
-    error_log("DexaLai AI - Respuesta de BD: " . substr($dbResponse, 0, 100));
+    //error_log("DexaLai AI - Respuesta de BD: " . substr($dbResponse, 0, 100));
     
     // Preparar contexto enriquecido para Groq
     $businessContext = BusinessContext::getBusinessKnowledge();
@@ -69,7 +69,7 @@ INSTRUCCIONES:
 
 Responde directamente al usuario:";
 
-    error_log("DexaLai AI - Enviando a Groq API...");
+    //error_log("DexaLai AI - Enviando a Groq API...");
 
     $payload = [
         "model" => "llama-3.1-8b-instant",
@@ -96,7 +96,7 @@ Responde directamente al usuario:";
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     
-    error_log("DexaLai AI - Respuesta HTTP: " . $httpCode);
+    //error_log("DexaLai AI - Respuesta HTTP: " . $httpCode);
     
     if ($httpCode == 200) {
         $data = json_decode($response, true);
@@ -105,20 +105,20 @@ Responde directamente al usuario:";
             $aiResponse = htmlspecialchars($aiResponse);
             $aiResponse = nl2br($aiResponse);
             echo $aiResponse;
-            error_log("DexaLai AI - Respuesta enviada al usuario");
+            //error_log("DexaLai AI - Respuesta enviada al usuario");
         } else {
-            error_log("DexaLai AI - Fallback a respuesta de BD");
+            //error_log("DexaLai AI - Fallback a respuesta de BD");
             echo nl2br(htmlspecialchars($dbResponse));
         }
     } else {
-        error_log("DexaLai AI - Error HTTP, fallback a BD");
+        //error_log("DexaLai AI - Error HTTP, fallback a BD");
         echo nl2br(htmlspecialchars($dbResponse));
     }
     
     curl_close($ch);
     
 } catch (Exception $e) {
-    error_log("DexaLai AI Error: " . $e->getMessage());
+    //error_log("DexaLai AI Error: " . $e->getMessage());
     echo "⚠️ **¡Ups!** Ocurrió un error. Por favor, intenta con: \"¿Cuánto vendimos este mes?\" o \"Recolecciones pendientes\"";
 }
 ?>

@@ -504,7 +504,7 @@ header('Content-Type: application/json');
 echo json_encode($response);
 
 } catch (Exception $e) {
-    error_log("ERROR: " . $e->getMessage());
+    //error_log("ERROR: " . $e->getMessage());
     sendError("Error en el servidor: " . $e->getMessage());
 }
 

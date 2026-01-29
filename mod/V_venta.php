@@ -211,7 +211,7 @@ if (!empty($venta['factura_venta'])) {
     // Ejecutar validación automática si corresponde
     if ($debe_validar_auto) {
         // Solo mostrar mensaje en consola/registro, no al usuario
-        error_log("Validación automática de factura para venta ID: $id_venta");
+        //error_log("Validación automática de factura para venta ID: $id_venta");
         
         // Ejecutar validación (en segundo plano)
         $resultado_auto = validarFacturaVenta($id_venta, $conn_mysql);

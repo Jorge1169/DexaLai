@@ -546,7 +546,7 @@ function ajustarInventario($id_bodega, $id_prod, $id_alma, $granel_kilos, $pacas
         );
         
         if (!$stmt_mov->execute()) {
-            error_log("Error al registrar movimiento: " . $stmt_mov->error);
+            //error_log("Error al registrar movimiento: " . $stmt_mov->error);
             // No lanzar excepción para no romper el flujo principal
         }
     }

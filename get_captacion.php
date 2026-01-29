@@ -531,7 +531,7 @@ function actualizarInventarioCaptacion($id_captacion, $conn_mysql, $idUser) {
         
     } catch (Exception $e) {
         $conn_mysql->rollback();
-        error_log("Error actualizando inventario: " . $e->getMessage());
+        //error_log("Error actualizando inventario: " . $e->getMessage());
         return false;
     }
 }

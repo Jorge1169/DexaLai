@@ -327,7 +327,7 @@ try {
     $conn_mysql->rollback();
     
     // Log del error
-    error_log("Error en actualizar_status_venta_completo: " . $e->getMessage());
+    //error_log("Error en actualizar_status_venta_completo: " . $e->getMessage());
     
     echo json_encode([
         'success' => false, 

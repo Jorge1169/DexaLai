@@ -250,7 +250,7 @@ if ($accion == 'precio_venta' && isset($_POST['idProd'])) {
     $idBodegaCliente = $_POST['idBodegaCliente'] ?? 0;
     
     // DEBUG: Registrar qué datos estamos recibiendo
-    error_log("DEBUG precio_venta: idProd=$idProd, fecha=$fechaConsulta, cliente=$idCliente, bodega=$idBodegaCliente");
+    //error_log("DEBUG precio_venta: idProd=$idProd, fecha=$fechaConsulta, cliente=$idCliente, bodega=$idBodegaCliente");
     
     // Array para almacenar precios encontrados
     $precios_encontrados = [];
@@ -276,10 +276,10 @@ if ($accion == 'precio_venta' && isset($_POST['idProd'])) {
         if ($result1->num_rows > 0) {
             while ($row = $result1->fetch_assoc()) {
                 $precios_encontrados[] = $row;
-                error_log("DEBUG: Encontrado precio específico para bodega $idBodegaCliente: ID=" . $row['id_precio']);
+                //error_log("DEBUG: Encontrado precio específico para bodega $idBodegaCliente: ID=" . $row['id_precio']);
             }
         } else {
-            error_log("DEBUG: No se encontró precio específico para bodega $idBodegaCliente");
+            //error_log("DEBUG: No se encontró precio específico para bodega $idBodegaCliente");
         }
     }
     
@@ -304,10 +304,10 @@ if ($accion == 'precio_venta' && isset($_POST['idProd'])) {
         if ($result2->num_rows > 0) {
             while ($row = $result2->fetch_assoc()) {
                 $precios_encontrados[] = $row;
-                error_log("DEBUG: Encontrado precio general: ID=" . $row['id_precio']);
+                //error_log("DEBUG: Encontrado precio general: ID=" . $row['id_precio']);
             }
         } else {
-            error_log("DEBUG: No se encontró precio general para producto $idProd");
+            //error_log("DEBUG: No se encontró precio general para producto $idProd");
         }
     }
     
@@ -331,7 +331,7 @@ if ($accion == 'precio_venta' && isset($_POST['idProd'])) {
         if ($result3->num_rows > 0) {
             while ($row = $result3->fetch_assoc()) {
                 $precios_encontrados[] = $row;
-                error_log("DEBUG: Encontrado cualquier precio: ID=" . $row['id_precio'] . ", destino=" . $row['destino']);
+                //error_log("DEBUG: Encontrado cualquier precio: ID=" . $row['id_precio'] . ", destino=" . $row['destino']);
             }
         }
     }

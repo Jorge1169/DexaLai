@@ -7,7 +7,7 @@ ini_set('display_errors', 1);
 
 // Función para log de errores
 function logError($message) {
-    error_log("CONTRARECIBOS ERROR: " . $message);
+    //error_log("CONTRARECIBOS ERROR: " . $message);
     // También puedes enviarlo a la interfaz si quieres
     echo "<!-- ERROR: $message -->";
 }
@@ -190,7 +190,7 @@ function cargarContraRecibos() {
         HAVING proveedores_duplicados = 1 -- SOLO MOSTRAR DONDE NO HAY DUPLICADOS
         ORDER BY r.alias_inv_pro, r.folio_inv_pro";
         
-        error_log("Consulta Compras: " . $queryCompras);
+        //error_log("Consulta Compras: " . $queryCompras);
         
         $resultCompras = $conn_mysql->query($queryCompras);
         
@@ -318,7 +318,7 @@ function cargarContraRecibos() {
         HAVING transportistas_duplicados = 1 -- SOLO MOSTRAR DONDE NO HAY DUPLICADOS
         ORDER BY r.alias_inv_fle, r.folio_inv_fle";
         
-        error_log("Consulta Fletes: " . $queryFletes);
+        //error_log("Consulta Fletes: " . $queryFletes);
         
         $resultFletes = $conn_mysql->query($queryFletes);
         

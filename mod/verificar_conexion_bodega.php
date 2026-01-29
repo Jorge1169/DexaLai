@@ -60,7 +60,7 @@ function probarConexion($ip) {
         return isset($result['test']) && $result['test'] == 1;
         return true;
     } catch (PDOException $e) {
-         error_log("Error de conexión a bodega: " . $e->getMessage());
+         //error_log("Error de conexión a bodega: " . $e->getMessage());
         return false;
     }
 }

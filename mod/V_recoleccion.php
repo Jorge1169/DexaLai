@@ -731,7 +731,7 @@ function verificarPDFRemision($remision, $planta_zona = 'laisa') {
     curl_close($ch);
     
     // Log para debugging (opcional)
-    error_log("PDF Check - Planta: $planta_zona, Remisión: $remision, HTTP: $httpCode, Time: " . round($total_time, 2) . "s");
+    //error_log("PDF Check - Planta: $planta_zona, Remisión: $remision, HTTP: $httpCode, Time: " . round($total_time, 2) . "s");
     
     // Verificar si es un PDF (código 200 y content-type pdf o aplicación/octet-stream)
     if ($httpCode === 200) {
@@ -795,7 +795,7 @@ function verificarPDFRemisionAlternativo($remision, $planta_zona = 'laisa') {
             }
         }
     } catch (Exception $e) {
-        error_log("Error alternativo verificando PDF (Planta: $planta_zona): " . $e->getMessage());
+        //error_log("Error alternativo verificando PDF (Planta: $planta_zona): " . $e->getMessage());
     }
     
     return false;
@@ -829,7 +829,7 @@ if ($recoleccion['remi_compro'] == 0 && !empty($recoleccion['remision'])) {
                        $recoleccion['remision'] . ' (Planta: ' . $recoleccion['planta_zona'] . ')');
         }
     } catch (Exception $e) {
-        error_log("Error verificando PDF (Planta: " . $recoleccion['planta_zona'] . "): " . $e->getMessage());
+        //error_log("Error verificando PDF (Planta: " . $recoleccion['planta_zona'] . "): " . $e->getMessage());
         // No hacer nada, se intentará en la próxima carga
     }
     
