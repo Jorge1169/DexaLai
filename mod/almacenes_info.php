@@ -31,6 +31,11 @@ $result = $conn_mysql->query($sql);
                         data-bs-target="#vincularFacturasModal">
                     Buscar Facturas
                 </button>
+                <button type="button" class="btn btn-sm btn-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#vincularCRModal">
+                    Buscar C.R
+                </button>
             </div>
         </div>
         <div class="card-body">
@@ -174,7 +179,13 @@ $result = $conn_mysql->query($sql);
       </div>
       <div class="modal-body" id="resultadoFactura">
         <!-- Aquí se cargarán las facturas mediante AJAX -->
-        
+        <!-- Hay que crear una alerta de boostrap para advertir que la validacion de facturas buscara las facturas de la zona seleccionada en invoice -->
+        <div class="alert alert-info d-flex align-items-center" role="alert">
+          <i class="bi bi-info-circle-fill me-2"></i>
+          <div>
+            La búsqueda de facturas se realizará en la zona seleccionada actualmente. Asegúrese de que la zona sea correcta antes de proceder.
+          </div>    
+          </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -210,6 +221,58 @@ $result = $conn_mysql->query($sql);
     }
 </script>
 <!-- Modal para vincular facturas -->
+<!-- Modal para vincular C.R -->
+ <div class="modal fade" id="vincularCRModal" tabindex="-1" aria-labelledby="exampleModalLabelCR" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabelCR">Buscar C.R</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body " id="resultadoCR">
+        <!-- Aquí se cargarán los C.R mediante AJAX -->
+        <!-- Hay que crear una alerta de boostrap para advertir que la validacion de C.R buscara los C.R de la zona seleccionada en invoice -->
+        <div class="alert alert-info d-flex align-items-center" role="alert">
+          <i class="bi bi-info-circle-fill me-2"></i>
+          <div>
+            La búsqueda de C.R se realizará en la zona seleccionada actualmente. Asegúrese de que la zona sea correcta antes de proceder.
+          </div>    
+          </div>
+        </div>
+        <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <input type="hidden" id="filtroZonaCR" value="<?= htmlspecialchars($zona_seleccionada); ?>" class="form-control" placeholder="Filtrar por zona">
+        <button type="button" class="btn btn-primary" onclick="cambiarZonaCR()">Buscar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    // enviar zona a b_cr_a.php al precionar el boton buscar C.R
+    function cambiarZonaCR() {
+        var zonaId = $('#filtroZonaCR').val();
+        var spinner = '<div class="d-flex justify-content-center align-items-center" style="height:200px;">' +
+                      '<div class="spinner-grow text-primary" role="status"><span class="visually-hidden">Cargando...</span></div>' +
+                      '</div>';
+
+        $.ajax({
+            url: 'b_cr_a.php',
+            type: 'POST',
+            data: { zona: zonaId },
+            beforeSend: function() {
+                $('#resultadoCR').html(spinner);
+            },
+            success: function(response) {
+                $('#resultadoCR').html(response);
+            },
+            error: function(xhr, status, error) {
+                $('#resultadoCR').html('<div class="alert alert-danger">Error al cargar C.R. Intente nuevamente.</div>');
+                console.error('AJAX error:', status, error);
+            }
+        });
+    }
+</script>
+<!-- Modal para vincular C.R -->
 <script>
 function filtrarAlmacenes() {
     var filtroZona = $('#filtroZona').val().toLowerCase();

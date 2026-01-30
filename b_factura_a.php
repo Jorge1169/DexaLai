@@ -7,8 +7,6 @@ $zona = $_POST['zona'] ?? '';
 // Encabezado HTML + Bootstrap
 ?>
 <div class="container my-4">
-    <h1 class="h3 mb-3">Revisión de facturas - Zona <?php echo htmlspecialchars($zona); ?></h1>
-
     <div class="row">
         <div class="col-12 col-lg-6 mb-4">
             <div class="card shadow-sm">
@@ -24,7 +22,7 @@ $query_ventas = "SELECT v.*,
                                         FROM ventas v
                                         LEFT JOIN venta_flete vf on v.id_venta = vf.id_venta
                                         LEFT JOIN transportes tv on vf.id_fletero = tv.id_transp 
-                                        WHERE v.zona = ? and (vf.doc_factura_ven IS NULL OR vf.com_factura_ven IS NULL)
+                                        WHERE v.status = 1 and v.zona = ? and (vf.doc_factura_ven IS NULL OR vf.com_factura_ven IS NULL)
                             ";
 $stmt_ven = $conn_mysql->prepare($query_ventas);
 $stmt_ven->bind_param('s', $zona);
@@ -105,7 +103,7 @@ $query_captaciones = "SELECT ca.*,
                                         LEFT JOIN captacion_flete cf on ca.id_captacion = cf.id_capt_flete
                                         LEFT JOIN proveedores p on ca.id_prov = p.id_prov
                                         LEFT JOIN transportes t on cf.id_fletero  = t.id_transp
-                                        WHERE ca.zona = ? AND ((cd.doc_factura IS NULL OR cd.com_factura IS NULL) OR (cf.doc_factura_flete IS NULL OR cf.com_factura_flete IS NULL))
+                                        WHERE ca.status = 1 and ca.zona = ? AND ((cd.doc_factura IS NULL OR cd.com_factura IS NULL) OR (cf.doc_factura_flete IS NULL OR cf.com_factura_flete IS NULL))
                                         ";
 $stmt = $conn_mysql->prepare($query_captaciones);
 $stmt->bind_param('s', $zona);
