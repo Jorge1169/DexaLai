@@ -186,17 +186,25 @@ $result = $conn_mysql->query($sql);
 </div>
 <script>
     // enviar zona a b_factura_a.php al precionar el boton buscar facturas
-        function cambiarZonaVenta() {
+    function cambiarZonaVenta() {
         var zonaId = $('#filtroZona').val();
+        var spinner = '<div class="d-flex justify-content-center align-items-center" style="height:200px;">' +
+                      '<div class="spinner-grow text-primary" role="status"><span class="visually-hidden">Cargando...</span></div>' +
+                      '</div>';
 
         $.ajax({
             url: 'b_factura_a.php',
             type: 'POST',
-            data: {
-                zona: zonaId
+            data: { zona: zonaId },
+            beforeSend: function() {
+                $('#resultadoFactura').html(spinner);
             },
             success: function(response) {
                 $('#resultadoFactura').html(response);
+            },
+            error: function(xhr, status, error) {
+                $('#resultadoFactura').html('<div class="alert alert-danger">Error al cargar facturas. Intente nuevamente.</div>');
+                console.error('AJAX error:', status, error);
             }
         });
     }
