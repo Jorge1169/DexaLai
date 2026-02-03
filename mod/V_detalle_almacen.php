@@ -68,8 +68,10 @@ while ($mes = $meses_disponibles->fetch_assoc()) {
 
 // Función para obtener inventario acumulado hasta un mes específico (INCLUYE VENTAS)
 function obtenerInventarioAcumulado($id_alma, $mes, $anio, $conn_mysql) {
-    // Calcular fecha límite (último día del mes seleccionado)
-    $fecha_limite = date("$anio-$mes-t 23:59:59");
+    // Calcular fecha límite (último día del mes seleccionado) - CORREGIDO
+    $fecha_limite = new DateTime("$anio-$mes-01");
+    $fecha_limite->modify('last day of this month');
+    $fecha_limite_str = $fecha_limite->format('Y-m-t 23:59:59');
     
     // Obtener inventario acumulado hasta esa fecha
     $sql = "SELECT ib.id_prod, p.cod, p.nom_pro,
@@ -93,7 +95,7 @@ function obtenerInventarioAcumulado($id_alma, $mes, $anio, $conn_mysql) {
             ORDER BY p.cod";
     
     $stmt = $conn_mysql->prepare($sql);
-    $stmt->bind_param('is', $id_alma, $fecha_limite);
+    $stmt->bind_param('is', $id_alma, $fecha_limite_str);
     $stmt->execute();
     return $stmt->get_result();
 }
@@ -101,9 +103,13 @@ function obtenerInventarioAcumulado($id_alma, $mes, $anio, $conn_mysql) {
 // Obtener inventario actual (acumulado hasta hoy)
 $inventario_actual = obtenerInventarioAcumulado($id_almacen, $mes_actual, $anio_actual, $conn_mysql);
 
-// Obtener movimientos del mes seleccionado
-$primer_dia_mes = date("$anio_actual-$mes_actual-01");
-$ultimo_dia_mes = date("$anio_actual-$mes_actual-t");
+// Mejor aún, usa DateTime que es más confiable:
+$fecha_inicio = new DateTime("$anio_actual-$mes_actual-01");
+$primer_dia_mes = $fecha_inicio->format('Y-m-d');
+
+$fecha_fin = new DateTime("$anio_actual-$mes_actual-01");
+$fecha_fin->modify('last day of this month');
+$ultimo_dia_mes = $fecha_fin->format('Y-m-d');
 
 $sql_movimientos = "SELECT mi.*, p.cod as cod_producto, p.nom_pro as nombre_producto,
                            c.folio as folio_captacion,
