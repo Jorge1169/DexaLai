@@ -252,6 +252,9 @@
     // Consulta para obtener las recolecciones del contra recibo
     $queryRecolecciones = "SELECT 
     r.*,
+    r.remision as remision,
+    r.remi_compro as remi_compro,
+    r.peso_conpro as peso_conpro,
     CONCAT(z.cod, '-', DATE_FORMAT(r.fecha_r, '%y%m'), LPAD(r.folio, 4, '0')) as folio_completo,
     p.rs as proveedor,
     p.cod as cod_proveedor,
@@ -361,6 +364,7 @@
                         <th>Total Compra</th>
                         <th>Cliente</th>
                         <th>Factura de venta</th>
+                        <th>Peso en Conpro</th>
                         <th>Estado Inv</th>
                     </tr>
                 </thead>
@@ -444,6 +448,17 @@
                         }
                     }
 
+                    $estado_ticket = '';
+                    
+                    if ($row['nombre_cliente'] == 'DEXA' || $row['nombre_cliente'] == 'BIDASOA' || $row['nombre_cliente'] == 'LAISA') {
+                        if ($row['remi_compro'] == 1 && !empty($row['peso_conpro'])) {
+                            $estado_ticket .= ' <span style="color: green;">' . number_format((float)$row['peso_conpro'], 2) . ' kg</span>';
+                    } else {
+                        $estado_ticket .= ' <span style="color: red;">Sin Peso Conpro</span>';
+                    }
+                    }else {
+                    }
+
                     ?>
                     <tr>
                         <td><?= htmlspecialchars($row['folio_completo']) ?></td>
@@ -457,6 +472,7 @@
                         <td class="text-right text-bold">$<?= number_format($totalRecoleccion, 2) ?></td>
                         <td><?=$row['nombre_cliente']?></td>
                         <td><?=$row['factura_venta']?></td>
+                        <td><?=$estado_ticket?></td>
                         <td><?=$estado_factura_compra?> <?=$status_factura_compra?></td>
                     </tr>
                 <?php endwhile; ?>
