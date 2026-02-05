@@ -22,18 +22,15 @@ $result = $conn_mysql->query($sql);
             </h5>
 
             <div class="ms-auto d-flex gap-2">
-                <a href="?p=captacion" class="btn btn-sm btn-secondary">
-                    <i class="bi bi-arrow-left me-1"></i> Regresar
-                </a>
 
-                <button type="button" class="btn btn-sm btn-primary"
+                <button type="button" class="btn btn-sm btn-orange"
                         data-bs-toggle="modal"
-                        data-bs-target="#vincularFacturasModal">
+                        data-bs-target="#vincularFacturasModal" <?= $perm['ACT_FAC'];?>>
                     Buscar Facturas
                 </button>
-                <button type="button" class="btn btn-sm btn-primary"
+                <button type="button" class="btn btn-sm btn-warning"
                         data-bs-toggle="modal"
-                        data-bs-target="#vincularCRModal">
+                        data-bs-target="#vincularCRModal" <?= $perm['ACT_CR'];?>>
                     Buscar C.R
                 </button>
             </div>
@@ -173,7 +170,7 @@ $result = $conn_mysql->query($sql);
 <div class="modal fade" id="vincularFacturasModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header bg-orange text-white">
         <h1 class="modal-title fs-5" id="exampleModalLabel">Buscar Facturas</h1>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -190,7 +187,7 @@ $result = $conn_mysql->query($sql);
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         <input type="hidden" id="filtroZona" value="<?= htmlspecialchars($zona_seleccionada); ?>" class="form-control" placeholder="Filtrar por zona">
-        <button type="button" class="btn btn-primary" onclick="cambiarZonaVenta()">Buscar</button>
+        <button type="button" class="btn btn-orange" onclick="cambiarZonaVenta()"><i class="bi bi-search me-2"></i>Buscar</button>
       </div>
     </div>
   </div>
@@ -225,7 +222,7 @@ $result = $conn_mysql->query($sql);
  <div class="modal fade" id="vincularCRModal" tabindex="-1" aria-labelledby="exampleModalLabelCR" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header bg-warning">
         <h1 class="modal-title fs-5" id="exampleModalLabelCR">Buscar C.R</h1>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -242,7 +239,7 @@ $result = $conn_mysql->query($sql);
         <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         <input type="hidden" id="filtroZonaCR" value="<?= htmlspecialchars($zona_seleccionada); ?>" class="form-control" placeholder="Filtrar por zona">
-        <button type="button" class="btn btn-primary" onclick="cambiarZonaCR()">Buscar</button>
+        <button type="button" class="btn btn-warning" onclick="cambiarZonaCR()">  <i class="bi bi-search me-2"></i  > Buscar</button>
       </div>
     </div>
   </div>

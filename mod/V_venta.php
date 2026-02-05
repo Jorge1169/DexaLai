@@ -1349,7 +1349,28 @@ if (isset($_POST['eliminar_ticket'])) {
                             <div class="col-6">
                                 <small class="text-muted d-block">Factura transportista</small>
                                 <div class="d-flex align-items-center">
-                                    <strong><?= htmlspecialchars($flete_data['factura_transportista']) ?></strong>
+                                    <?php
+                                    if (!empty($flete_data['doc_factura_ven']) || !empty($flete_data['com_factura_ven'])){
+                                        ?>
+                                        <button type="button" class="btn btn-info btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-file-earmark-pdf"></i> <?= $flete_data['factura_transportista'] ?>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                  <?php if (!empty($flete_data['doc_factura_ven'])): ?>
+                                                    <li><a class="dropdown-item" href="<?= $invoiceLK . $flete_data['doc_factura_ven'] ?>.pdf" target="_blank">Ver Factura de Venta</a></li>
+                                                  <?php endif; ?>
+                                                  <?php if (!empty($flete_data['com_factura_ven'])): ?>
+                                                    <li><a class="dropdown-item" href="<?= $invoiceLK . $flete_data['com_factura_ven'] ?>.pdf" target="_blank">Ver Comprobante de Venta</a></li>
+                                                  <?php endif; ?>
+                                                </ul>
+                                        <?php
+                                    }else{
+                                        ?>
+                                        <strong><?= htmlspecialchars($flete_data['factura_transportista']) ?></strong>
+                                        <?php
+                                    }
+                                    ?>
+
                                     <?php if ($factura_transportista_duplicada_info): ?>
                                     <span class="badge bg-warning bg-opacity-20 text-warning border border-warning ms-2">
                                         <i class="bi bi-exclamation-triangle"></i>

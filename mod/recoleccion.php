@@ -153,6 +153,10 @@ $fechaFinDefault = date('Y-m-d');
                     <button type="button" class="btn btn-warning btn-xs align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#VerificarDocumentos" <?= $perm['ACT_FAC'];?>>
                         <i class="bi bi-shield-check"></i> <span class="d-none d-sm-inline">Verificar</span>
                     </button>
+                    <!-- Boton para buscar tickets de conpro -->
+                     <button type="button" class="btn btn-info btn-xs align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#BuscarTickets" <?= $perm['ACT_FAC'];?>>
+                        <i class="bi bi-ticket-perforated"></i> <span class="d-none d-sm-inline">Tickets</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -879,4 +883,55 @@ $('#confirmRecoleccionBtn').click(function() {
     $('#confirmRecoleccionModal').modal('hide');
 });
 });
+</script>
+<!-- Modal para buscar Ticket's -->
+  <div class="modal fade" id="BuscarTickets" tabindex="-1" aria-labelledby="exampleModalLabelCR" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabelCR">Buscar Tickets</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body " id="resultadoCR">
+        <!-- Aquí se cargarán los C.R mediante AJAX -->
+        <!-- Hay que crear una alerta de boostrap para advertir que la validacion de C.R buscara los C.R de la zona seleccionada en invoice -->
+        <div class="alert alert-info d-flex align-items-center" role="alert">
+          <i class="bi bi-info-circle-fill me-2"></i>
+          <div>
+            La búsqueda de Tickets se realizará en la zona seleccionada actualmente. Asegúrese de que la zona sea correcta antes de proceder.
+          </div>    
+          </div>
+        </div>
+        <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <input type="hidden" id="filtroZonaTK" value="<?= htmlspecialchars($zona_seleccionada); ?>" class="form-control" placeholder="Filtrar por zona">
+        <button type="button" class="btn btn-primary" onclick="cambiarZonaCR()">Buscar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    // enviar zona a b_cr_a.php al precionar el boton buscar C.R
+    function cambiarZonaCR() {
+        var zonaId = $('#filtroZonaTK').val();
+        var spinner = '<div class="d-flex justify-content-center align-items-center" style="height:200px;">' +
+                      '<div class="spinner-grow text-primary" role="status"><span class="visually-hidden">Cargando...</span></div>' +
+                      '</div>';
+
+        $.ajax({
+            url: 'b_tickets.php',
+            type: 'POST',
+            data: { zona: zonaId },
+            beforeSend: function() {
+                $('#resultadoCR').html(spinner);
+            },
+            success: function(response) {
+                $('#resultadoCR').html(response);
+            },
+            error: function(xhr, status, error) {
+                $('#resultadoCR').html('<div class="alert alert-danger">Error al cargar Tickets. Intente nuevamente.</div>');
+                console.error('AJAX error:', status, error);
+            }
+        });
+    }
 </script>

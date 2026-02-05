@@ -227,7 +227,7 @@ function obtenerClaseMenu($modulo, $conn_mysql, $permisosUsuario = null) {
         }
 
 
-         $invoiceLK = "http://globaltycloud.com.mx:81/invoice/"; /// link de invoice
+         $invoiceLK = "https://invoice.globaltycloud.com.mx/invoice/"; /// link de invoice
          $link = "http://localhost/DexaLai/doc/contra_recibos.php?id=";
 
 

@@ -227,6 +227,8 @@ if (strlen($folio_completo) == 4 && is_numeric($folio_completo)) {
 // Obtener productos de la captación con precio por kilo
 $sql_productos = "SELECT 
 cd.*,
+cd.doc_factura as doc_factura_producto,
+cd.com_factura as com_factura_producto,
 p.cod as cod_producto,
 p.nom_pro as nombre_producto,
 pc.precio as precio_compra_por_kilo,
@@ -250,6 +252,8 @@ $productos = $stmt_productos->get_result()->fetch_all(MYSQLI_ASSOC);
 // Obtener información del flete
 $sql_flete = "SELECT 
 cf.*,
+cf.doc_factura_flete as doc_factura_flete,
+cf.com_factura_flete as com_factura_flete,
 cf.id_capt_flete as id_flete,
 pf.precio as precio_flete,
 pf.tipo as tipo_flete,
@@ -1006,7 +1010,26 @@ if (isset($_POST['guardar_factura_flete'])) {
                                         <small class="text-muted d-block mb-1">Facturación Flete</small>
                                         <div class="fw-semibold">
                                             <i class="bi bi-receipt text-warning me-1" aria-hidden="true"></i>
-                                            <?= $fleteNumero ?>
+                                            <!-- Mostrar documentos de flete si existen -->
+                                            <?php
+                                            if (!empty($flete['doc_factura_flete']) || !empty($flete['doc_comprobante_flete'])) {
+                                                ?>
+                                                <button type="button" class="btn btn-warning btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-file-earmark-pdf"></i> <?= $fleteNumero ?>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                  <?php if (!empty($flete['doc_factura_flete'])): ?>
+                                                    <li><a class="dropdown-item" href="<?= $invoiceLK . $flete['doc_factura_flete'] ?>.pdf" target="_blank">Ver Factura de Flete</a></li>
+                                                  <?php endif; ?>
+                                                  <?php if (!empty($flete['com_factura_flete'])): ?>
+                                                    <li><a class="dropdown-item" href="<?= $invoiceLK . $flete['com_factura_flete'] ?>.pdf" target="_blank">Ver Comprobante de Flete</a></li>
+                                                  <?php endif; ?>
+                                                </ul>
+                                                <?php
+                                            }else {
+                                                echo $fleteNumero;
+                                            }
+                                            ?>
                                         </div>
                                     </div>
                                 <?php endif; ?>
@@ -1229,9 +1252,20 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     </td>
                                     <td>
                                         <?php if (!empty($producto['numero_factura'])): ?>
-                                            <span class="numero-badge" data-bs-toggle="tooltip" title="Factura">
-                                                <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($producto['numero_factura']) ?>
-                                            </span>
+                                            <!-- Si existe com_factura_producto o doc_factura_producto mostrar un icono para abrir un link en otra pagina de estos documentos -->
+                                             <?php if (!empty($producto['com_factura_producto']) || !empty($producto['doc_factura_producto'])){ ?>
+                                                <button type="button" class="btn btn-success btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-file-earmark-pdf"></i> <?=$producto['numero_factura']?>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                  <?php if (!empty($producto['com_factura_producto'])): ?><li><a class="dropdown-item" href="<?= $invoiceLK .$producto['doc_factura_producto'] ?>.pdf" target="_blank">Factura</a></li><?php endif; ?>
+                                                  <?php if (!empty($producto['doc_factura_producto'])): ?><li><a class="dropdown-item" href="<?= $invoiceLK.$producto['com_factura_producto'] ?>.pdf" target="_blank">Evidencia</a></li><?php endif; ?>
+                                                </ul>
+                                            <?php }else{ ?>
+                                                <span class="numero-badge" data-bs-toggle="tooltip" title="Factura">
+                                                    <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($producto['numero_factura']) ?>
+                                                </span>
+                                            <?php } ?>
                                         <?php else: ?>
                                             <span class="text-muted small">-</span>
                                         <?php endif; ?>
