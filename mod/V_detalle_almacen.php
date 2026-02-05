@@ -74,7 +74,7 @@ function obtenerInventarioAcumulado($id_alma, $mes, $anio, $conn_mysql) {
     $fecha_limite_str = $fecha_limite->format('Y-m-t 23:59:59');
     
     // Obtener inventario acumulado hasta esa fecha
-    $sql = "SELECT ib.id_prod, p.cod, p.nom_pro,
+    $sql = "SELECT ib.id_inventario, ib.id_prod, p.cod, p.nom_pro,
                    SUM(CASE WHEN mi.tipo_movimiento IN ('entrada', 'ajuste') 
                             THEN mi.granel_kilos_movimiento ELSE -mi.granel_kilos_movimiento END) as granel_acumulado,
                    SUM(CASE WHEN mi.tipo_movimiento IN ('entrada', 'ajuste') 
@@ -90,7 +90,7 @@ function obtenerInventarioAcumulado($id_alma, $mes, $anio, $conn_mysql) {
             LEFT JOIN movimiento_inventario mi ON ib.id_inventario = mi.id_inventario
             WHERE ib.id_alma = ?
               AND DATE(mi.created_at) <= ?
-            GROUP BY ib.id_prod, p.cod, p.nom_pro
+            GROUP BY ib.id_inventario, ib.id_prod, p.cod, p.nom_pro
             HAVING granel_acumulado > 0 OR pacas_cant_acumulado > 0 OR pacas_kilos_acumulado > 0
             ORDER BY p.cod";
     
@@ -400,6 +400,112 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                     </div>
                 </div>
             </div>
+                                <!-- Modal para Ajuste de Pacas -->
+                                <div class="modal fade" id="modalAjustePacas" tabindex="-1" aria-labelledby="modalAjustePacasLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header encabezado-col">
+                                                <h5 class="modal-title text-white" id="modalAjustePacasLabel">
+                                                    <i class="bi bi-pencil-square me-2"></i> Ajuste de Pacas
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form id="formAjustePacas" onsubmit="return enviarAjustePacas(event)">
+                                                <div class="modal-body">
+                                                    <input type="hidden" id="aj_id_inventario" name="id_inventario">
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Producto</label>
+                                                        <input type="text" id="aj_producto_info" class="form-control" readonly>
+                                                    </div>
+                                                    <div class="row g-3">
+                                                        <div class="col-md-6">
+                                                            <label class="form-label fw-semibold">Pacas Actuales</label>
+                                                            <input type="number" id="aj_pacas_actuales" class="form-control" readonly>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label fw-semibold">Kilos en Pacas</label>
+                                                            <div class="input-group">
+                                                                <input type="text" id="aj_kilos_actuales" class="form-control" readonly>
+                                                                <span class="input-group-text">kg</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <label class="form-label fw-semibold">Nueva Cantidad de Pacas <span class="text-danger">*</span></label>
+                                                            <input type="number" id="aj_nueva_pacas" name="nueva_pacas" class="form-control" min="1" required>
+                                                            <small class="text-muted">Ingrese la cantidad final de pacas tras el reempaque. Debe ser menor o igual a la cantidad actual si está reduciendo.</small>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <label class="form-label fw-semibold">Observaciones</label>
+                                                            <textarea id="aj_observaciones" name="observaciones" class="form-control" rows="3" placeholder="Motivo del ajuste (ej: repacado, pacas rotas)"></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-primary">Aplicar Ajuste</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <script>
+                                function abrirModalAjuste(id_inventario, pacas_actuales, kilos_actuales, codigo, nombre) {
+                                    document.getElementById('aj_id_inventario').value = id_inventario;
+                                    document.getElementById('aj_pacas_actuales').value = pacas_actuales;
+                                    document.getElementById('aj_kilos_actuales').value = parseFloat(kilos_actuales).toFixed(2);
+                                    document.getElementById('aj_producto_info').value = codigo + ' - ' + nombre;
+                                    document.getElementById('aj_nueva_pacas').value = pacas_actuales;
+                                    document.getElementById('aj_observaciones').value = '';
+
+                                    var modal = new bootstrap.Modal(document.getElementById('modalAjustePacas'));
+                                    modal.show();
+                                }
+
+                                async function enviarAjustePacas(e) {
+                                    e.preventDefault();
+                                    var id_inventario = document.getElementById('aj_id_inventario').value;
+                                    var pacas_actuales = parseInt(document.getElementById('aj_pacas_actuales').value || 0, 10);
+                                    var nueva_pacas = parseInt(document.getElementById('aj_nueva_pacas').value || 0, 10);
+                                    var observaciones = document.getElementById('aj_observaciones').value || '';
+
+                                    if (!id_inventario || nueva_pacas < 0) {
+                                        alert('Datos inválidos');
+                                        return false;
+                                    }
+
+                                    // Permitir tanto reducción como aumento (si se requiere), pero normalmente se usa para reducir
+                                    var formData = new FormData();
+                                    formData.append('id_inventario', id_inventario);
+                                    formData.append('nueva_pacas', nueva_pacas);
+                                    formData.append('observaciones', observaciones);
+                                    formData.append('id_usuario', '<?= $idUser ?>');
+
+                                    try {
+                                        var res = await fetch('AJAX/ajustar_pacas.php', { method: 'POST', body: formData });
+                                        var data = await res.json();
+                                        if (data.success) {
+                                            if (typeof Swal !== 'undefined') {
+                                                Swal.fire({ icon: 'success', title: 'Ajuste aplicado', html: data.message }).then(()=> location.reload());
+                                            } else {
+                                                alert(data.message);
+                                                location.reload();
+                                            }
+                                        } else {
+                                            if (typeof Swal !== 'undefined') {
+                                                Swal.fire({ icon: 'error', title: 'Error', html: data.message });
+                                            } else {
+                                                alert(data.message);
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert('Error al procesar la petición');
+                                    }
+
+                                    return false;
+                                }
+                                </script>
         </div>
 
         <!-- Tarjeta de Inventario Actual -->
@@ -602,10 +708,10 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                     </ul>
                     <!-- Después del botón de Transformar Producto en el HEADER DEL DASHBOARD -->
                     <div class="card-toolbar mb-3 d-flex justify-content-end">
-                        <button type="button" class="btn btn-modern btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalEntrada" <?= $perm['ACT_AC']; ?>>
+                        <button type="button" class="btn btn-modern btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalEntrada" <?= $perm['ADMIN']; ?>>
                             <i class="bi bi-box-arrow-in-down me-2"></i> Nueva Entrada
                         </button>
-                        <button type="button" class="btn btn-modern btn-warning ms-2" data-bs-toggle="modal" data-bs-target="#modalConversion" <?= $perm['ACT_AC']; ?>>
+                        <button type="button" class="btn btn-modern btn-warning ms-2" data-bs-toggle="modal" data-bs-target="#modalConversion" <?= $perm['ADMIN']; ?>>
                             <i class="bi bi-arrow-repeat me-2"></i> Transformar Producto
                         </button>
                     </div>
@@ -634,7 +740,8 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                             <th class="text-end" width="120">Pacas (cant)</th>
                                             <th class="text-end" width="120">Pacas (kg)</th>
                                             <th class="text-end" width="140">Total (kg)</th>
-                                            <th class="text-end" width="120">Peso Promedio</th>
+                                                <th class="text-end" width="120">Peso Promedio</th>
+                                                <th class="text-center" width="140">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -673,6 +780,12 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                             <td class="text-end fw-bold text-primary"><?= number_format($prod['pacas_kilos_acumulado'], 2) ?> kg</td>
                                             <td class="text-end fw-bold"><?= number_format($total_kilos, 2) ?> kg</td>
                                             <td class="text-end fw-semibold"><?= number_format($peso_promedio, 2) ?> kg</td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                    onclick="abrirModalAjuste(<?= intval($prod['id_inventario']) ?>, <?= intval($prod['pacas_cant_acumulado']) ?>, <?= number_format($prod['pacas_kilos_acumulado'], 2, '.', '') ?>, '<?= addslashes(htmlspecialchars($prod['cod'])) ?>', '<?= addslashes(htmlspecialchars($prod['nom_pro'])) ?>')" <?= $perm['ADMIN']; ?>>
+                                                    <i class="bi bi-pencil-square me-1"></i> Ajustar Pacas
+                                                </button>
+                                            </td>
                                         </tr>
                                         <?php
                                                 $contador++;
@@ -699,6 +812,7 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                             <td class="text-end fw-bold text-primary"><?= number_format($total_general_pacas_kilos, 2) ?> kg</td>
                                             <td class="text-end fw-bold"><?= number_format($total_general_kilos, 2) ?> kg</td>
                                             <td class="text-end fw-semibold">-</td>
+                                            <td class="text-end"></td>
                                         </tr>
                                     </tfoot>
                                     <?php endif; ?>
@@ -753,28 +867,86 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                         if ($movimientos_mes && $movimientos_mes->num_rows > 0) {
                                             while ($mov = $movimientos_mes->fetch_assoc()) {
                                                 $tipo = strtolower($mov['tipo_movimiento']);
-                                                $badge_class = ($tipo == 'entrada' || $tipo == 'ajuste') ? 'success' : 'danger';
-                                                $signo = ($tipo == 'entrada' || $tipo == 'ajuste') ? '+' : '-';
-                                                
+
+                                                // Badge color: ajuste = primary, entrada = success, salida = danger (u otros -> secondary)
+                                                if ($tipo === 'ajuste') {
+                                                    $badge_class = 'primary';
+                                                } elseif ($tipo === 'entrada') {
+                                                    $badge_class = 'success';
+                                                } elseif ($tipo === 'salida') {
+                                                    $badge_class = 'danger';
+                                                } else {
+                                                    $badge_class = 'secondary';
+                                                }
+
+                                                // Valores numéricos (preservar signo en 'ajuste')
+                                                $granel_val = floatval($mov['granel_kilos_movimiento'] ?? 0);
+                                                $pacas_cant_val = intval($mov['pacas_cantidad_movimiento'] ?? 0);
+                                                $pacas_kilos_val = floatval($mov['pacas_kilos_movimiento'] ?? 0);
+
+                                                // Clases por tipo
+                                                $class_for_tipo = ($tipo === 'entrada') ? 'text-success' : (($tipo === 'salida') ? 'text-danger' : ($tipo === 'ajuste' ? 'text-primary' : ''));
+
+                                                // Formateo: entrada y salida mantienen +/- visual; ajuste muestra el número tal cual (si es -4 queda -4)
+                                                // Granel
+                                                if ($granel_val == 0) {
+                                                    $granel_display = '<span class="text-muted">-</span>';
+                                                } else {
+                                                    if ($tipo === 'entrada') {
+                                                        $granel_display = '+' . number_format(abs($granel_val), 2) . ' kg';
+                                                    } elseif ($tipo === 'salida') {
+                                                        $granel_display = '-' . number_format(abs($granel_val), 2) . ' kg';
+                                                    } else { // ajuste u otros: mostrar el valor tal cual (con signo si es negativo)
+                                                        $granel_display = ( $granel_val < 0 ? '-' : '' ) . number_format(abs($granel_val), 2) . ' kg';
+                                                    }
+                                                }
+
+                                                // Pacas (cantidad)
+                                                if ($pacas_cant_val == 0) {
+                                                    $pacas_cant_display = '<span class="text-muted">-</span>';
+                                                } else {
+                                                    if ($tipo === 'entrada') {
+                                                        $pacas_cant_display = '+' . number_format(abs($pacas_cant_val), 0);
+                                                    } elseif ($tipo === 'salida') {
+                                                        $pacas_cant_display = '-' . number_format(abs($pacas_cant_val), 0);
+                                                    } else { // ajuste
+                                                        $pacas_cant_display = ( $pacas_cant_val < 0 ? '-' : '' ) . number_format(abs($pacas_cant_val), 0);
+                                                    }
+                                                }
+
+                                                // Pacas kilos
+                                                if ($pacas_kilos_val == 0) {
+                                                    $pacas_kilos_display = '<span class="text-muted">-</span>';
+                                                } else {
+                                                    if ($tipo === 'entrada') {
+                                                        $pacas_kilos_display = '+' . number_format(abs($pacas_kilos_val), 2) . ' kg';
+                                                    } elseif ($tipo === 'salida') {
+                                                        $pacas_kilos_display = '-' . number_format(abs($pacas_kilos_val), 2) . ' kg';
+                                                    } else { // ajuste
+                                                        $pacas_kilos_display = ( $pacas_kilos_val < 0 ? '-' : '' ) . number_format(abs($pacas_kilos_val), 2) . ' kg';
+                                                    }
+                                                }
+
+                                                // Origen / destino
                                                 $origen_html = '';
                                                 if (!empty($mov['folio_captacion'])) {
                                                     $origen_html = "
                                                         <div class='fw-bold text-primary'>Captación</div>
-                                                        <small class='text-muted'>Folio: {$mov['folio_captacion']}</small>
+                                                        <small class='text-muted'>Folio: " . htmlspecialchars($mov['folio_captacion']) . "</small>
                                                     ";
                                                 } elseif (!empty($mov['folio_venta'])) {
                                                     $origen_html = "
                                                         <div class='fw-bold text-danger'>Venta</div>
                                                         <small class='text-muted'>
                                                             <i class='bi bi-person me-1'></i>
-                                                            {$mov['cod_cliente']} - {$mov['nombre_cliente']} - Folio: {$mov['folio_venta']}
+                                                            " . htmlspecialchars($mov['cod_cliente'] ?? '') . " - " . htmlspecialchars($mov['nombre_cliente'] ?? '') . " - Folio: " . htmlspecialchars($mov['folio_venta']) . "
                                                         </small>
                                                     ";
                                                 } else {
                                                     $origen_html = "<span class='text-muted'>Ajuste manual</span>";
                                                 }
                                         ?>
-                                        <tr data-tipo="<?= $tipo ?>">
+                                        <tr data-tipo="<?= htmlspecialchars($tipo) ?>">
                                             <td>
                                                 <div class="fw-semibold"><?= date('d/m/Y', strtotime($mov['created_at'])) ?></div>
                                                 <small class="text-muted"><?= date('H:i', strtotime($mov['created_at'])) ?></small>
@@ -785,23 +957,17 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                             </td>
                                             <td>
                                                 <span class="badge bg-<?= $badge_class ?> badge-pill-modern">
-                                                    <?= strtoupper($tipo) ?>
+                                                    <?= strtoupper(htmlspecialchars($tipo)) ?>
                                                 </span>
                                             </td>
-                                            <td class="text-end fw-bold <?= $tipo == 'entrada' ? 'text-success' : 'text-danger' ?>">
-                                                <?= $mov['granel_kilos_movimiento'] > 0 ? 
-                                                    $signo . number_format($mov['granel_kilos_movimiento'], 2) . ' kg' : 
-                                                    '<span class="text-muted">-</span>' ?>
+                                            <td class="text-end fw-bold <?= $class_for_tipo ?>">
+                                                <?= $granel_display ?>
                                             </td>
-                                            <td class="text-end fw-bold <?= $tipo == 'entrada' ? 'text-success' : 'text-danger' ?>">
-                                                <?= $mov['pacas_cantidad_movimiento'] > 0 ? 
-                                                    $signo . number_format($mov['pacas_cantidad_movimiento'], 0) : 
-                                                    '<span class="text-muted">-</span>' ?>
+                                            <td class="text-end fw-bold <?= $class_for_tipo ?>">
+                                                <?= $pacas_cant_display ?>
                                             </td>
-                                            <td class="text-end fw-bold <?= $tipo == 'entrada' ? 'text-success' : 'text-danger' ?>">
-                                                <?= $mov['pacas_kilos_movimiento'] > 0 ? 
-                                                    $signo . number_format($mov['pacas_kilos_movimiento'], 2) . ' kg' : 
-                                                    '<span class="text-muted">-</span>' ?>
+                                            <td class="text-end fw-bold <?= $class_for_tipo ?>">
+                                                <?= $pacas_kilos_display ?>
                                             </td>
                                             <td><?= $origen_html ?></td>
                                             <td>
@@ -817,7 +983,7 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                                 <div class="alert alert-modern alert-warning mb-0 mx-auto" style="max-width: 500px;">
                                                     <i class="bi bi-exclamation-triangle me-2"></i>
                                                     <strong>Sin movimientos registrados</strong>
-                                                    <p class="mb-0 mt-2">No hay movimientos en <?= $mes_nombre[$mes_actual] ?> de <?= $anio_actual ?></p>
+                                                    <p class="mb-0 mt-2">No hay movimientos en <?= htmlspecialchars($mes_nombre[$mes_actual]) ?> de <?= intval($anio_actual) ?></p>
                                                 </div>
                                             </td>
                                         </tr>
