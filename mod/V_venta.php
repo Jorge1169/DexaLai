@@ -1559,7 +1559,7 @@ if (isset($_POST['eliminar_ticket'])) {
                     <!-- Resumen ejecutivo -->
                     <div class="row g-3 mt-2">
                         <div class="col-12">
-                            <div class="bg-light rounded-3 p-3 border border-subtle">
+                            <div class="brounded-3 p-3 border border-subtle">
                                 <div class="row g-3 text-center">
                                     <div class="col-md-3">
                                         <h6 class="text-muted small mb-1">
