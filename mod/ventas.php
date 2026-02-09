@@ -81,6 +81,8 @@ $fechaFinDefault = date('Y-m-d');
                             <th class="text-end">Venta</th>
                             <th class="text-end">Flete</th>
                             <th class="text-end">Total</th>
+                            <th>Fact. Transp.</th>
+                            <th>Folio CR Venta</th>
                             <th>Zona</th>
                             <th>Usuario</th>
                         </tr>
@@ -229,8 +231,8 @@ $(document).ready(function() {
                     "data": null,
                     "render": function(data, type, row) {
                         // Columna de acciones
-                        const id = row[13]; // ID en la última posición
-                        const status = row[14]; // Status (1 = activo, 0 = inactivo) - COMO NÚMERO
+                        const id = row[15]; // ID en la última posición
+                        const status = row[16]; // Status (1 = activo, 0 = inactivo) - COMO NÚMERO
                         
                         console.log("ID:", id, "Status:", status, "Tipo:", typeof status); // DEBUG
                         
@@ -293,12 +295,16 @@ $(document).ready(function() {
                     "className": "text-end"
                 },
                 {
-                    "targets": [11, 12], // Zona y Usuario
+                    "targets": [11, 12], // Factura Transportista y Folio CR Venta
+                    "responsivePriority": 3
+                },
+                {
+                    "targets": [13, 14], // Zona y Usuario
                     "responsivePriority": 2
                 }
             ],
             "createdRow": function(row, data, dataIndex) {
-                const status = data[14]; // Status como número
+                const status = data[16]; // Status como número
                 
                 if (status === 0) {  // <-- CAMBIAR '0' por 0
                     $(row).addClass('table-secondary text-muted');

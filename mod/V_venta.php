@@ -248,6 +248,9 @@ $detalles = $stmt_detalle->get_result();
 
 // Obtener información del flete (incluyendo nuevos campos)
 $sql_flete = "SELECT vf.*,
+                    
+                     vf.aliasven as alias_CR_venta,
+                     vf.folioven as folio_CR_venta,
                      p.precio as precio_flete,
                      CASE 
                          WHEN p.tipo = 'MFT' THEN 'Por tonelada'
@@ -1378,6 +1381,16 @@ if (isset($_POST['eliminar_ticket'])) {
                                     <?php endif; ?>
                                 </div>
                             </div>
+                            <?php endif; ?>
+                            <?php if (!empty($flete_data['folio_CR_venta'])): ?>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Folio CR Venta</small>
+                                <!-- Mostrar el folio completo con formato y link para abrir en otra pagina el cr -->
+                                <a href="<?= $link.urlencode($flete_data['alias_CR_venta']).'-' . $flete_data['folio_CR_venta'] ?>" target="_blank" class="btn btn-sm btn-info rounded-5">
+                                    <i class="bi bi-file-earmark-text me-1"></i>
+                                    <?= htmlspecialchars($flete_data['alias_CR_venta']) ?> - <?= htmlspecialchars($flete_data['folio_CR_venta']) ?>
+                                </a>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </div>

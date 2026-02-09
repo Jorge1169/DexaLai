@@ -17,7 +17,7 @@ $fechaFinDefault = date('Y-m-d');
         </div>
     </div>
 
-    <!-- Filtros SIMPLIFICADOS (solo fechas) -->
+    <!-- Filtros SIMPLIFICADOS (solo fechas) -->    
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="row g-3 align-items-end">
@@ -68,12 +68,43 @@ $fechaFinDefault = date('Y-m-d');
                             <th class="text-end">Costo Flete</th>
                             <th class="text-end">Total</th>
                             <th>Fletero</th>
+                            <th>Facturas Productos</th>
+                            <th>Factura Flete</th>
+                            <!-- NUEVAS COLUMNAS -->
+                            <th>CR Productos</th>
+                            <th>CR Flete</th>
                         </tr>
                     </thead>
                     <tbody>
                         <!-- Los datos se cargarán mediante AJAX -->
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para visualizar comprobantes -->
+<div class="modal fade" id="modalViewComprobante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalViewComprobanteTitle">
+                    <i class="bi bi-file-earmark me-2"></i>Comprobante
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalViewComprobanteBody">
+                <p class="text-muted">Cargando...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btnDownloadComprobante">
+                    <i class="bi bi-download me-1"></i>Descargar
+                </button>
+                <button type="button" class="btn btn-info" id="btnRotateImage" style="display: none;">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Rotar
+                </button>
             </div>
         </div>
     </div>
@@ -135,6 +166,19 @@ $fechaFinDefault = date('Y-m-d');
 }
 .text-warning {
     color: #ffc107 !important;
+}
+.factura-link {
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.factura-link:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+.factura-link i {
+    margin-right: 0.3rem;
 }
 </style>
 
@@ -206,8 +250,8 @@ $(document).ready(function() {
                     "data": null,
                     "render": function(data, type, row) {
                         // Columna de acciones
-                        const id = row[11]; // ID en la última posición
-                        const status = row[12]; // Status (1 = activo, 0 = inactivo)
+                        const id = row[15]; // ID en la nueva posición (antes 11)
+                        const status = row[16]; // Status en la nueva posición (antes 12)
                         
                         let buttons = '';
                         if (status === '1') {
@@ -269,7 +313,7 @@ $(document).ready(function() {
             ],
             "createdRow": function(row, data, dataIndex) {
                 // Aplicar estilos según el status
-                const status = data[12]; // Status
+                const status = data[14]; // Status en la nueva posición (antes 12)
                 if (status === '0') {
                     $(row).addClass('table-secondary text-muted');
                 }
@@ -479,5 +523,93 @@ function showToast(message, type) {
     $(document).on('draw.dt', function() {
         $('[data-bs-toggle="tooltip"]').tooltip();
     });
+
+    // ============================================
+    // FUNCIONES PARA VISUALIZAR COMPROBANTES
+    // ============================================
+    let currentFilename = null;
+    
+    // Hacer las facturas clickeables
+    $(document).on('click', '.factura-link', function(e) {
+        e.preventDefault();
+        const filename = $(this).data('filename');
+        const filetype = $(this).data('filetype');
+        const nombre = $(this).data('nombre');
+        
+        if (filename) {
+            viewComprobante(filename, filetype, nombre);
+        }
+    });
+    
+    function viewComprobante(filename, filetype, productName) {
+        const modal = new bootstrap.Modal(document.getElementById('modalViewComprobante'));
+        const modalBody = document.getElementById('modalViewComprobanteBody');
+        const modalTitle = document.getElementById('modalViewComprobanteTitle');
+        const btnDownload = document.getElementById('btnDownloadComprobante');
+        const btnRotate = document.getElementById('btnRotateImage');
+        
+        currentFilename = filename;
+        modalTitle.innerHTML = `<i class="bi bi-file-earmark me-2"></i> ${escapeHtml(productName)}`;
+        
+        // Configurar enlace de descarga
+        btnDownload.onclick = function() {
+            downloadComprobante();
+        };
+        
+        if (filetype && filetype.includes('pdf')) {
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <iframe src="uploads/comprobantes/${encodeURIComponent(filename)}" 
+                            style="width: 100%; height: 600px; border: none; border-radius: 8px;">
+                    </iframe>
+                </div>
+            `;
+            btnRotate.style.display = 'none';
+        } else if (filetype && filetype.includes('image')) {
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <img src="uploads/comprobantes/${encodeURIComponent(filename)}" 
+                         alt="${escapeHtml(productName)}" 
+                         style="max-width: 100%; max-height: 600px; border-radius: 8px; cursor: pointer;" />
+                </div>
+            `;
+            btnRotate.style.display = 'block';
+            btnRotate.onclick = function() {
+                rotateImageInViewer(filename);
+            };
+        } else {
+            modalBody.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Tipo de archivo no soportado para vista previa
+                </div>
+            `;
+            btnRotate.style.display = 'none';
+        }
+        
+        modal.show();
+    }
+    
+    function downloadComprobante() {
+        if (currentFilename) {
+            window.location.href = 'uploads/comprobantes/' + encodeURIComponent(currentFilename);
+        }
+    }
+    
+    function rotateImageInViewer(filename) {
+        const img = document.querySelector('#modalViewComprobanteBody img');
+        if (img) {
+            const currentRotation = parseInt(img.style.transform.replace('rotate(', '').replace('deg)', '')) || 0;
+            const newRotation = currentRotation + 90;
+            img.style.transform = `rotate(${newRotation}deg)`;
+            img.style.transition = 'transform 0.3s ease';
+        }
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 });
 </script>

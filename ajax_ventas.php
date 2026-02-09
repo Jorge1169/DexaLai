@@ -38,7 +38,12 @@ $query = "SELECT SQL_CALC_FOUND_ROWS
             COALESCE(SUM(vd.total_kilos * p.precio), 0) as total_venta,
             z.PLANTA as nombre_zona,
             u.nombre as nombre_usuario,
-            v.status
+            v.status,
+            vf.factura_transportista,
+            vf.aliasven as alias_CR_venta,
+            vf.folioven as folio_CR_venta,
+            vf.doc_factura_ven as doc_factura_CR_venta,
+            vf.com_factura_ven as com_factura_CR_venta
           FROM ventas v
           LEFT JOIN clientes c ON v.id_cliente = c.id_cli
           LEFT JOIN almacenes a ON v.id_alma = a.id_alma
@@ -46,6 +51,7 @@ $query = "SELECT SQL_CALC_FOUND_ROWS
           LEFT JOIN usuarios u ON v.id_user = u.id_user
           LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta AND vd.status = 1
           LEFT JOIN precios p ON vd.id_pre_venta = p.id_precio
+          LEFT JOIN venta_flete vf ON v.id_venta = vf.id_venta
           WHERE 1=1 ";
 
 // Filtro de status
@@ -101,9 +107,11 @@ $columns = [
     8 => 'total_venta',          // Venta
     9 => 'v.id_venta',           // Flete (placeholder)
     10 => 'v.id_venta',          // Total (placeholder)
-    11 => 'z.PLANTA',            // Zona
-    12 => 'u.nombre',            // Usuario
-    13 => 'v.status'             // Status
+    11 => 'vf.factura_transportista', // Factura Transportista
+    12 => 'vf.folioven',         // Folio CR Venta
+    13 => 'z.PLANTA',            // Zona
+    14 => 'u.nombre',            // Usuario
+    15 => 'v.status'             // Status
 ];
 
 if (isset($columns[$orderColumn])) {
@@ -189,6 +197,24 @@ if ($result->num_rows > 0) {
             '<span class="text-success fw-bold">$' . number_format($total_venta, 2) . '</span>',
             '<span class="text-danger">$' . number_format($total_flete, 2) . '</span>',
             '<strong class="' . ($total_general >= 0 ? 'text-success' : 'text-danger') . '">$' . number_format($total_general, 2) . '</strong>',
+            // Factura Transportista
+            (!empty($row['factura_transportista']) 
+                ? ((!empty($row['doc_factura_CR_venta']) || !empty($row['com_factura_CR_venta'])) 
+                    ? '<div class="dropdown">
+                        <button class="btn btn-info btn-sm rounded-4 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-file-earmark-pdf"></i> ' . htmlspecialchars($row['factura_transportista']) . '
+                        </button>
+                        <ul class="dropdown-menu" style="min-width: 200px;">
+                            ' . (!empty($row['doc_factura_CR_venta']) ? '<li><a class="dropdown-item" href="' . $invoiceLK . htmlspecialchars($row['doc_factura_CR_venta']) . '.pdf" target="_blank">Ver Factura de Venta</a></li>' : '') . '
+                            ' . (!empty($row['com_factura_CR_venta']) ? '<li><a class="dropdown-item" href="' . $invoiceLK . htmlspecialchars($row['com_factura_CR_venta']) . '.pdf" target="_blank">Ver Comprobante de Venta</a></li>' : '') . '
+                        </ul>
+                      </div>'
+                    : '<strong class="badge bg-info bg-opacity-25 text-info">' . htmlspecialchars($row['factura_transportista']) . '</strong>')
+                : '<span class="text-muted"><small>Pendiente</small></span>'),
+            // Folio CR Venta
+            (!empty($row['folio_CR_venta']) 
+                ? '<a href="' . $link . urlencode($row['alias_CR_venta']) . '-' . $row['folio_CR_venta'] . '" target="_blank" class="btn btn-sm btn-info rounded-5"><i class="bi bi-file-earmark-text me-1"></i>' . htmlspecialchars($row['alias_CR_venta'] ?? '') . ' - ' . htmlspecialchars($row['folio_CR_venta']) . '</a>' 
+                : '<span class="text-muted"><small>Pendiente</small></span>'),
             '<span class="badge bg-primary">' . htmlspecialchars($row['nombre_zona'] ?? '') . '</span>',
             '<small>' . htmlspecialchars($row['nombre_usuario'] ?? '') . '</small>',
             $id_venta, // ID para acciones

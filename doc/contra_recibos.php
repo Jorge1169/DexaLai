@@ -321,7 +321,8 @@
         $queryVentasRows = "SELECT v.id_venta, CONCAT('V-', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio,4,'0')) AS folio_completo,
                                   v.fecha_venta, c.cod AS cod_cliente, c.nombre AS nombre_cliente,
                                   pr.nom_pro AS producto, vd.total_kilos, pv.precio AS precio_venta,
-                                  vf.folioven AS folio_cr, vf.aliasven AS alias_cr, tv.placas AS placas_fletero
+                                  vf.folioven AS folio_cr, vf.aliasven AS alias_cr, tv.placas AS placas_fletero,
+                                  vf.factura_transportista AS factura_transportista
                            FROM venta_flete vf
                            INNER JOIN ventas v ON vf.id_venta = v.id_venta
                            LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta
@@ -519,6 +520,7 @@
                         <th>Precio</th>
                         <th>Total</th>
                         <th>Placas</th>
+                        <th>Factura Transportista</th>
                         <th>C.R. Asignado</th>
                     </tr>
                 </thead>
@@ -544,6 +546,7 @@
                         <td class="text-right">$<?= number_format($precio, 2) ?></td>
                         <td class="text-right text-bold">$<?= number_format($total, 2) ?></td>
                         <td><?= htmlspecialchars($row['placas_fletero'] ?? '') ?></td>
+                        <td><?= htmlspecialchars($row['factura_transportista'] ?? '') ?></td>
                         <td><?= htmlspecialchars($row['folio_cr'] ?? ($row['alias_cr'] ?? '')) ?></td>
                     </tr>
                     <?php endwhile; ?>
@@ -574,7 +577,7 @@
                              cd.total_kilos, 
                              cd.pacas_kilos,
                              cd.pacas_cantidad, 
-                             cd.numero_factura, 
+                             cd.numero_factura AS numero_factura_compra, 
                              cd.foliocap AS folio_cr, 
                              cd.aliascap AS alias_cr,
                              pc.precio AS precio_compra_por_kilo
@@ -603,6 +606,7 @@
                     <th>Pacas</th>
                     <th>Peso (kg)</th>
                     <th>Precio/kg</th>
+                    <th>Factura Compra</th>
                     <th>Total</th>
                     <th>C.R. Asignado</th>
                 </tr>
@@ -633,6 +637,7 @@
                     <td class="text-right"><?= number_format($pacas, 0) ?></td>
                     <td class="text-right"><?= number_format($peso, 2) ?></td>
                     <td class="text-right">$<?= number_format($precio, 2) ?></td>
+                    <td><?= htmlspecialchars($row['numero_factura_compra'] ?? '') ?></td>
                     <td class="text-right text-bold">$<?= number_format($totalRow, 2) ?></td>
                     <td><?= htmlspecialchars($row['folio_cr'] ?? '') ?></td>
                 </tr>
@@ -665,7 +670,8 @@
                           t.placas AS placas_fletero,
                           t.razon_so AS nombre_fletero,
                           pf.precio AS precio_flete,
-                          pf.tipo AS tipo_flete
+                          pf.tipo AS tipo_flete,
+                          cf.numero_factura_flete AS numero_factura_flete
                    FROM captacion ca
                    LEFT JOIN captacion_flete cf ON ca.id_captacion = cf.id_captacion
                    LEFT JOIN proveedores p ON ca.id_prov = p.id_prov
@@ -702,6 +708,7 @@
                 <th>Kilos Totales</th>
                 <th>Precio Flete</th>
                 <th>Monto Flete</th>
+                <th>Factura Flete</th>
                 <th>C.R. Flete</th>
             </tr>
         </thead>
@@ -756,6 +763,7 @@
                         <?php endif; ?>
                     </td>
                     <td class="text-right text-bold">$<?= number_format($monto_flete, 2) ?></td>
+                    <td><?= htmlspecialchars($fleteInfo['numero_factura_flete'] ?? '') ?></td>
                     <td><?= htmlspecialchars($fleteInfo['folio_cr_flete'] ?? $ContraRecibo) ?></td>
                 </tr>
             <?php endwhile; ?>
@@ -767,7 +775,7 @@
                 <td class="text-right"><?= number_format($totalPeso, 2) ?> kg</td>
                 <td></td>
                 <td class="text-right">$<?= number_format($totalMonto, 2) ?></td>
-                <td></td>
+                <td colspan="2"></td>
             </tr>
         </tfoot>
     </table>
@@ -790,7 +798,7 @@
                 <?php
                 // Crear una lista de placeholders para la consulta IN
                 $placeholders = str_repeat('?,', count($all_captacion_ids) - 1) . '?';
-                
+                    
                 $queryDetalle = "SELECT ca.folio as folio_captacion,
                                         pr.nom_pro AS producto, 
                                         cd.pacas_cantidad, 

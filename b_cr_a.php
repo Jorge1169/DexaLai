@@ -75,7 +75,10 @@ if ($result_ventas->num_rows > 0) {
             $cr_venta = $BuscarCR_V->fetch_assoc();
             // actualizar la venta con el folio del C.R
             $update_venta = $conn_mysql->prepare("UPDATE venta_flete SET folioven = ? , aliasven = ? WHERE id_venta = ?");
+
             $update_venta->bind_param("ssi", $cr_venta['FolioContra'], $cr_venta['alias'], $row['id_venta']);
+
+            $inv_mysql->query("UPDATE contrarrecibos SET crExterno = '1' where folio = '" . $cr_venta['FolioContra'] . "' and aliasGrupo = '" . $cr_venta['alias'] . "'");
             
             if ($update_venta->execute()) {
                 $ventas_actualizadas++;
@@ -210,7 +213,7 @@ if ($result_captaciones->num_rows > 0) {
             $cr_captacion = $BuscarCR_C->fetch_assoc();
             $update_captacion = $conn_mysql->prepare("UPDATE captacion_detalle SET foliocap = ? , aliascap = ? WHERE id_detalle = ?");
             $update_captacion->bind_param("ssi", $cr_captacion['FolioContra'], $cr_captacion['alias'], $row['id_detalle']);
-            
+            $inv_mysql->query("UPDATE contrarrecibos SET crExterno = '1' where folio = '" . $cr_captacion['FolioContra'] . "' and aliasGrupo = '" . $cr_captacion['alias'] . "'");
             if ($update_captacion->execute()) {
                 $captaciones_actualizadas++;
                 $cr_captacion_encontrado = true;
@@ -263,7 +266,7 @@ if ($result_captaciones->num_rows > 0) {
             $cr_flete = $BuscarCR_F->fetch_assoc();
             $update_captacion_flete = $conn_mysql->prepare("UPDATE captacion_flete SET foliocap_flete = ? , aliascap_flete = ? WHERE id_capt_flete = ?");
             $update_captacion_flete->bind_param("ssi", $cr_flete['FolioContra'], $cr_flete['alias'], $row['id_captacion']);
-            
+            $inv_mysql->query("UPDATE contrarrecibos SET crExterno = '1' where folio = '" . $cr_flete['FolioContra'] . "' and aliasGrupo = '" . $cr_flete['alias'] . "'");
             if ($update_captacion_flete->execute()) {
                 $captaciones_actualizadas++;
                 $cr_flete_encontrado = true;

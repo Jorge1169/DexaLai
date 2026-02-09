@@ -227,6 +227,8 @@ if (strlen($folio_completo) == 4 && is_numeric($folio_completo)) {
 // Obtener productos de la captación con precio por kilo
 $sql_productos = "SELECT 
 cd.*,
+cd.aliascap as alias_CR_producto,
+cd.foliocap  as folio_CR_producto,
 cd.doc_factura as doc_factura_producto,
 cd.com_factura as com_factura_producto,
 p.cod as cod_producto,
@@ -252,6 +254,8 @@ $productos = $stmt_productos->get_result()->fetch_all(MYSQLI_ASSOC);
 // Obtener información del flete
 $sql_flete = "SELECT 
 cf.*,
+cf.aliascap_flete as alias_CR_flete,
+cf.foliocap_flete as folio_CR_flete,
 cf.doc_factura_flete as doc_factura_flete,
 cf.com_factura_flete as com_factura_flete,
 cf.id_capt_flete as id_flete,
@@ -1033,6 +1037,22 @@ if (isset($_POST['guardar_factura_flete'])) {
                                         </div>
                                     </div>
                                 <?php endif; ?>
+                                <?php
+                                if (!empty($flete['folio_CR_flete'])) {
+                                    ?>
+                                    <!-- abrir el link de cr_flete en una nueva pestaña -->
+                                    <div class="mb-3">
+                                        <small class="text-muted d-block mb-1">Contra Recibo</small>
+                                        <div class="fw-semibold">
+                                            <a href="<?= $link . $flete['alias_CR_flete'].'-'.$flete['folio_CR_flete'] ?>" target="_blank" class="text-decoration-none">
+                                                <i class="bi bi-file-earmark-text text-warning me-1" aria-hidden="true"></i>
+                                                <?= htmlspecialchars($flete['alias_CR_flete']) ?> - <?= htmlspecialchars($flete['folio_CR_flete']) ?>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <?php
+                                }
+                                ?>
 
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
@@ -1134,6 +1154,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 <th>N° Ticket / Comprobante</th>
                                 <th>N° Báscula</th>
                                 <th>N° Factura</th>
+                                <th>Contra Recibo</th>
                                 <th>Observaciones</th>
                             </tr>
                         </thead>
@@ -1271,6 +1292,27 @@ if (isset($_POST['guardar_factura_flete'])) {
                                         <?php endif; ?>
                                     </td>
                                     <td>
+                                        <?php if (!empty($producto['folio_CR_producto'])):
+                                            $cr_alias = htmlspecialchars($producto['alias_CR_producto']);
+                                            $cr_folio = htmlspecialchars($producto['folio_CR_producto']);
+                                            $cr_url = htmlspecialchars($link . $producto['alias_CR_producto'] . '-' . $producto['folio_CR_producto'], ENT_QUOTES);
+                                            $cr_display = $cr_alias . ' - ' . $cr_folio;
+                                        ?>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <a href="<?= $cr_url ?>" target="_blank" rel="noopener" 
+                                                   class="btn btn-sm btn-teal rounded-4 d-inline-flex align-items-center" 
+                                                   data-bs-toggle="tooltip" title="<?= $cr_display ?>">
+                                                    <i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>
+                                                    <span class="text-truncate" style="max-width:130px;display:inline-block;vertical-align:middle;">
+                                                        <?= $cr_display ?>
+                                                    </span>
+                                                </a>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="text-muted small">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
                                         <?php if (!empty($producto['observaciones'])): ?>
                                             <small class="d-block text-muted" data-bs-toggle="tooltip" title="<?= htmlspecialchars($producto['observaciones']) ?>">
                                                 <i class="bi bi-chat-left-text me-1"></i>
@@ -1325,6 +1367,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 </td>
 
                                 <!-- Espacios para columnas: Ticket/Comprobante, Báscula, Factura, Observaciones -->
+                                <td></td>
                                 <td></td>
                                 <td></td>
                                 <td></td>
