@@ -80,9 +80,9 @@ $fechaFinDefault = date('Y-m-d');
                             <th class="text-end">Kilos</th>
                             <th class="text-end">Venta</th>
                             <th class="text-end">Flete</th>
+                            <th class="text-end">Factura Flete</th>
+                            <th class="text-end">Contra recibo</th>
                             <th class="text-end">Total</th>
-                            <th>Fact. Transp.</th>
-                            <th>Folio CR Venta</th>
                             <th>Zona</th>
                             <th>Usuario</th>
                         </tr>
@@ -231,14 +231,13 @@ $(document).ready(function() {
                     "data": null,
                     "render": function(data, type, row) {
                         // Columna de acciones
-                        const id = row[15]; // ID en la última posición
-                        const status = row[16]; // Status (1 = activo, 0 = inactivo) - COMO NÚMERO
+                        const id = row[15]; // ID en la nueva posición
+                        const status = row[16]; // Status (1 = activo, 0 = inactivo)
                         
                         console.log("ID:", id, "Status:", status, "Tipo:", typeof status); // DEBUG
                         
                         let buttons = '';
-                        // CORREGIR: Comparar con número, no con string
-                        if (status === 1) {  // <-- CAMBIAR '1' por 1
+                        if (status === 1) {
                             buttons = `
                                 <div class="btn-group btn-group-sm" role="group">
                                     <a href="?p=V_venta&id=${id}" class="btn btn-info" 
@@ -277,13 +276,13 @@ $(document).ready(function() {
                     "responsivePriority": 1
                 },
                 {
-                    "targets": [6, 7, 8, 9, 10], // Columnas numéricas
+                    "targets": [6, 7, 8, 9, 12], // Columnas numéricas (pacas,kilos,venta,flete,total)
                     "render": function(data, type, row) {
                         if (type === 'sort' || type === 'type') {
                             // Para ordenar, extraer solo el número
-                            if (data.includes('$')) {
+                            if (typeof data === 'string' && data.includes('$')) {
                                 return parseFloat(data.replace(/[^0-9.]/g, ''));
-                            } else if (data.includes('kg')) {
+                            } else if (typeof data === 'string' && data.includes('kg')) {
                                 return parseFloat(data.replace(/[^0-9.]/g, ''));
                             } else {
                                 // Para pacas
@@ -295,34 +294,38 @@ $(document).ready(function() {
                     "className": "text-end"
                 },
                 {
-                    "targets": [11, 12], // Factura Transportista y Folio CR Venta
-                    "responsivePriority": 3
-                },
-                {
-                    "targets": [13, 14], // Zona y Usuario
+                    "targets": [13, 14], // Zona y Usuario (ajustados por nuevas columnas)
                     "responsivePriority": 2
                 }
             ],
             "createdRow": function(row, data, dataIndex) {
-                const status = data[16]; // Status como número
-                
-                if (status === 0) {  // <-- CAMBIAR '0' por 0
+                const status = data[16]; // Status como número (nueva posición)
+
+                if (status === 0) {
                     $(row).addClass('table-secondary text-muted');
                     // Agregar badge de "Inactiva"
                     $(row).find('td:eq(2)').append('<br><span class="badge bg-danger badge-venta">Inactiva</span>');
                 } else {
                     // Resaltar totales altos solo en activas
-                    const totalText = data[10];
-                    const totalMatch = totalText.match(/\$([\d,]+\.\d{2})/);
-                    if (totalMatch) {
-                        const total = parseFloat(totalMatch[1].replace(/,/g, ''));
-                        if (total > 50000) {
-                            $(row).find('td:nth-child(11)').addClass('fw-bold text-success');
-                        } else if (total < 0) {
-                            $(row).find('td:nth-child(11)').addClass('fw-bold text-danger');
+                    const totalText = data[12]; // ahora la columna Total está en la posición 12
+                    if (typeof totalText === 'string') {
+                        const totalMatch = totalText.match(/\$([\d,]+\.\d{2})/);
+                        if (totalMatch) {
+                            const total = parseFloat(totalMatch[1].replace(/,/g, ''));
+                            if (total > 50000) {
+                                $(row).find('td:nth-child(13)').addClass('fw-bold text-success');
+                            } else if (total < 0) {
+                                $(row).find('td:nth-child(13)').addClass('fw-bold text-danger');
+                            }
                         }
                     }
                 }
+                
+                // Inicializar Bootstrap Dropdowns en esta fila
+                const dropdownElements = $(row).find('[data-bs-toggle="dropdown"]');
+                dropdownElements.each(function() {
+                    new bootstrap.Dropdown(this);
+                });
             }
         });
     }
@@ -519,9 +522,14 @@ $('#confirmVentaModal').on('hidden.bs.modal', function() {
         $('body').append('<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999"></div>');
     }
 
-    // Inicializar tooltips
+    // Inicializar tooltips y dropdowns cada vez que DataTables se redibuja
     $(document).on('draw.dt', function() {
         $('[data-bs-toggle="tooltip"]').tooltip();
+        
+        // Reinicializar dropdowns
+        document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(element) {
+            new bootstrap.Dropdown(element);
+        });
     });
 });
 
