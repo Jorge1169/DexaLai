@@ -43,13 +43,20 @@ if ($result_ven->num_rows === 0) {
 
                 if (!empty($row_ven['factura_flete_venta'])) {
                         $Buscar_factura_flete_ven = $inv_mysql->query("select * from facturas where codigoProveedor = '" . $row_ven['codigo_transporte_venta'] . "' and folio = '" . $row_ven['factura_flete_venta'] . "'");
+
                         if ($Buscar_factura_flete_ven && $Buscar_factura_flete_ven->num_rows > 0) {
                                 $Info_factura_flete_ven = mysqli_fetch_assoc($Buscar_factura_flete_ven);
                                 if ($Info_factura_flete_ven['status'] != 'Rechazado') {
+
                                         $doc_factura_flete_ven = $Info_factura_flete_ven['ubicacion'].$Info_factura_flete_ven['nombreInternoPDF'];
                                         $statusDoc = '<span class="badge bg-success">Encontrada</span>';
+                                        $impuestoTraslado = $Info_factura_flete_ven['impuestoTraslado'] ?? 0;
+                                        $impuestoRetenido = $Info_factura_flete_ven['impuestoRetenido'] ?? 0;
+                                        $subtotal = $Info_factura_flete_ven['subtotal'] ?? 0;
+                                        $total = $Info_factura_flete_ven['total'] ?? 0;
                                         // actualizar doc en BD
-                                        $conn_mysql->query("UPDATE venta_flete SET doc_factura_ven = '" . $conn_mysql->real_escape_string($doc_factura_flete_ven) . "' WHERE id_venta = " . intval($row_ven['id_venta']));
+                                        $conn_mysql->query("UPDATE venta_flete SET doc_factura_ven = '" . $conn_mysql->real_escape_string($doc_factura_flete_ven) . "', impuestoTraslado_v = " . floatval($impuestoTraslado) . ", impuestoRetenido_v = " . floatval($impuestoRetenido) . ", subtotal_v = " . floatval($subtotal) . ", total_v = " . floatval($total) . " WHERE id_venta = " . intval($row_ven['id_venta']));
+                                        
                                         if ($Info_factura_flete_ven['ea'] == 1) {
                                                 $fecha_timestamp2 = strtotime($Info_factura_flete_ven['fechaFactura']);
                                                 $fecha_form2 = date("ymd", $fecha_timestamp2);
@@ -159,12 +166,17 @@ if ($result_cap->num_rows === 0) {
                 // factura flete de captación
                 if (!empty($row['factura_flete'])) {
                         $Buscar_factura_flete = $inv_mysql->query("select * from facturas where codigoProveedor = '" . $row['codigo_transporte'] . "' and folio = '" . $row['factura_flete'] . "'");
+                        $impuestoTraslado_flete = $Info_factura_flete['impuestoTraslado'] ?? 0;
+                        $impuestoRetenido_flete = $Info_factura_flete['impuestoRetenido'] ?? 0;
+                        $subtotal_flete = $Info_factura_flete['subtotal'] ?? 0;
+                        $total_flete = $Info_factura_flete['total'] ?? 0;
+                        
                         if ($Buscar_factura_flete && $Buscar_factura_flete->num_rows > 0) {
                                 $Info_factura_flete = mysqli_fetch_assoc($Buscar_factura_flete);
                                 if ($Info_factura_flete['status'] != 'Rechazado') {
                                         $doc_factura_flete = $Info_factura_flete['ubicacion'].$Info_factura_flete['nombreInternoPDF'];
                                         $statusDocFlete = '<span class="badge bg-success">Encontrada</span>';
-                                        $conn_mysql->query("UPDATE captacion_flete SET doc_factura_flete = '" . $conn_mysql->real_escape_string($doc_factura_flete) . "' WHERE id_capt_flete = " . intval($row['id_capt_flete']));
+                                        $conn_mysql->query("UPDATE captacion_flete SET doc_factura_flete = '" . $conn_mysql->real_escape_string($doc_factura_flete) . "', impuestoTraslado = " . floatval($impuestoTraslado_flete) . ", impuestoRetenido = " . floatval($impuestoRetenido_flete) . ", subtotal = " . floatval($subtotal_flete) . ", total = " . floatval($total_flete) . " WHERE id_capt_flete = " . intval($row['id_capt_flete']));
                                         if ($Info_factura_flete['ea'] == 1) {
                                                 $fecha_timestamp2 = strtotime($Info_factura_flete['fechaFactura']);
                                                 $fecha_form2 = date("ymd", $fecha_timestamp2);

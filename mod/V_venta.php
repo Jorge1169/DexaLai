@@ -248,7 +248,10 @@ $detalles = $stmt_detalle->get_result();
 
 // Obtener información del flete (incluyendo nuevos campos)
 $sql_flete = "SELECT vf.*,
-                    
+                    vf.impuestoTraslado_v as impuestoTraslado_flete,
+                    vf.impuestoRetenido_v as impuestoRetenido_flete,
+                    vf.subtotal_v as subtotal_flete,
+                    vf.total_v as total_flete,
                      vf.aliasven as alias_CR_venta,
                      vf.folioven as folio_CR_venta,
                      p.precio as precio_flete,
@@ -668,8 +671,6 @@ function optimizarImagenParaHosting($tmp_path, $dest_path, $mime_type) {
     
     return true;
 }
-
-
 /**
  * Función simplificada para obtener información del ticket
  */
@@ -1091,20 +1092,20 @@ if (isset($_POST['eliminar_ticket'])) {
     </div>
 
     <!-- Contenido principal en grid 3 columnas -->
-    <div class="row g-4">
+    <div class="row g-3">
         <!-- Columna 1: Producto y origen/destino -->
         <div class="col-lg-4">
             <!-- Tarjeta del producto -->
             <div class="card border-0 shadow h-100">
-                <div class="card-header bg-transparent border-bottom py-3">
+                <div class="card-header bg-transparent border-bottom py-2">
                     <h5 class="mb-0">
                         <i class="bi bi-box-seam text-primary me-2"></i>Producto Vendido
                     </h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-3">
                     <?php if ($producto): ?>
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <h6 class="fw-bold mb-1"><?= htmlspecialchars($producto['nombre_producto']) ?></h6>
                                 <p class="text-muted small mb-0">Código: <?= htmlspecialchars($producto['cod_producto']) ?></p>
@@ -1124,20 +1125,20 @@ if (isset($_POST['eliminar_ticket'])) {
                         
                         <div class="row g-2">
                             <div class="col-6">
-                                <div class="border rounded p-2 text-center bg-body-tertiary">
+                                <div class="border rounded p-2 text-center bg-body-tertiary h-100">
                                     <small class="text-muted d-block">Pacas</small>
                                     <h4 class="fw-bold mb-0"><?= number_format($producto['pacas_cantidad'], 0) ?></h4>
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="border rounded p-2 text-center bg-body-tertiary">
+                                <div class="border rounded p-2 text-center bg-body-tertiary h-100">
                                     <small class="text-muted d-block">Kilos</small>
                                     <h4 class="fw-bold mb-0"><?= number_format($producto['total_kilos'], 1) ?></h4>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="mt-3 pt-3 border-top">
+                        <div class="mt-3 pt-2 border-top">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="text-muted">Subtotal:</span>
                                 <span class="fw-bold fs-5 text-success">
@@ -1148,9 +1149,9 @@ if (isset($_POST['eliminar_ticket'])) {
                     </div>
                     <?php endif; ?>
                     
-                    <!-- Métricas -->
+                    <!-- Métricas compactas -->
                     <div class="border rounded p-3 bg-body-tertiary">
-                        <h6 class="fw-bold mb-3 text-muted">
+                        <h6 class="fw-bold mb-2 text-muted d-flex align-items-center">
                             <i class="bi bi-graph-up me-2"></i>Métricas
                         </h6>
                         <div class="row g-2">
@@ -1217,15 +1218,15 @@ if (isset($_POST['eliminar_ticket'])) {
             }
             ?>
             <div class="card border-0 shadow h-100">
-            <div class="card-header bg-transparent border-bottom py-3">
+            <div class="card-header bg-transparent border-bottom py-2">
                 <h5 class="mb-0">
                 <i class="bi bi-arrow-left-right text-info me-2"></i>Origen y Destino
                 </h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-3">
                 <!-- Origen -->
-                <div class="mb-4">
-                <div class="d-flex align-items-center mb-3">
+                <div class="mb-3">
+                <div class="d-flex align-items-center mb-2">
                     <div class="bg-primary bg-opacity-10 rounded-2 p-2 me-3">
                     <i class="bi bi-shop text-primary fs-4"></i>
                     </div>
@@ -1235,8 +1236,8 @@ if (isset($_POST['eliminar_ticket'])) {
                     </div>
                 </div>
 
-                <div class="ps-5">
-                    <div class="border-start border-3 border-primary ps-3">
+                <div class="ps-4">
+                    <div class="border-start border-3 border-primary ps-3 small">
                     <small class="text-muted d-block">Bodega de Salida</small>
                     <div class="fw-semibold"><?= htmlspecialchars($venta['cod_bodega_almacen']) ?></div>
                     <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_almacen']) ?></small>
@@ -1248,11 +1249,11 @@ if (isset($_POST['eliminar_ticket'])) {
                 </div>
                 </div>
 
-                <hr class="my-4">
+                <hr class="my-3">
 
                 <!-- Destino -->
                 <div>
-                <div class="d-flex align-items-center mb-3">
+                <div class="d-flex align-items-center mb-2">
                     <div class="bg-success bg-opacity-10 rounded-2 p-2 me-3">
                     <i class="bi bi-person text-success fs-4"></i>
                     </div>
@@ -1262,8 +1263,8 @@ if (isset($_POST['eliminar_ticket'])) {
                     </div>
                 </div>
 
-                <div class="ps-5">
-                    <div class="border-start border-3 border-success ps-3">
+                <div class="ps-4">
+                    <div class="border-start border-3 border-success ps-3 small">
                     <small class="text-muted d-block">Bodega de Destino</small>
                     <div class="fw-semibold"><?= htmlspecialchars($venta['cod_bodega_cliente']) ?></div>
                     <small class="text-muted"><?= htmlspecialchars($venta['nombre_bodega_cliente']) ?></small>
@@ -1282,273 +1283,321 @@ if (isset($_POST['eliminar_ticket'])) {
         <div class="col-lg-4">
             <?php if ($flete->num_rows > 0 && $flete_data): ?>
             <div class="card border-0 shadow h-100">
-                <div class="card-header bg-transparent border-bottom py-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="bi bi-truck text-info me-2"></i>Información de Transporte
-                        </h5>
-                        <?php if (!empty($flete_data['fecha_actualizacion_formateada'])): ?>
-                        <span class="badge bg-secondary bg-opacity-10 text-secondary">
-                            <i class="bi bi-clock-history me-1"></i>
-                            <?= htmlspecialchars($flete_data['fecha_actualizacion_formateada']) ?>
-                        </span>
-                        <?php endif; ?>
+            <div class="card-header bg-transparent border-bottom py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-truck text-info me-2"></i>Información de Transporte
+                </h5>
+                <?php if (!empty($flete_data['fecha_actualizacion_formateada'])): ?>
+                <span class="badge bg-secondary bg-opacity-10 text-secondary">
+                    <i class="bi bi-clock-history me-1"></i>
+                    <?= htmlspecialchars($flete_data['fecha_actualizacion_formateada']) ?>
+                </span>
+                <?php endif; ?>
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <!-- Información básica del fletero -->
+                <div class="mb-3">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="bg-info bg-opacity-10 rounded-2 p-2 me-3">
+                    <i class="bi bi-truck text-info fs-4"></i>
+                    </div>
+                    <div>
+                    <h6 class="fw-bold mb-0"><?= htmlspecialchars($venta['nombre_fletero']) ?></h6>
+                    <p class="text-muted small mb-0">
+                        <i class="bi bi-upc-scan me-1"></i>
+                        <?= htmlspecialchars($venta['placas_fletero']) ?>
+                    </p>
                     </div>
                 </div>
-                <div class="card-body">
-                    <!-- Información básica del fletero -->
-                    <div class="mb-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="bg-info bg-opacity-10 rounded-2 p-2 me-3">
-                                <i class="bi bi-truck text-info fs-4"></i>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold mb-0"><?= htmlspecialchars($venta['nombre_fletero']) ?></h6>
-                                <p class="text-muted small mb-0">
-                                    <i class="bi bi-upc-scan me-1"></i>
-                                    <?= htmlspecialchars($venta['placas_fletero']) ?>
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <?php if ($factura_transportista_duplicada_info): ?>
-                        <div class="alert alert-warning alert-sm py-2 mb-3">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            <strong>Factura duplicada:</strong> Ya existe en venta #<?= htmlspecialchars($factura_transportista_duplicada_info['folio']) ?>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <!-- Detalles del transporte -->
-                    <?php if (!empty($flete_data['tipo_camion']) || !empty($flete_data['nombre_chofer']) || 
-                               !empty($flete_data['placas_unidad']) || !empty($flete_data['factura_transportista'])): ?>
-                    <div class="mb-4">
-                        <h6 class="fw-bold mb-3 text-info">
-                            <i class="bi bi-truck-front me-2"></i>Detalles del Transporte
-                        </h6>
-                        <div class="row g-2">
-                            <?php if (!empty($flete_data['tipo_camion'])): ?>
-                            <div class="col-6">
-                                <small class="text-muted d-block">Tipo de unidad</small>
-                                <strong><?= htmlspecialchars($flete_data['tipo_camion']) ?></strong>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <?php if (!empty($flete_data['nombre_chofer'])): ?>
-                            <div class="col-6">
-                                <small class="text-muted d-block">Chofer</small>
-                                <strong><?= htmlspecialchars($flete_data['nombre_chofer']) ?></strong>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <?php if (!empty($flete_data['placas_unidad'])): ?>
-                            <div class="col-6">
-                                <small class="text-muted d-block">Placas unidad</small>
-                                <strong><?= htmlspecialchars($flete_data['placas_unidad']) ?></strong>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <?php if (!empty($flete_data['factura_transportista'])): ?>
-                            <div class="col-6">
-                                <small class="text-muted d-block">Factura transportista</small>
-                                <div class="d-flex align-items-center">
-                                    <?php
-                                    if (!empty($flete_data['doc_factura_ven']) || !empty($flete_data['com_factura_ven'])){
-                                        ?>
-                                        <button type="button" class="btn btn-info btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-file-earmark-pdf"></i> <?= $flete_data['factura_transportista'] ?>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                  <?php if (!empty($flete_data['doc_factura_ven'])): ?>
-                                                    <li><a class="dropdown-item" href="<?= $invoiceLK . $flete_data['doc_factura_ven'] ?>.pdf" target="_blank">Ver Factura de Venta</a></li>
-                                                  <?php endif; ?>
-                                                  <?php if (!empty($flete_data['com_factura_ven'])): ?>
-                                                    <li><a class="dropdown-item" href="<?= $invoiceLK . $flete_data['com_factura_ven'] ?>.pdf" target="_blank">Ver Comprobante de Venta</a></li>
-                                                  <?php endif; ?>
-                                                </ul>
-                                        <?php
-                                    }else{
-                                        ?>
-                                        <strong><?= htmlspecialchars($flete_data['factura_transportista']) ?></strong>
-                                        <?php
-                                    }
-                                    ?>
-
-                                    <?php if ($factura_transportista_duplicada_info): ?>
-                                    <span class="badge bg-warning bg-opacity-20 text-warning border border-warning ms-2">
-                                        <i class="bi bi-exclamation-triangle"></i>
-                                    </span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            <?php if (!empty($flete_data['folio_CR_venta'])): ?>
-                            <div class="col-6">
-                                <small class="text-muted d-block">Folio CR Venta</small>
-                                <!-- Mostrar el folio completo con formato y link para abrir en otra pagina el cr -->
-                                <a href="<?= $link.urlencode($flete_data['alias_CR_venta']).'-' . $flete_data['folio_CR_venta'] ?>" target="_blank" class="btn btn-sm btn-info rounded-5">
-                                    <i class="bi bi-file-earmark-text me-1"></i>
-                                    <?= htmlspecialchars($flete_data['alias_CR_venta']) ?> - <?= htmlspecialchars($flete_data['folio_CR_venta']) ?>
-                                </a>
-                                </div>
-                            <?php endif; ?>
-                        </div>
+                
+                <?php if ($factura_transportista_duplicada_info): ?>
+                <div class="alert alert-warning alert-sm py-2 mb-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Factura duplicada:</strong> Ya existe en venta #<?= htmlspecialchars($factura_transportista_duplicada_info['folio']) ?>
+                </div>
+                <?php endif; ?>
+                </div>
+                
+                <!-- Detalles del transporte -->
+                <?php if (!empty($flete_data['tipo_camion']) || !empty($flete_data['nombre_chofer']) || 
+                       !empty($flete_data['placas_unidad']) || !empty($flete_data['factura_transportista'])): ?>
+                <div class="mb-3">
+                <h6 class="fw-bold mb-2 text-info">
+                    <i class="bi bi-truck-front me-2"></i>Detalles del Transporte
+                </h6>
+                <div class="row g-2">
+                    <?php if (!empty($flete_data['tipo_camion'])): ?>
+                    <div class="col-6">
+                    <small class="text-muted d-block">Tipo de unidad</small>
+                    <strong><?= htmlspecialchars($flete_data['tipo_camion']) ?></strong>
                     </div>
                     <?php endif; ?>
                     
-                    <!-- Información del flete -->
-                    <div class="border rounded p-3 bg-info bg-opacity-10 mb-4">
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <small class="text-muted d-block">Tipo de flete</small>
-                                <span class="badge bg-info bg-opacity-25 text-info"><?= htmlspecialchars($flete_data['tipo_flete']) ?></span>
-                            </div>
-                            <div class="col-6">
-                                <small class="text-muted d-block">Costo total</small>
-                                <strong class="text-info">$<?= number_format($total_flete, 2) ?></strong>
-                            </div>
-                            
-                            <!-- Nuevo: Información del Ticket de Báscula -->
-                            <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): 
-                                $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket'] ?? '');
-                                $tiene_ticket = !empty($info_ticket);
-                            ?>
-                            <div class="col-12 mt-3 pt-3 border-top">
-                                <h6 class="small text-muted mb-2">
-                                    <i class="bi bi-scale me-1"></i>Ticket de Báscula
-                                </h6>
-                                
-                                <div class="row g-2 align-items-center">
-                                    <?php if (!empty($flete_data['folio_ticket_bascula'])): ?>
-                                    <div class="col-6">
-                                        <small class="text-muted d-block">Folio</small>
-                                        <strong><?= htmlspecialchars($flete_data['folio_ticket_bascula']) ?></strong>
-                                    </div>
-                                    <?php endif; ?>
-                                    
-                                    <?php if (!empty($flete_data['archivo_ticket'])): ?>
-                                    <div class="col-6">
-                                        <small class="text-muted d-block">Archivo</small>
-                                        <?php if ($tiene_ticket): 
-                                        ?>
-                                        <button type="button" class="btn btn-sm btn-outline-info d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#ModalTicket">
-                                            Ver Ticket
-                                        </button>
-
-                                        <?php else: ?>
-                                        <span class="text-danger small">
-                                            <i class="bi bi-exclamation-triangle me-1"></i>
-                                            Archivo no encontrado
-                                        </span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <?php endif; ?>
-                                    
-                                    <?php if (!empty($flete_data['fecha_subida_ticket_formateada'])): ?>
-                                    <div class="col-12">
-                                        <small class="text-muted d-block">Subido</small>
-                                        <span class="small"><?= htmlspecialchars($flete_data['fecha_subida_ticket_formateada']) ?></span>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($flete_data['tipo_flete'] == 'Por tonelada'): ?>
-                            <div class="col-12 mt-2">
-                                <small class="text-muted d-block">Precio por tonelada</small>
-                                <strong>$<?= number_format($flete_data['precio_flete'], 2) ?></strong>
-                            </div>
-                            <?php endif; ?>
-                        </div>
+                    <?php if (!empty($flete_data['nombre_chofer'])): ?>
+                    <div class="col-6">
+                    <small class="text-muted d-block">Chofer</small>
+                    <strong><?= htmlspecialchars($flete_data['nombre_chofer']) ?></strong>
                     </div>
+                    <?php endif; ?>
                     
+                    <?php if (!empty($flete_data['placas_unidad'])): ?>
+                    <div class="col-6">
+                    <small class="text-muted d-block">Placas unidad</small>
+                    <strong><?= htmlspecialchars($flete_data['placas_unidad']) ?></strong>
+                    </div>
+                    <?php endif; ?>
                     
-                    <!-- Botón para editar -->
-                    <div class="mt-4 pt-3 border-top text-center">
-                        <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalFletero">
-                            <i class="bi bi-pencil-square me-2"></i>Editar Información de Transporte
-                        </button>
+                    <?php if (!empty($flete_data['factura_transportista'])): ?>
+                    <div class="col-6">
+                    <small class="text-muted d-block">Factura transportista</small>
+                    <div class="d-flex align-items-center">
+                        <?php
+                        if (!empty($flete_data['doc_factura_ven']) || !empty($flete_data['com_factura_ven'])){
+                        ?>
+                        <button type="button" class="btn btn-info btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-file-earmark-pdf"></i> <?= $flete_data['factura_transportista'] ?>
+                            </button>
+                            <ul class="dropdown-menu">
+                              <?php if (!empty($flete_data['doc_factura_ven'])): ?>
+                                <li><a class="dropdown-item" href="<?= $invoiceLK . $flete_data['doc_factura_ven'] ?>.pdf" target="_blank">Ver Factura de Venta</a></li>
+                              <?php endif; ?>
+                              <?php if (!empty($flete_data['com_factura_ven'])): ?>
+                                <li><a class="dropdown-item" href="<?= $invoiceLK . $flete_data['com_factura_ven'] ?>.pdf" target="_blank">Ver Comprobante de Venta</a></li>
+                              <?php endif; ?>
+                            </ul>
+                        <?php
+                        }else{
+                        ?>
+                        <strong><?= htmlspecialchars($flete_data['factura_transportista']) ?></strong>
+                        <?php
+                        }
+                        ?>
+
+                        <?php if ($factura_transportista_duplicada_info): ?>
+                        <span class="badge bg-warning bg-opacity-20 text-warning border border-warning ms-2">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($flete_data['folio_CR_venta'])): ?>
+                    <div class="col-6">
+                    <small class="text-muted d-block">Folio CR Venta</small>
+                    <!-- Mostrar el folio completo con formato y link para abrir en otra pagina el cr -->
+                    <a href="<?= $link.urlencode($flete_data['alias_CR_venta']).'-' . $flete_data['folio_CR_venta'] ?>" target="_blank" class="btn btn-sm btn-info rounded-5">
+                        <i class="bi bi-file-earmark-text me-1"></i>
+                        <?= htmlspecialchars($flete_data['alias_CR_venta']) ?> - <?= htmlspecialchars($flete_data['folio_CR_venta']) ?>
+                    </a>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Información del flete -->
+                <div class="border rounded p-3 bg-info bg-opacity-10 mb-3">
+                <div class="row g-2">
+                    <div class="col-6">
+                    <small class="text-muted d-block">Tipo de flete</small>
+                    <span class="badge bg-info bg-opacity-25 text-info"><?= htmlspecialchars($flete_data['tipo_flete']) ?></span>
+                    </div>
+                    <div class="col-6">
+                    <small class="text-muted d-block">Costo total</small>
+                    <strong class="text-info">$<?= number_format($total_flete, 2) ?></strong>
                     </div>
                 </div>
-            </div>
+                </div>
+
+                <!-- Desglose Fiscal Flete -->
+                <?php if (!empty($flete_data['impuestoTraslado_flete'])): ?>
+                <div class="border rounded p-3 bg-body-tertiary mb-3">
+                <h6 class="text-muted mb-3 d-flex align-items-center">
+                    <i class="bi bi-receipt text-secondary me-2"></i> Desglose Fiscal Flete
+                </h6>
+
+                <div class="mb-2 pb-2 border-bottom border-opacity-50">
+                    <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">Subtotal</span>
+                    <span class="fw-semibold text-secondary">$<?= number_format($flete_data['subtotal_flete'], 2) ?></span>
+                    </div>
+                </div>
+
+                <div class="mb-2 pb-2 border-bottom border-opacity-50">
+                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-circle text-success fs-6"></i>
+                        <span class="text-muted small">IVA Traslado</span>
+                    </div>
+                    <span class="fw-semibold text-success">+$<?= number_format($flete_data['impuestoTraslado_flete'], 2) ?></span>
+                    </div>
+                </div>
+
+                <div class="mb-3 pb-3 border-bottom border-opacity-50">
+                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-dash-circle text-danger fs-6"></i>
+                        <span class="text-muted small">IVA Retenido</span>
+                    </div>
+                    <span class="fw-semibold text-danger">-$<?= number_format($flete_data['impuestoRetenido_flete'], 2) ?></span>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-3 border-2" style="border-color: rgba(52,152,219,0.3); background: rgba(52,152,219,0.08);">
+                    <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">Total Neto Flete</span>
+                    <span class="fw-bold text-info fs-5">$<?= number_format($flete_data['total_flete'], 2) ?></span>
+                    </div>
+                </div>
+
+                <!-- Alerta si el costo total no coincide con el subtotal -->
+                <?php 
+                $subtotal = $flete_data['subtotal_flete'] ?? 0;
+                $total = $total_flete ?? 0;
+                
+                if (!empty($subtotal) && !empty($total) && abs($subtotal - $total) > 0.01): 
+                ?>
+                <div class="alert alert-warning alert-sm mt-3 py-2 mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Discrepancia detectada:</strong> El subtotal ($<?= number_format($subtotal, 2) ?>) no coincide con el total ($<?= number_format($total, 2) ?>).
+                </div>
+                <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
+                <!-- Información del Ticket de Báscula -->
+                    <?php if (!empty($flete_data['folio_ticket_bascula']) || !empty($flete_data['archivo_ticket'])): 
+                    $info_ticket = obtenerInfoTicket($flete_data['archivo_ticket'] ?? '');
+                    $tiene_ticket = !empty($info_ticket);
+                    ?>
+                            <div class="col-12 mt-3 pt-2 border-top">
+                    <h6 class="small text-muted mb-2">
+                        <i class="bi bi-scale me-1"></i>Ticket de Báscula
+                    </h6>
+                    
+                    <div class="row g-2 align-items-center">
+                        <?php if (!empty($flete_data['folio_ticket_bascula'])): ?>
+                        <div class="col-6">
+                        <small class="text-muted d-block">Folio</small>
+                        <strong><?= htmlspecialchars($flete_data['folio_ticket_bascula']) ?></strong>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($flete_data['archivo_ticket'])): ?>
+                        <div class="col-6">
+                        <small class="text-muted d-block">Archivo</small>
+                        <?php if ($tiene_ticket): 
+                        ?>
+                        <button type="button" class="btn btn-sm btn-outline-info d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#ModalTicket">
+                            Ver Ticket
+                        </button>
+
+                        <?php else: ?>
+                        <span class="text-danger small">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Archivo no encontrado
+                        </span>
+                        <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($flete_data['fecha_subida_ticket_formateada'])): ?>
+                        <div class="col-12">
+                        <small class="text-muted d-block">Subido</small>
+                        <span class="small"><?= htmlspecialchars($flete_data['fecha_subida_ticket_formateada']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($flete_data['tipo_flete'] == 'Por tonelada'): ?>
+                            <div class="mt-2">
+                    <small class="text-muted d-block">Precio por tonelada</small>
+                    <strong>$<?= number_format($flete_data['precio_flete'], 2) ?></strong>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Botón para editar -->
+                            <div class="mt-3 pt-3 border-top text-center">
+                    <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalFletero">
+                        <i class="bi bi-pencil-square me-2"></i>Editar Información de Transporte
+                    </button>
+                    </div>
+                </div>
+                </div>
             <?php else: ?>
             <div class="card border-0 shadow h-100">
-                <div class="card-body d-flex flex-column justify-content-center align-items-center text-center p-5">
-                    <div class="bg-info bg-opacity-10 rounded-3 p-4 mb-3">
-                        <i class="bi bi-truck text-info fs-1"></i>
-                    </div>
-                    <h5 class="fw-bold mb-2">Sin Información de Transporte</h5>
-                    <p class="text-muted mb-4">No hay datos de flete registrados para esta venta.</p>
-                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFletero">
-                        <i class="bi bi-plus-circle me-2"></i>Agregar Datos de Transporte
-                    </button>
+            <div class="card-body d-flex flex-column justify-content-center align-items-center text-center p-5">
+                <div class="bg-info bg-opacity-10 rounded-3 p-4 mb-3">
+                <i class="bi bi-truck text-info fs-1"></i>
                 </div>
+                <h5 class="fw-bold mb-2">Sin Información de Transporte</h5>
+                <p class="text-muted mb-4">No hay datos de flete registrados para esta venta.</p>
+                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFletero">
+                <i class="bi bi-plus-circle me-2"></i>Agregar Datos de Transporte
+                </button>
+            </div>
             </div>
             <?php endif; ?>
         </div>
     </div>
+    
 
     <!-- Resumen financiero al final -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card border-0 shadow">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <h5 class="fw-bold mb-0">
                         <i class="bi bi-calculator text-warning me-2"></i>Resumen Financiero
                     </h5>
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <div class="border rounded p-3 text-center bg-body-tertiary h-100">
-                                <small class="text-muted d-block mb-2">Valor de Venta</small>
-                                <h3 class="fw-bold text-success mb-0">$<?= number_format($total_venta, 2) ?></h3>
-                                <small class="text-muted mt-2 d-block">
-                                    <?= number_format($total_kilos, 2) ?> kg 
-                                    × $<?= number_format($total_kilos > 0 ? $total_venta / $total_kilos : 0, 2) ?>/kg
-                                </small>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-3 mb-3">
-                            <div class="border rounded p-3 text-center bg-body-tertiary h-100">
-                                <small class="text-muted d-block mb-2">Costo de Flete</small>
-                                <h3 class="fw-bold text-info mb-0">$<?= number_format($total_flete, 2) ?></h3>
-                                <?php if ($flete_data && $flete_data['tipo_flete'] == 'Por tonelada'): ?>
-                                <small class="text-muted mt-2 d-block">
-                                    <?= number_format($total_kilos / 1000, 2) ?> ton 
-                                    × $<?= number_format($flete_data['precio_flete'], 2) ?>/ton
-                                </small>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-3 mb-3">
-                            <div class="border rounded p-3 text-center bg-body-tertiary h-100">
-                                <small class="text-muted d-block mb-2">Ganancia Neta</small>
-                                <h3 class="fw-bold <?= $total_general >= 0 ? 'text-warning' : 'text-danger' ?> mb-0">
-                                    $<?= number_format($total_general, 2) ?>
-                                </h3>
-                                <small class="text-muted mt-2 d-block">
-                                    <?= number_format($total_kilos, 2) ?> kg totales
-                                </small>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-3 mb-3">
-                            <div class="border rounded p-3 text-center bg-body-tertiary h-100">
-                                <small class="text-muted d-block mb-2">Margen de Ganancia</small>
-                                <?php if ($total_venta > 0): 
-                                    $margen = (($total_general / $total_venta) * 100);
-                                ?>
-                                <h3 class="fw-bold <?= $margen >= 0 ? 'text-success' : 'text-danger' ?> mb-0">
-                                    <?= number_format($margen, 1) ?>%
-                                </h3>
-                                <small class="text-muted mt-2 d-block">
-                                    Sobre valor de venta
-                                </small>
-                                <?php else: ?>
-                                <h3 class="fw-bold text-secondary mb-0">0.0%</h3>
-                                <?php endif; ?>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Resumen ejecutivo -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-12">
+                            <div class="bg-light rounded-3 p-3 border border-subtle">
+                                <div class="row g-3 text-center">
+                                    <div class="col-md-3">
+                                        <h6 class="text-muted small mb-1">
+                                            <i class="bi bi-arrow-down-short text-danger"></i> Costo Total
+                                        </h6>
+                                        <h4 class="fw-bold text-danger mb-0">
+                                            $<?= number_format($total_flete, 2) ?>
+                                        </h4>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h6 class="text-muted small mb-1">
+                                            <i class="bi bi-arrow-up-short text-success"></i> Ingreso Total
+                                        </h6>
+                                        <h4 class="fw-bold text-success mb-0">
+                                            $<?= number_format($total_venta, 2) ?>
+                                        </h4>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h6 class="text-muted small mb-1">
+                                            <i class="bi bi-dash-circle"></i> Balance
+                                        </h6>
+                                        <h4 class="fw-bold <?= $total_general >= 0 ? 'text-success' : 'text-danger' ?> mb-0">
+                                            $<?= number_format($total_general, 2) ?>
+                                        </h4>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h6 class="text-muted small mb-1">
+                                            <i class="bi bi-pie-chart"></i> Rentabilidad
+                                        </h6>
+                                        <h4 class="fw-bold text-primary mb-0">
+                                            <?php if ($total_venta > 0): 
+                                                echo number_format(($total_general / $total_venta) * 100, 1);
+                                            else:
+                                                echo '0.0';
+                                            endif; ?>%
+                                        </h4>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

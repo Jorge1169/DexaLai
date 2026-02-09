@@ -12,9 +12,10 @@ ini_set('max_execution_time', '300');
 // ============================================
 // FUNCIÓN SEGURA PARA SUBIDA (INCLUYE PDFs)
 // ============================================
-function save_uploaded_stream($tmpPath, $destPath) {
+function save_uploaded_stream($tmpPath, $destPath)
+{
     // Intentar con streams (esto crea un nuevo archivo en la ruta destino)
-    $in  = @fopen($tmpPath, 'rb');
+    $in = @fopen($tmpPath, 'rb');
     if ($in === false) {
         return false;
     }
@@ -31,14 +32,15 @@ function save_uploaded_stream($tmpPath, $destPath) {
     return ($copied !== false && $copied > 0 && file_exists($destPath));
 }
 // Función para optimizar imágenes automáticamente
-function optimizarImagenParaHosting($ruta_temporal, $ruta_destino, $tipo_mime) {
+function optimizarImagenParaHosting($ruta_temporal, $ruta_destino, $tipo_mime)
+{
     $tamaño_original = filesize($ruta_temporal);
-    
+
     // Si ya es menor a 1MB y no es imagen, no hacer nada
     if ($tamaño_original <= 1024 * 1024 && !in_array($tipo_mime, ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'])) {
         return move_uploaded_file($ruta_temporal, $ruta_destino);
     }
-    
+
     // Determinar tipo de imagen
     switch ($tipo_mime) {
         case 'image/jpeg':
@@ -46,40 +48,40 @@ function optimizarImagenParaHosting($ruta_temporal, $ruta_destino, $tipo_mime) {
             $imagen = imagecreatefromjpeg($ruta_temporal);
             $es_jpeg = true;
             break;
-            
+
         case 'image/png':
             $imagen = imagecreatefrompng($ruta_temporal);
             imagesavealpha($imagen, true);
             $es_jpeg = false;
             break;
-            
+
         case 'image/webp':
             $imagen = imagecreatefromwebp($ruta_temporal);
             $es_jpeg = true;
             break;
-            
+
         case 'image/gif':
             $imagen = imagecreatefromgif($ruta_temporal);
             $es_jpeg = true;
             break;
-            
+
         default:
             throw new Exception("Tipo de imagen no soportado: $tipo_mime");
     }
-    
+
     if (!$imagen) {
         throw new Exception("No se pudo cargar la imagen para optimización");
     }
-    
+
     // Redimensionar si es muy grande (máximo 1920x1080)
     $ancho_original = imagesx($imagen);
     $alto_original = imagesy($imagen);
     $max_ancho = 1920;
     $max_alto = 1080;
-    
+
     if ($ancho_original > $max_ancho || $alto_original > $max_alto) {
         $ratio = $ancho_original / $alto_original;
-        
+
         if ($ancho_original > $max_ancho) {
             $nuevo_ancho = $max_ancho;
             $nuevo_alto = intval($max_ancho / $ratio);
@@ -87,15 +89,15 @@ function optimizarImagenParaHosting($ruta_temporal, $ruta_destino, $tipo_mime) {
             $nuevo_alto = $max_alto;
             $nuevo_ancho = intval($max_alto * $ratio);
         }
-        
+
         // Si después de ajustar por ancho, el alto sigue siendo muy grande
         if ($nuevo_alto > $max_alto) {
             $nuevo_alto = $max_alto;
             $nuevo_ancho = intval($max_alto * $ratio);
         }
-        
+
         $imagen_redimensionada = imagecreatetruecolor($nuevo_ancho, $nuevo_alto);
-        
+
         // Mantener transparencia para PNG
         if (!$es_jpeg) {
             imagealphablending($imagen_redimensionada, false);
@@ -103,24 +105,30 @@ function optimizarImagenParaHosting($ruta_temporal, $ruta_destino, $tipo_mime) {
             $transparente = imagecolorallocatealpha($imagen_redimensionada, 255, 255, 255, 127);
             imagefilledrectangle($imagen_redimensionada, 0, 0, $nuevo_ancho, $nuevo_alto, $transparente);
         }
-        
+
         imagecopyresampled(
-            $imagen_redimensionada, $imagen, 
-            0, 0, 0, 0, 
-            $nuevo_ancho, $nuevo_alto, 
-            $ancho_original, $alto_original
+            $imagen_redimensionada,
+            $imagen,
+            0,
+            0,
+            0,
+            0,
+            $nuevo_ancho,
+            $nuevo_alto,
+            $ancho_original,
+            $alto_original
         );
-        
+
         imagedestroy($imagen);
         $imagen = $imagen_redimensionada;
         $ancho_original = $nuevo_ancho;
         $alto_original = $nuevo_alto;
     }
-    
+
     // Intentar diferentes calidades para lograr <1MB
     $calidades = [90, 80, 70, 60, 50, 40];
     $tamaño_objetivo = 900 * 1024; // ~900KB
-    
+
     foreach ($calidades as $calidad) {
         if ($es_jpeg) {
             imagejpeg($imagen, $ruta_destino, $calidad);
@@ -128,42 +136,43 @@ function optimizarImagenParaHosting($ruta_temporal, $ruta_destino, $tipo_mime) {
             $nivel_png = floor((100 - $calidad) / 10);
             imagepng($imagen, $ruta_destino, $nivel_png);
         }
-        
+
         $tamaño_actual = filesize($ruta_destino);
-        
+
         if ($tamaño_actual <= $tamaño_objetivo) {
             imagedestroy($imagen);
             return true;
         }
-        
+
         unlink($ruta_destino);
     }
-    
+
     // Último intento: tamaño fijo pequeño
     $ultima_oportunidad = imagecreatetruecolor(1200, 800);
     imagecopyresampled($ultima_oportunidad, $imagen, 0, 0, 0, 0, 1200, 800, $ancho_original, $alto_original);
-    
+
     if ($es_jpeg) {
         imagejpeg($ultima_oportunidad, $ruta_destino, 40);
     } else {
         imagepng($ultima_oportunidad, $ruta_destino, 9);
     }
-    
+
     imagedestroy($imagen);
     imagedestroy($ultima_oportunidad);
-    
+
     $tamaño_final = filesize($ruta_destino);
-    
+
     if ($tamaño_final > 1024 * 1024) {
         unlink($ruta_destino);
         throw new Exception("No se pudo optimizar la imagen a menos de 1MB");
     }
-    
+
     return true;
 }
 
 // Función para formatear bytes
-function formatBytes($bytes, $precision = 2) {
+function formatBytes($bytes, $precision = 2)
+{
     $units = ['B', 'KB', 'MB', 'GB'];
     $bytes = max($bytes, 0);
     $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
@@ -259,6 +268,10 @@ cf.foliocap_flete as folio_CR_flete,
 cf.doc_factura_flete as doc_factura_flete,
 cf.com_factura_flete as com_factura_flete,
 cf.id_capt_flete as id_flete,
+cf.impuestoTraslado as impuestoTraslado_flete,
+cf.impuestoRetenido as impuestoRetenido_flete,
+cf.subtotal as subtotal_flete,
+cf.total as total_flete,
 pf.precio as precio_flete,
 pf.tipo as tipo_flete,
 pf.conmin as toneladas_minimas,
@@ -285,7 +298,7 @@ foreach ($productos as $producto) {
     $total_granel += $producto['granel_kilos'];
     $total_pacas_kilos += $producto['pacas_kilos'];
     $total_pacas_cantidad += $producto['pacas_cantidad'];
-    
+
     $costo_producto = $producto['precio_compra_por_kilo'] * $producto['total_kilos'];
     $costo_total_productos += $costo_producto;
 }
@@ -312,21 +325,21 @@ if (isset($_POST['guardar_numeros_productos'])) {
     try {
         $productos_actualizar = $_POST['productos'] ?? [];
         $id_captacion_post = $_POST['id_captacion'] ?? 0;
-        
+
         if ($id_captacion_post != $id_captacion) {
             throw new Exception("ID de captación no coincide");
         }
-        
+
         if (empty($productos_actualizar) || !is_array($productos_actualizar)) {
             throw new Exception("No hay datos de productos para actualizar");
         }
-        
+
         // Configuración para subida de archivos
         $upload_dir = __DIR__ . '/../uploads/comprobantes/';
         if (!file_exists($upload_dir)) {
             mkdir($upload_dir, 0755, true);
         }
-        
+
         // Tipos de archivo permitidos
         $allowed_types = [
             'image/jpeg' => 'jpg',
@@ -336,22 +349,23 @@ if (isset($_POST['guardar_numeros_productos'])) {
             'image/gif' => 'gif',
             'application/pdf' => 'pdf'
         ];
-        
+
         // ============================================
         // VALIDAR DUPLICADOS ANTES DE GUARDAR
         // ============================================
         $duplicados_encontrados = [];
-        
+
         foreach ($productos_actualizar as $index => $producto) {
             $id_detalle = isset($producto['id_detalle']) ? intval($producto['id_detalle']) : 0;
-            
+
             // Obtener y limpiar valores
             $numero_ticket = isset($producto['numero_ticket']) ? trim($producto['numero_ticket']) : '';
             $numero_bascula = isset($producto['numero_bascula']) ? trim($producto['numero_bascula']) : '';
             $numero_factura = isset($producto['numero_factura']) ? trim($producto['numero_factura']) : '';
-            
-            if ($id_detalle <= 0) continue;
-            
+
+            if ($id_detalle <= 0)
+                continue;
+
             // Validar ticket duplicado
             if (!empty($numero_ticket)) {
                 $sql_ticket = "SELECT cd.id_detalle, p.cod, p.nom_pro 
@@ -362,19 +376,19 @@ if (isset($_POST['guardar_numeros_productos'])) {
                 AND cd.id_detalle != ? 
                 AND cd.status = 1 
                 AND c.id_prov = ?";
-                
+
                 $stmt = $conn_mysql->prepare($sql_ticket);
                 $stmt->bind_param('sii', $numero_ticket, $id_detalle, $captacion['id_prov']);
                 $stmt->execute();
                 $result = $stmt->get_result();
-                
+
                 if ($result->num_rows > 0) {
                     $duplicado = $result->fetch_assoc();
-                    $duplicados_encontrados[] = "Ticket '$numero_ticket' ya existe para el producto " . 
-                    $duplicado['cod'] . " - " . $duplicado['nom_pro'];
+                    $duplicados_encontrados[] = "Ticket '$numero_ticket' ya existe para el producto " .
+                        $duplicado['cod'] . " - " . $duplicado['nom_pro'];
                 }
             }
-            
+
             // Validar báscula duplicada
             if (!empty($numero_bascula)) {
                 $sql_bascula = "SELECT cd.id_detalle, p.cod, p.nom_pro 
@@ -385,19 +399,19 @@ if (isset($_POST['guardar_numeros_productos'])) {
                 AND cd.id_detalle != ? 
                 AND cd.status = 1 
                 AND c.id_prov = ?";
-                
+
                 $stmt = $conn_mysql->prepare($sql_bascula);
                 $stmt->bind_param('sii', $numero_bascula, $id_detalle, $captacion['id_prov']);
                 $stmt->execute();
                 $result = $stmt->get_result();
-                
+
                 if ($result->num_rows > 0) {
                     $duplicado = $result->fetch_assoc();
-                    $duplicados_encontrados[] = "Báscula '$numero_bascula' ya existe para el producto " . 
-                    $duplicado['cod'] . " - " . $duplicado['nom_pro'];
+                    $duplicados_encontrados[] = "Báscula '$numero_bascula' ya existe para el producto " .
+                        $duplicado['cod'] . " - " . $duplicado['nom_pro'];
                 }
             }
-            
+
             // Validar factura duplicada
             if (!empty($numero_factura)) {
                 $sql_factura = "SELECT cd.id_detalle, p.cod, p.nom_pro 
@@ -408,187 +422,188 @@ if (isset($_POST['guardar_numeros_productos'])) {
                 AND cd.id_detalle != ? 
                 AND cd.status = 1 
                 AND c.id_prov = ?";
-                
+
                 $stmt = $conn_mysql->prepare($sql_factura);
                 $stmt->bind_param('sii', $numero_factura, $id_detalle, $captacion['id_prov']);
                 $stmt->execute();
                 $result = $stmt->get_result();
-                
+
                 if ($result->num_rows > 0) {
                     $duplicado = $result->fetch_assoc();
-                    $duplicados_encontrados[] = "Factura '$numero_factura' ya existe para el producto " . 
-                    $duplicado['cod'] . " - " . $duplicado['nom_pro'];
+                    $duplicados_encontrados[] = "Factura '$numero_factura' ya existe para el producto " .
+                        $duplicado['cod'] . " - " . $duplicado['nom_pro'];
                 }
             }
         }
-        
+
         // Si hay duplicados, mostrar error y no guardar
         if (!empty($duplicados_encontrados)) {
             $mensaje_duplicados = "Se encontraron duplicados: " . implode("<br>", $duplicados_encontrados);
             throw new Exception($mensaje_duplicados);
         }
-        
+
         // ============================================
         // SI NO HAY DUPLICADOS, PROCEDER A GUARDAR
         // ============================================
         $conn_mysql->begin_transaction();
         $actualizados = 0;
         $errores = [];
-        
+
         foreach ($productos_actualizar as $index => $producto) {
             $id_detalle = isset($producto['id_detalle']) ? intval($producto['id_detalle']) : 0;
-            
+
             // Obtener y limpiar valores
             $numero_ticket = isset($producto['numero_ticket']) ? trim($producto['numero_ticket']) : '';
             $numero_bascula = isset($producto['numero_bascula']) ? trim($producto['numero_bascula']) : '';
             $numero_factura = isset($producto['numero_factura']) ? trim($producto['numero_factura']) : '';
-            
+
             if ($id_detalle <= 0) {
                 $errores[] = "ID de detalle inválido en índice $index";
                 continue;
             }
-            
+
             // Convertir cadenas vacías a NULL
             $ticket_sql = ($numero_ticket === '') ? null : $numero_ticket;
             $bascula_sql = ($numero_bascula === '') ? null : $numero_bascula;
             $factura_sql = ($numero_factura === '') ? null : $numero_factura;
-            
+
             // Manejar la subida del archivo si existe
             $comprobante_file = null;
             $tipo_comprobante = null;
             $tamano_comprobante = null;
-            
-            if (isset($_FILES['productos']['tmp_name'][$index]['comprobante']) 
-    && $_FILES['productos']['tmp_name'][$index]['comprobante'] != '') {
-    
-    $file = $_FILES['productos'];
-    $tmp_name = $file['tmp_name'][$index]['comprobante'];
-    $file_name = $file['name'][$index]['comprobante'];
-    $file_size = $file['size'][$index]['comprobante'];
-    $file_error = $file['error'][$index]['comprobante'];
-    
-    // Determinar tipo MIME real
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $file_type = finfo_file($finfo, $tmp_name);
-    finfo_close($finfo);
-    
-    // Validar tipo
-    if (!array_key_exists($file_type, $allowed_types)) {
-        throw new Exception("Tipo de archivo '$file_type' no permitido para '$file_name'");
-    }
-    
-    // Validar errores de subida
-    if ($file_error !== UPLOAD_ERR_OK) {
-        $errores_upload = [
-            UPLOAD_ERR_INI_SIZE => 'Supera el tamaño máximo permitido por PHP',
-            UPLOAD_ERR_FORM_SIZE => 'Supera el tamaño máximo del formulario',
-            UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
-            UPLOAD_ERR_NO_FILE => 'No se seleccionó ningún archivo',
-            UPLOAD_ERR_NO_TMP_DIR => 'No existe directorio temporal',
-            UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir en el disco',
-            UPLOAD_ERR_EXTENSION => 'Extensión de PHP detuvo la subida'
-        ];
-        throw new Exception("Error al subir '$file_name': " . 
-                           ($errores_upload[$file_error] ?? "Error desconocido (código: $file_error)"));
-    }
-    
-    // Verificar que el archivo temporal existe
-    if (!file_exists($tmp_name)) {
-        throw new Exception("El archivo temporal no existe o fue eliminado");
-    }
-    
-    // Generar nombre único para el archivo
-    $extension = $allowed_types[$file_type];
-    $new_filename = 'comprobante_' . $id_captacion . '_' . $id_detalle . '_' . time() . '_' . uniqid() . '.' . $extension;
-    $upload_path = $upload_dir . $new_filename;
-    
-    try {
-        // Si es PDF, usar método seguro con fallback
-        if ($file_type === 'application/pdf') {
-            // Validar tamaño máximo (2MB para PDFs)
-            $max_pdf_size = 2 * 1024 * 1024; // 2MB
-            if ($file_size > $max_pdf_size) {
-                throw new Exception("El PDF es demasiado grande (" . formatBytes($file_size) . "). Máximo 2MB.");
-            }
-            
-            // Validar que sea un PDF real
-            $pdf_header = file_get_contents($tmp_name, false, null, 0, 5);
-            if (strpos($pdf_header, '%PDF-') !== 0) {
-                throw new Exception("El archivo no parece ser un PDF válido");
-            }
-            
-            // Intentar con método seguro primero
-            echo "<script>console.log('Intentando subir PDF con save_uploaded_stream...');</script>";
-            
-            if (save_uploaded_stream($tmp_name, $upload_path)) {
-                echo "<script>console.log('PDF subido exitosamente con save_uploaded_stream');</script>";
-                $tamano_comprobante = filesize($upload_path);
-            } 
-            // Fallback a move_uploaded_file
-            else if (move_uploaded_file($tmp_name, $upload_path)) {
-                echo "<script>console.log('PDF subido con move_uploaded_file (fallback)');</script>";
-                $tamano_comprobante = filesize($upload_path);
-            } 
-            // Último intento: copia simple
-            else if (copy($tmp_name, $upload_path)) {
-                echo "<script>console.log('PDF subido con copy (último recurso)');</script>";
-                $tamano_comprobante = filesize($upload_path);
-            } 
-            else {
-                throw new Exception("No se pudo guardar el PDF en el servidor. Verifica permisos de escritura.");
-            }
-            
-            // Verificar que el archivo final existe y tiene contenido
-            if (!file_exists($upload_path) || filesize($upload_path) === 0) {
-                @unlink($upload_path); // Limpiar archivo vacío
-                throw new Exception("El PDF se guardó pero está vacío o no se pudo verificar");
-            }
-        } 
-        // Si es imagen, optimizarla
-        elseif (strpos($file_type, 'image/') === 0) {
-            try {
-                optimizarImagenParaHosting($tmp_name, $upload_path, $file_type);
-                $tamano_comprobante = filesize($upload_path);
-            } catch (Exception $e) {
-                // Si falla la optimización, intentar subir la imagen original
-                echo "<script>console.log('Falló optimización, intentando subir imagen original...');</script>";
-                if ($file_size > 1024 * 1024) {
-                    throw new Exception("La imagen es muy grande (" . formatBytes($file_size) . 
-                                      ") y no se pudo optimizar. Comprímela manualmente a menos de 1MB.");
+
+            if (
+                isset($_FILES['productos']['tmp_name'][$index]['comprobante'])
+                && $_FILES['productos']['tmp_name'][$index]['comprobante'] != ''
+            ) {
+
+                $file = $_FILES['productos'];
+                $tmp_name = $file['tmp_name'][$index]['comprobante'];
+                $file_name = $file['name'][$index]['comprobante'];
+                $file_size = $file['size'][$index]['comprobante'];
+                $file_error = $file['error'][$index]['comprobante'];
+
+                // Determinar tipo MIME real
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $file_type = finfo_file($finfo, $tmp_name);
+                finfo_close($finfo);
+
+                // Validar tipo
+                if (!array_key_exists($file_type, $allowed_types)) {
+                    throw new Exception("Tipo de archivo '$file_type' no permitido para '$file_name'");
                 }
-                if (!move_uploaded_file($tmp_name, $upload_path)) {
-                    throw new Exception("No se pudo subir la imagen: " . $e->getMessage());
+
+                // Validar errores de subida
+                if ($file_error !== UPLOAD_ERR_OK) {
+                    $errores_upload = [
+                        UPLOAD_ERR_INI_SIZE => 'Supera el tamaño máximo permitido por PHP',
+                        UPLOAD_ERR_FORM_SIZE => 'Supera el tamaño máximo del formulario',
+                        UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
+                        UPLOAD_ERR_NO_FILE => 'No se seleccionó ningún archivo',
+                        UPLOAD_ERR_NO_TMP_DIR => 'No existe directorio temporal',
+                        UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir en el disco',
+                        UPLOAD_ERR_EXTENSION => 'Extensión de PHP detuvo la subida'
+                    ];
+                    throw new Exception("Error al subir '$file_name': " .
+                        ($errores_upload[$file_error] ?? "Error desconocido (código: $file_error)"));
                 }
-                $tamano_comprobante = $file_size;
+
+                // Verificar que el archivo temporal existe
+                if (!file_exists($tmp_name)) {
+                    throw new Exception("El archivo temporal no existe o fue eliminado");
+                }
+
+                // Generar nombre único para el archivo
+                $extension = $allowed_types[$file_type];
+                $new_filename = 'comprobante_' . $id_captacion . '_' . $id_detalle . '_' . time() . '_' . uniqid() . '.' . $extension;
+                $upload_path = $upload_dir . $new_filename;
+
+                try {
+                    // Si es PDF, usar método seguro con fallback
+                    if ($file_type === 'application/pdf') {
+                        // Validar tamaño máximo (2MB para PDFs)
+                        $max_pdf_size = 2 * 1024 * 1024; // 2MB
+                        if ($file_size > $max_pdf_size) {
+                            throw new Exception("El PDF es demasiado grande (" . formatBytes($file_size) . "). Máximo 2MB.");
+                        }
+
+                        // Validar que sea un PDF real
+                        $pdf_header = file_get_contents($tmp_name, false, null, 0, 5);
+                        if (strpos($pdf_header, '%PDF-') !== 0) {
+                            throw new Exception("El archivo no parece ser un PDF válido");
+                        }
+
+                        // Intentar con método seguro primero
+                        echo "<script>console.log('Intentando subir PDF con save_uploaded_stream...');</script>";
+
+                        if (save_uploaded_stream($tmp_name, $upload_path)) {
+                            echo "<script>console.log('PDF subido exitosamente con save_uploaded_stream');</script>";
+                            $tamano_comprobante = filesize($upload_path);
+                        }
+                        // Fallback a move_uploaded_file
+                        else if (move_uploaded_file($tmp_name, $upload_path)) {
+                            echo "<script>console.log('PDF subido con move_uploaded_file (fallback)');</script>";
+                            $tamano_comprobante = filesize($upload_path);
+                        }
+                        // Último intento: copia simple
+                        else if (copy($tmp_name, $upload_path)) {
+                            echo "<script>console.log('PDF subido con copy (último recurso)');</script>";
+                            $tamano_comprobante = filesize($upload_path);
+                        } else {
+                            throw new Exception("No se pudo guardar el PDF en el servidor. Verifica permisos de escritura.");
+                        }
+
+                        // Verificar que el archivo final existe y tiene contenido
+                        if (!file_exists($upload_path) || filesize($upload_path) === 0) {
+                            @unlink($upload_path); // Limpiar archivo vacío
+                            throw new Exception("El PDF se guardó pero está vacío o no se pudo verificar");
+                        }
+                    }
+                    // Si es imagen, optimizarla
+                    elseif (strpos($file_type, 'image/') === 0) {
+                        try {
+                            optimizarImagenParaHosting($tmp_name, $upload_path, $file_type);
+                            $tamano_comprobante = filesize($upload_path);
+                        } catch (Exception $e) {
+                            // Si falla la optimización, intentar subir la imagen original
+                            echo "<script>console.log('Falló optimización, intentando subir imagen original...');</script>";
+                            if ($file_size > 1024 * 1024) {
+                                throw new Exception("La imagen es muy grande (" . formatBytes($file_size) .
+                                    ") y no se pudo optimizar. Comprímela manualmente a menos de 1MB.");
+                            }
+                            if (!move_uploaded_file($tmp_name, $upload_path)) {
+                                throw new Exception("No se pudo subir la imagen: " . $e->getMessage());
+                            }
+                            $tamano_comprobante = $file_size;
+                        }
+                    }
+
+                    $comprobante_file = $new_filename;
+                    $tipo_comprobante = $file_type;
+
+                    // Eliminar archivo anterior si existe
+                    $sql_old = "SELECT comprobante_ticket FROM captacion_detalle WHERE id_detalle = ?";
+                    $stmt_old = $conn_mysql->prepare($sql_old);
+                    $stmt_old->bind_param('i', $id_detalle);
+                    $stmt_old->execute();
+                    $result_old = $stmt_old->get_result();
+
+                    if ($row_old = $result_old->fetch_assoc()) {
+                        $old_file = $row_old['comprobante_ticket'];
+                        if ($old_file && file_exists($upload_dir . $old_file)) {
+                            @unlink($upload_dir . $old_file);
+                        }
+                    }
+
+                } catch (Exception $e) {
+                    // Limpiar archivo si se creó pero hubo error
+                    if (isset($upload_path) && file_exists($upload_path)) {
+                        @unlink($upload_path);
+                    }
+                    throw new Exception("Error procesando '$file_name': " . $e->getMessage());
+                }
             }
-        }
-        
-        $comprobante_file = $new_filename;
-        $tipo_comprobante = $file_type;
-        
-        // Eliminar archivo anterior si existe
-        $sql_old = "SELECT comprobante_ticket FROM captacion_detalle WHERE id_detalle = ?";
-        $stmt_old = $conn_mysql->prepare($sql_old);
-        $stmt_old->bind_param('i', $id_detalle);
-        $stmt_old->execute();
-        $result_old = $stmt_old->get_result();
-        
-        if ($row_old = $result_old->fetch_assoc()) {
-            $old_file = $row_old['comprobante_ticket'];
-            if ($old_file && file_exists($upload_dir . $old_file)) {
-                @unlink($upload_dir . $old_file);
-            }
-        }
-        
-    } catch (Exception $e) {
-        // Limpiar archivo si se creó pero hubo error
-        if (isset($upload_path) && file_exists($upload_path)) {
-            @unlink($upload_path);
-        }
-        throw new Exception("Error procesando '$file_name': " . $e->getMessage());
-    }
-}
-            
+
             // Construir consulta SQL dinámicamente
             if ($comprobante_file) {
                 $sql = "UPDATE captacion_detalle 
@@ -600,21 +615,30 @@ if (isset($_POST['guardar_numeros_productos'])) {
                 tamano_comprobante = ?,
                 fecha_subida_comprobante = NOW()
                 WHERE id_detalle = ? AND id_captacion = ? AND status = 1";
-                
+
                 $stmt = $conn_mysql->prepare($sql);
                 if (!$stmt) {
                     $errores[] = "Error al preparar consulta para ID $id_detalle: " . $conn_mysql->error;
                     continue;
                 }
-                $stmt->bind_param('sssssiii', $ticket_sql, $bascula_sql, $factura_sql, 
-                    $comprobante_file, $tipo_comprobante, $tamano_comprobante, $id_detalle, $id_captacion);
+                $stmt->bind_param(
+                    'sssssiii',
+                    $ticket_sql,
+                    $bascula_sql,
+                    $factura_sql,
+                    $comprobante_file,
+                    $tipo_comprobante,
+                    $tamano_comprobante,
+                    $id_detalle,
+                    $id_captacion
+                );
             } else {
                 $sql = "UPDATE captacion_detalle 
                 SET numero_ticket = ?, 
                 numero_bascula = ?, 
                 numero_factura = ? 
                 WHERE id_detalle = ? AND id_captacion = ? AND status = 1";
-                
+
                 $stmt = $conn_mysql->prepare($sql);
                 if (!$stmt) {
                     $errores[] = "Error al preparar consulta para ID $id_detalle: " . $conn_mysql->error;
@@ -622,16 +646,16 @@ if (isset($_POST['guardar_numeros_productos'])) {
                 }
                 $stmt->bind_param('sssii', $ticket_sql, $bascula_sql, $factura_sql, $id_detalle, $id_captacion);
             }
-            
+
             if (!$stmt->execute()) {
                 $errores[] = "Error al ejecutar para ID $id_detalle: " . $stmt->error;
             } else {
                 $actualizados++;
             }
-            
+
             $stmt->close();
         }
-        
+
         if (empty($errores)) {
             $conn_mysql->commit();
             alert("Datos actualizados con éxito para $actualizados productos", 1, "V_captacion&id=$id_captacion_post");
@@ -640,7 +664,7 @@ if (isset($_POST['guardar_numeros_productos'])) {
             $mensaje_error = "Errores encontrados: " . implode(', ', $errores);
             alert($mensaje_error, 0, "V_captacion&id=$id_captacion_post");
         }
-        
+
     } catch (Exception $e) {
         if (isset($conn_mysql)) {
             $conn_mysql->rollback();
@@ -655,16 +679,16 @@ if (isset($_POST['guardar_factura_flete'])) {
     try {
         $id_captacion_post = $_POST['id_captacion'] ?? 0;
         $numero_factura_flete = trim($_POST['numero_factura_flete'] ?? '');
-        $validar_duplicado = isset($_POST['validar_duplicado']) ? (int)$_POST['validar_duplicado'] : 0;
-        
+        $validar_duplicado = isset($_POST['validar_duplicado']) ? (int) $_POST['validar_duplicado'] : 0;
+
         if ($id_captacion_post != $id_captacion) {
             throw new Exception("ID de captación no coincide");
         }
-        
+
         if (empty($numero_factura_flete)) {
             throw new Exception("El número de factura es requerido");
         }
-        
+
         // Validar duplicado si se solicita
         if ($validar_duplicado) {
             // Obtener ID del fletero
@@ -673,10 +697,10 @@ if (isset($_POST['guardar_factura_flete'])) {
             $stmt->bind_param('i', $id_captacion);
             $stmt->execute();
             $result = $stmt->get_result();
-            
+
             if ($row = $result->fetch_assoc()) {
                 $id_fletero = $row['id_transp'] ?? 0;
-                
+
                 // Verificar duplicado
                 $sql_duplicado = "SELECT cf.id_captacion 
                 FROM captacion_flete cf
@@ -686,14 +710,14 @@ if (isset($_POST['guardar_factura_flete'])) {
                 AND c.id_transp = ? 
                 AND cf.numero_factura_flete IS NOT NULL 
                 AND cf.numero_factura_flete != ''";
-                
+
                 $stmt = $conn_mysql->prepare($sql_duplicado);
                 $stmt->bind_param('sii', $numero_factura_flete, $id_captacion, $id_fletero);
                 $stmt->execute();
                 $result = $stmt->get_result();
-                
+
                 if ($result->num_rows > 0) {
-    // Obtener información de la captación duplicada
+                    // Obtener información de la captación duplicada
                     $sql_info_duplicado = "SELECT c.folio, DATE_FORMAT(c.fecha_captacion, '%d/%m/%Y') as fecha
                     FROM captacion_flete cf
                     INNER JOIN captacion c ON cf.id_captacion = c.id_captacion
@@ -716,20 +740,20 @@ if (isset($_POST['guardar_factura_flete'])) {
                 }
             }
         }
-        
+
         // Verificar si ya existe registro en captacion_flete
         $sql_check = "SELECT id_captacion FROM captacion_flete WHERE id_captacion = ?";
         $stmt_check = $conn_mysql->prepare($sql_check);
         $stmt_check->bind_param('i', $id_captacion);
         $stmt_check->execute();
         $result_check = $stmt_check->get_result();
-        
+
         if ($result_check->num_rows == 0) {
             // Insertar nuevo registro
             $sql_insert = "INSERT INTO captacion_flete (id_captacion, numero_factura_flete) VALUES (?, ?)";
             $stmt_insert = $conn_mysql->prepare($sql_insert);
             $stmt_insert->bind_param('is', $id_captacion, $numero_factura_flete);
-            
+
             if ($stmt_insert->execute()) {
                 alert("Factura de flete creada correctamente", 1, "V_captacion&id=$id_captacion_post");
             } else {
@@ -740,17 +764,17 @@ if (isset($_POST['guardar_factura_flete'])) {
             $sql_update = "UPDATE captacion_flete 
             SET numero_factura_flete = ? 
             WHERE id_captacion = ?";
-            
+
             $stmt_update = $conn_mysql->prepare($sql_update);
             $stmt_update->bind_param('si', $numero_factura_flete, $id_captacion);
-            
+
             if ($stmt_update->execute()) {
                 alert("Factura de flete actualizada correctamente", 1, "V_captacion&id=$id_captacion_post");
             } else {
                 throw new Exception("Error al actualizar: " . $stmt_update->error);
             }
         }
-        
+
     } catch (Exception $e) {
 
         alert("Error al dar de alta la factura del flete", 0, "V_captacion&id=$id_captacion_post");
@@ -758,9 +782,9 @@ if (isset($_POST['guardar_factura_flete'])) {
 }
 
 ?>
-<div class="container py-3 px-lg-4">
+<div class="container py-2 px-lg-4">
     <!-- Header Principal -->
-    <div class="card border-0 shadow-lg mb-4 overflow-hidden">
+    <div class="card border-0 shadow-lg mb-3 overflow-hidden">
         <div class="encabezado-col text-white p-4">
             <div class="row align-items-center">
                 <div class="col-md-8">
@@ -772,10 +796,12 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     <i class="bi bi-tag me-1"></i><?= htmlspecialchars($folio_completo) ?>
                                 </span>
                                 <span class="badge bg-white bg-opacity-25 text-white">
-                                    <i class="bi bi-calendar3 me-1"></i><?= date('d/m/Y', strtotime($captacion['fecha_captacion'])) ?>
+                                    <i
+                                        class="bi bi-calendar3 me-1"></i><?= date('d/m/Y', strtotime($captacion['fecha_captacion'])) ?>
                                 </span>
                                 <span class="badge bg-white bg-opacity-25 text-white">
-                                    <i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($captacion['nombre_usuario'] ?? 'N/A') ?>
+                                    <i
+                                        class="bi bi-person-circle me-1"></i><?= htmlspecialchars($captacion['nombre_usuario'] ?? 'N/A') ?>
                                 </span>
                             </div>
                         </div>
@@ -785,14 +811,16 @@ if (isset($_POST['guardar_factura_flete'])) {
                     <div class="d-flex justify-content-end gap-2">
                         <!-- Botón para actualizar números de productos -->
                         <?php if (!empty($productos)): ?>
-                            <button class="btn btn-sm rounded-3 btn-primary align-items-center" data-bs-toggle="modal" data-bs-target="#modalNumerosProductos">
+                            <button class="btn btn-sm rounded-3 btn-primary align-items-center" data-bs-toggle="modal"
+                                data-bs-target="#modalNumerosProductos">
                                 <i class="bi bi-card-checklist"></i> Actualizar Números
                             </button>
                         <?php endif; ?>
 
                         <!-- Botón para actualizar factura de flete -->
                         <?php if ($flete): ?>
-                            <button class="btn btn-sm rounded-3 btn-warning align-items-center" data-bs-toggle="modal" data-bs-target="#modalFacturaFlete">
+                            <button class="btn btn-sm rounded-3 btn-warning align-items-center" data-bs-toggle="modal"
+                                data-bs-target="#modalFacturaFlete">
                                 <i class="bi bi-receipt"></i> Factura Flete
                             </button>
                         <?php endif; ?>
@@ -801,7 +829,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                             <i class="bi bi-x-circle"></i> Cerrar
                         </button>
                         <script>
-                            document.getElementById('btnCerrar').addEventListener('click', function() {
+                            document.getElementById('btnCerrar').addEventListener('click', function () {
                                 window.close();
                             });
                         </script>
@@ -809,73 +837,23 @@ if (isset($_POST['guardar_factura_flete'])) {
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Tarjetas de Estadísticas -->
-    <div class="row mb-4">
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-primary border-0 shadow h-100">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">
-                                Total Productos
-                            </div>
-                            <div class="h5 mb-0 fw-bold"><?= count($productos) ?></div>
-                            <div class="text-muted small">Productos registrados</div>
-                        </div>
-                        <div class="col-auto">
-                            <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                                <i class="bi bi-box-seam"></i>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Stats compactas integradas -->
+        <div class="card-body py-2 px-4 border-top">
+            <div class="row text-center g-0">
+                <div class="col-4 border-end py-1">
+                    <small class="text-muted text-uppercase d-block" style="font-size:.7rem">Productos</small>
+                    <span class="fw-bold text-primary fs-5"><?= count($productos) ?></span>
+                </div>
+                <div class="col-4 border-end py-1">
+                    <small class="text-muted text-uppercase d-block" style="font-size:.7rem">Total Kilos</small>
+                    <span class="fw-bold text-success fs-5"><?= number_format($total_kilos, 2) ?></span>
+                </div>
+                <div class="col-4 py-1">
+                    <small class="text-muted text-uppercase d-block" style="font-size:.7rem">Costo Productos</small>
+                    <span class="fw-bold text-indigo fs-5">$<?= number_format($costo_total_productos, 2) ?></span>
                 </div>
             </div>
         </div>
-        
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-success border-0 shadow h-100">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs fw-bold text-success text-uppercase mb-1">
-                                Total Kilos
-                            </div>
-                            <div class="h5 mb-0 fw-bold"><?= number_format($total_kilos, 2) ?></div>
-                            <div class="text-muted small">Kilogramos totales</div>
-                        </div>
-                        <div class="col-auto">
-                            <div class="stat-icon bg-success bg-opacity-10 text-success">
-                                <i class="bi bi-speedometer2"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-warning border-0 shadow h-100">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs fw-bold text-indigo text-uppercase mb-1">
-                                Costo Productos
-                            </div>
-                            <div class="h5 mb-0 fw-bold">$<?= number_format($costo_total_productos, 2) ?></div>
-                            <div class="text-muted small">Compra de materiales</div>
-                        </div>
-                        <div class="col-auto">
-                            <div class="stat-icon bg-indigo bg-opacity-10 text-indigo">
-                                <i class="bi bi-cart-check"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
     </div>
 
     <!-- Información Principal -->
@@ -905,13 +883,13 @@ if (isset($_POST['guardar_factura_flete'])) {
     $costoCaptacionFmt = number_format($costo_total_captacion, 2);
     $promedioKilo = $total_kilos > 0 ? number_format($costo_total_captacion / $total_kilos, 4) : '0.0000';
     ?>
-    <div class="row mb-4">
-        <!-- Información General -->
-        <div class="col-lg-8">
-            <div class="row gy-4">
+    <div class="row mb-3 g-3">
+        <!-- Proveedor y Almacén -->
+        <div class="col-lg-7">
+            <div class="d-flex flex-column gap-3">
                 <!-- Proveedor -->
-                <div class="col-md-6">
-                    <div class="card info-card border-0 shadow h-100">
+                <div>
+                    <div class="card info-card border-0 shadow">
                         <div class="card-header card-header-custom">
                             <h6 class="mb-0 d-flex align-items-center">
                                 <i class="bi bi-truck text-primary me-2" aria-hidden="true"></i> Proveedor
@@ -939,8 +917,8 @@ if (isset($_POST['guardar_factura_flete'])) {
                 </div>
 
                 <!-- Almacén -->
-                <div class="col-md-6">
-                    <div class="card info-card border-0 shadow h-100">
+                <div>
+                    <div class="card info-card border-0 shadow">
                         <div class="card-header card-header-custom">
                             <h6 class="mb-0 d-flex align-items-center">
                                 <i class="bi bi-building text-success me-2" aria-hidden="true"></i> Almacén Destino
@@ -966,158 +944,223 @@ if (isset($_POST['guardar_factura_flete'])) {
                         </div>
                     </div>
                 </div>
-
-                <!-- Zona y Fecha -->
-                <div class="col-md-6">
-                    <div class="card border-0 shadow h-100">
+                <!-- flete -->
+                <?php if ($flete): ?>
+                    <div class="card border-0 shadow">
+                        <div class="card-header card-header-custom">
+                            <h6 class="mb-0 d-flex align-items-center">
+                                <i class="bi bi-truck-flatbed text-warning me-2" aria-hidden="true"></i> Servicio de Flete
+                            </h6>
+                        </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-6">
-                                    <small class="text-muted d-block mb-1">Zona</small>
-                                    <div class="d-flex align-items-center">
-                                        <div class="quantity-badge me-2"><?= $zonaCode ?></div>
-                                        <span class="fw-semibold"><?= $zonaName ?></span>
+                            <div class="mb-3">
+                                <small class="text-muted d-block mb-1">Fletero</small>
+                                <div class="fw-semibold">
+                                    <i class="bi bi-truck text-warning me-1" aria-hidden="true"></i>
+                                    <?= $fletePlacas ?>     <?= $fletePlacas && $fleteNombre ? '-' : '' ?>     <?= $fleteNombre ?>
+                                </div>
+                            </div>
+
+                            <?php if (!empty($fleteNumero)): ?>
+                                <div class="mb-3">
+                                    <small class="text-muted d-block mb-1">Facturación Flete</small>
+                                    <div class="fw-semibold">
+                                        <i class="bi bi-receipt text-warning me-1" aria-hidden="true"></i>
+                                        <!-- Mostrar documentos de flete si existen -->
+                                        <?php
+                                        if (!empty($flete['doc_factura_flete']) || !empty($flete['doc_comprobante_flete'])) {
+                                            ?>
+                                            <button type="button" class="btn btn-warning btn-sm rounded-4 dropdown-toggle"
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="bi bi-file-earmark-pdf"></i> <?= $fleteNumero ?>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <?php if (!empty($flete['doc_factura_flete'])): ?>
+                                                    <li><a class="dropdown-item"
+                                                            href="<?= $invoiceLK . $flete['doc_factura_flete'] ?>.pdf"
+                                                            target="_blank">Ver Factura de Flete</a></li>
+                                                <?php endif; ?>
+                                                <?php if (!empty($flete['com_factura_flete'])): ?>
+                                                    <li><a class="dropdown-item"
+                                                            href="<?= $invoiceLK . $flete['com_factura_flete'] ?>.pdf"
+                                                            target="_blank">Ver Comprobante de Flete</a></li>
+                                                <?php endif; ?>
+                                            </ul>
+                                            <?php
+                                        } else {
+                                            echo $fleteNumero;
+                                        }
+                                        ?>
                                     </div>
                                 </div>
-                                <div class="col-6">
-                                    <small class="text-muted d-block mb-1">Fecha Captación</small>
+                            <?php endif; ?>
+                            <?php
+                            if (!empty($flete['folio_CR_flete'])) {
+                                ?>
+                                <div class="mb-3">
+                                    <small class="text-muted d-block mb-1">Contra Recibo</small>
                                     <div class="fw-semibold">
-                                        <i class="bi bi-calendar3 text-primary me-1" aria-hidden="true"></i>
-                                        <?= $fechaCapt ?>
+                                        <a href="<?= $link . $flete['alias_CR_flete'] . '-' . $flete['folio_CR_flete'] ?>"
+                                            target="_blank" class="text-decoration-none">
+                                            <i class="bi bi-file-earmark-text text-warning me-1" aria-hidden="true"></i>
+                                            <?= htmlspecialchars($flete['alias_CR_flete']) ?> -
+                                            <?= htmlspecialchars($flete['folio_CR_flete']) ?>
+                                        </a>
                                     </div>
+                                </div>
+                                <?php
+                            }
+                            ?>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted d-block mb-1">Tipo de Flete</small>
+                                    <span class="badge bg-warning bg-opacity-25 text-dark"><?= $fleteLabel ?></span>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted d-block mb-1">Precio</small>
+                                    <span
+                                        class="fw-bold text-success">$<?= $fletePrecio ?><?= $fleteTipo === 'MFT' ? ' / ton' : '' ?></span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Flete (si aplica) -->
-                <?php if ($flete): ?>
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow h-100">
-                            <div class="card-header card-header-custom">
-                                <h6 class="mb-0 d-flex align-items-center">
-                                    <i class="bi bi-truck-flatbed text-warning me-2" aria-hidden="true"></i> Servicio de Flete
-                                </h6>
+                <?php else: ?>
+                    <div class="card border-0 shadow h-100">
+                        <div
+                            class="card-body d-flex flex-column justify-content-center align-items-center text-center py-5">
+                            <div class="bg-warning bg-opacity-10 rounded-3 p-3 mb-2">
+                                <i class="bi bi-truck-flatbed text-warning fs-2"></i>
                             </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <small class="text-muted d-block mb-1">Fletero</small>
-                                    <div class="fw-semibold">
-                                        <i class="bi bi-truck text-warning me-1" aria-hidden="true"></i>
-                                        <?= $fletePlacas ?> <?= $fletePlacas && $fleteNombre ? '-' : '' ?> <?= $fleteNombre ?>
-                                    </div>
-                                </div>
-
-                                <?php if (!empty($fleteNumero)): ?>
-                                    <div class="mb-3">
-                                        <small class="text-muted d-block mb-1">Facturación Flete</small>
-                                        <div class="fw-semibold">
-                                            <i class="bi bi-receipt text-warning me-1" aria-hidden="true"></i>
-                                            <!-- Mostrar documentos de flete si existen -->
-                                            <?php
-                                            if (!empty($flete['doc_factura_flete']) || !empty($flete['doc_comprobante_flete'])) {
-                                                ?>
-                                                <button type="button" class="btn btn-warning btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-file-earmark-pdf"></i> <?= $fleteNumero ?>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                  <?php if (!empty($flete['doc_factura_flete'])): ?>
-                                                    <li><a class="dropdown-item" href="<?= $invoiceLK . $flete['doc_factura_flete'] ?>.pdf" target="_blank">Ver Factura de Flete</a></li>
-                                                  <?php endif; ?>
-                                                  <?php if (!empty($flete['com_factura_flete'])): ?>
-                                                    <li><a class="dropdown-item" href="<?= $invoiceLK . $flete['com_factura_flete'] ?>.pdf" target="_blank">Ver Comprobante de Flete</a></li>
-                                                  <?php endif; ?>
-                                                </ul>
-                                                <?php
-                                            }else {
-                                                echo $fleteNumero;
-                                            }
-                                            ?>
-                                        </div>
-                                    </div>
-                                <?php endif; ?>
-                                <?php
-                                if (!empty($flete['folio_CR_flete'])) {
-                                    ?>
-                                    <!-- abrir el link de cr_flete en una nueva pestaña -->
-                                    <div class="mb-3">
-                                        <small class="text-muted d-block mb-1">Contra Recibo</small>
-                                        <div class="fw-semibold">
-                                            <a href="<?= $link . $flete['alias_CR_flete'].'-'.$flete['folio_CR_flete'] ?>" target="_blank" class="text-decoration-none">
-                                                <i class="bi bi-file-earmark-text text-warning me-1" aria-hidden="true"></i>
-                                                <?= htmlspecialchars($flete['alias_CR_flete']) ?> - <?= htmlspecialchars($flete['folio_CR_flete']) ?>
-                                            </a>
-                                        </div>
-                                    </div>
-                                    <?php
-                                }
-                                ?>
-
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <small class="text-muted d-block mb-1">Tipo de Flete</small>
-                                        <span class="badge bg-warning bg-opacity-25 text-dark"><?= $fleteLabel ?></span>
-                                    </div>
-                                    <div class="text-end">
-                                        <small class="text-muted d-block mb-1">Precio</small>
-                                        <span class="fw-bold text-success">$<?= $fletePrecio ?><?= $fleteTipo === 'MFT' ? ' / ton' : '' ?></span>
-                                    </div>
-                                </div>
-                            </div>
+                            <h6 class="fw-bold mb-1">Sin Flete</h6>
+                            <p class="text-muted small mb-0">No hay servicio de flete registrado</p>
                         </div>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
-<!-- Resumen Financiero -->
-        <div class="col-lg-4">
-            <div class="card finance-card border-0 shadow h-100">
-                <div class="card-header card-header-custom">
-                    <h6 class="mb-0 d-flex align-items-center">
-                        <i class="bi bi-calculator text-success me-2" aria-hidden="true"></i> Resumen Financiero
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3 pb-3 border-bottom">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-semibold">Costo de Productos</span>
-                            <span class="cost-display text-primary">$<?= $costoProdFmt ?></span>
-                        </div>
-                        <small class="text-muted"><?= $totalKilosFmt ?> kg comprados</small>
-                    </div>
-
-                    <?php if ($flete): ?>
-                        <div class="mb-3 pb-3 border-bottom">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-semibold">Costo de Flete</span>
-                                <span class="cost-display text-indigo">$<?= $costoFleteFmt ?></span>
-                            </div>
-                            <small class="text-muted">
-                                <?= $fleteTipo === 'MFT' ? number_format($total_kilos / 1000, 2) . ' ton transportadas' : 'Viaje completo' ?>
-                            </small>
-                        </div>
-                    <?php endif; ?>
-
-                    <div class="mt-4 pt-3">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold mb-0">Total Captación</h5>
-                            <h4 class="fw-bold text-success mb-0">$<?= $costoCaptacionFmt ?></h4>
-                        </div>
-                        <div class="text-center p-3 rounded" style="background: rgba(28,200,138,0.06);">
-                            <small class="text-muted d-block mb-1">Costo promedio por kilo</small>
-                            <div class="h5 fw-bold text-success">
-                                $<?= $promedioKilo ?><small class="text-muted fs-6"> /kg</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Resumen Financiero -->
+        <div class="col-lg-5">
+            <div class="card finance-card border-0 shadow-lg h-100">
+            <div class="card-header card-header-custom">
+                <h6 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-calculator text-success me-2" aria-hidden="true"></i> Resumen Financiero
+                </h6>
             </div>
-        </div> <!-- /.col-lg-4 -->
+            <div class="card-body">
+                <!-- Alerta de discrepancia de flete -->
+                <?php if ($flete && !empty($flete['subtotal_flete']) && floatval($flete['subtotal_flete']) > 0 && abs($costo_total_flete - floatval($flete['subtotal_flete'])) > 0.01): ?>
+                <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Advertencia:</strong> El costo de flete calculado ($<?= $costoFleteFmt ?>) no coincide con el subtotal registrado ($<?= number_format($flete['subtotal_flete'], 2) ?>). Verifica los datos del flete.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php endif; ?>
+
+                <!-- Sección de Productos -->
+                <div class="financial-section mb-3 pb-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded-circle">
+                        <i class="bi bi-box-seam text-primary"></i>
+                    </div>
+                    <span class="fw-semibold">Costo de Productos</span>
+                    </div>
+                    <span class="cost-display text-primary fw-bold fs-5">$<?= $costoProdFmt ?></span>
+                </div>
+                <small class="text-muted d-block ms-4"><?= $totalKilosFmt ?> kg comprados</small>
+                </div>
+
+                <!-- Sección de Flete (si aplica) -->
+                <?php if ($flete): ?>
+                <div class="financial-section mb-3 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-warning bg-opacity-10 p-2 rounded-circle">
+                        <i class="bi bi-truck text-warning"></i>
+                        </div>
+                        <span class="fw-semibold">Costo de Flete</span>
+                    </div>
+                    <span class="cost-display text-warning fw-bold fs-5">$<?= $costoFleteFmt ?></span>
+                    </div>
+                    <small class="text-muted d-block ms-4">
+                    <?= $fleteTipo === 'MFT' ? number_format($total_kilos / 1000, 2) . ' ton transportadas' : 'Viaje completo' ?>
+                    </small>
+                </div>
+                <?php endif; ?>
+
+                <!-- Total Principal -->
+                <div class="mt-4 pt-3 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">Total Captación</h5>
+                    <div class="text-end">
+                    <h4 class="fw-bold text-success mb-0">$<?= $costoCaptacionFmt ?></h4>
+                    <small class="text-muted">Importe Total</small>
+                    </div>
+                </div>
+                <div class="p-3 rounded-3 border border-success border-opacity-25"
+                    style="background: rgba(28,200,138,0.08);">
+                    <small class="text-muted d-block mb-2">Costo promedio por kilogramo</small>
+                    <div class="h5 fw-bold text-success mb-0">
+                    $<?= $promedioKilo ?><span class="text-muted fs-6"> / kg</span>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Desglose de Impuestos (si aplica) -->
+                <?php if (!empty($flete['impuestoTraslado_flete'])): ?>
+                <div class="border-top pt-3">
+                    <h6 class="text-muted mb-3 d-flex align-items-center">
+                    <i class="bi bi-receipt text-secondary me-2"></i> Desglose Fiscal Flete
+                    </h6>
+
+                    <div class="financial-subsection mb-2 pb-2 border-bottom border-opacity-50">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">Subtotal</span>
+                        <span
+                        class="fw-semibold text-secondary">$<?= number_format($flete['subtotal_flete'], 2) ?></span>
+                    </div>
+                    </div>
+
+                    <div class="financial-subsection mb-2 pb-2 border-bottom border-opacity-50">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-circle text-success fs-6"></i>
+                        <span class="text-muted small">IVA Traslado</span>
+                        </div>
+                        <span
+                        class="fw-semibold text-success">+$<?= number_format($flete['impuestoTraslado_flete'], 2) ?></span>
+                    </div>
+                    </div>
+
+                    <div class="financial-subsection mb-3 pb-3 border-bottom border-opacity-50">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-dash-circle text-danger fs-6"></i>
+                        <span class="text-muted small">IVA Retenido</span>
+                        </div>
+                        <span
+                        class="fw-semibold text-danger">-$<?= number_format($flete['impuestoRetenido_flete'], 2) ?></span>
+                    </div>
+                    </div>
+
+                    <div class="p-3 rounded-3 border-2"
+                    style="border-color: rgba(52,152,219,0.3); background: rgba(52,152,219,0.08);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">Total Neto Flete</span>
+                        <span
+                        class="fw-bold text-info fs-5">$<?= number_format($flete['total_flete'], 2) ?></span>
+                    </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+            </div>
+        </div>
     </div>
 
     <!-- Detalle de Productos (Ticket + Comprobante combinados en una sola columna) -->
-    <div class="card border-0 shadow mb-4">
+    <div class="card border-0 shadow mb-3">
         <div class="card-header card-header-custom d-flex justify-content-between align-items-center py-3">
             <h5 class="mb-0 d-flex align-items-center">
                 <i class="bi bi-clipboard-data text-primary me-2"></i>
@@ -1141,13 +1184,13 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 <?php if ($tiene_granel || $tiene_ambos): ?>
                                     <th class="text-end">Kilos Granel</th>
                                 <?php endif; ?>
-                                
+
                                 <?php if ($tiene_pacas || $tiene_ambos): ?>
                                     <th class="text-end">Cant. Pacas</th>
                                     <th class="text-end">Kilos Pacas</th>
                                     <th class="text-end">Promedio</th>
                                 <?php endif; ?>
-                                
+
                                 <th class="text-end">Total Kilos</th>
                                 <th class="text-end">Precio/kg</th>
                                 <th class="text-end">Subtotal</th>
@@ -1164,7 +1207,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 <?php
                                 $tipo_almacen = $producto['tipo_almacen'];
                                 $subtotal_producto = $producto['precio_compra_por_kilo'] * $producto['total_kilos'];
-                                
+
                                 $type_colors = [
                                     'granel' => ['bg' => 'bg-warning bg-opacity-25', 'text' => 'text-warning'],
                                     'pacas' => ['bg' => 'bg-indigo bg-opacity-25', 'text' => 'text-indigo']
@@ -1186,7 +1229,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                             <?= ucfirst($tipo_almacen) ?>
                                         </span>
                                     </td>
-                                    
+
                                     <?php if ($tiene_granel || $tiene_ambos): ?>
                                         <td class="text-end">
                                             <?php if ($producto['granel_kilos'] > 0): ?>
@@ -1198,7 +1241,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                             <?php endif; ?>
                                         </td>
                                     <?php endif; ?>
-                                    
+
                                     <?php if ($tiene_pacas || $tiene_ambos): ?>
                                         <td class="text-end">
                                             <?php if ($producto['pacas_cantidad'] > 0): ?>
@@ -1224,25 +1267,27 @@ if (isset($_POST['guardar_factura_flete'])) {
                                             <?php endif; ?>
                                         </td>
                                     <?php endif; ?>
-                                    
+
                                     <td class="text-end fw-bold">
                                         <span><?= number_format($producto['total_kilos'], 2) ?> kg</span>
                                     </td>
                                     <td class="text-end">
-                                        <div class="cost-display text-primary">$<?= number_format($producto['precio_compra_por_kilo'], 4) ?></div>
+                                        <div class="cost-display text-primary">
+                                            $<?= number_format($producto['precio_compra_por_kilo'], 4) ?></div>
                                         <div class="text-muted small">/kg</div>
                                     </td>
                                     <td class="text-end">
-                                        <div class="cost-display text-success">$<?= number_format($subtotal_producto, 2) ?></div>
+                                        <div class="cost-display text-success">$<?= number_format($subtotal_producto, 2) ?>
+                                        </div>
                                     </td>
 
                                     <!-- Ticket + Comprobante en una sola columna -->
                                     <td>
                                         <?php if (!empty($producto['numero_ticket'])): ?>
                                             <?php if ($has_comprobante): ?>
-                                                <button type="button" class="btn btn-link p-0 d-inline-flex align-items-center" 
-                                                        onclick="viewComprobante('<?= $nombre_archivo ?>', '<?= $tipo_comprobante ?>', '<?= htmlspecialchars($producto['nombre_producto']) ?>')"
-                                                        data-bs-toggle="tooltip" title="Ver comprobante">
+                                                <button type="button" class="btn btn-link p-0 d-inline-flex align-items-center"
+                                                    onclick="viewComprobante('<?= $nombre_archivo ?>', '<?= $tipo_comprobante ?>', '<?= htmlspecialchars($producto['nombre_producto']) ?>')"
+                                                    data-bs-toggle="tooltip" title="Ver comprobante">
                                                     <i class="bi bi-ticket-detailed me-1"></i>
                                                     <?= htmlspecialchars($producto['numero_ticket']) ?>
                                                     <span class="badge bg-success ms-2" title="Tiene comprobante">
@@ -1250,13 +1295,16 @@ if (isset($_POST['guardar_factura_flete'])) {
                                                     </span>
                                                 </button>
                                             <?php else: ?>
-                                                <span class="text-muted small cursor-pointer" onclick="document.querySelector('#modalNumerosProductos button[type=submit]').scrollIntoView(); $('#modalNumerosProductos').modal('show')">
-                                                    <i class="bi bi-ticket-detailed me-1"></i> <?= htmlspecialchars($producto['numero_ticket']) ?>
+                                                <span class="text-muted small cursor-pointer"
+                                                    onclick="document.querySelector('#modalNumerosProductos button[type=submit]').scrollIntoView(); $('#modalNumerosProductos').modal('show')">
+                                                    <i class="bi bi-ticket-detailed me-1"></i>
+                                                    <?= htmlspecialchars($producto['numero_ticket']) ?>
                                                     <span class="text-muted ms-2 small">(sin comprobante)</span>
                                                 </span>
                                             <?php endif; ?>
                                         <?php else: ?>
-                                            <span class="text-muted small cursor-pointer" onclick="document.querySelector('#modalNumerosProductos button[type=submit]').scrollIntoView(); $('#modalNumerosProductos').modal('show')">
+                                            <span class="text-muted small cursor-pointer"
+                                                onclick="document.querySelector('#modalNumerosProductos button[type=submit]').scrollIntoView(); $('#modalNumerosProductos').modal('show')">
                                                 <i class="bi bi-plus-circle me-1"></i> Agregar
                                             </span>
                                         <?php endif; ?>
@@ -1265,7 +1313,8 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     <td>
                                         <?php if (!empty($producto['numero_bascula'])): ?>
                                             <span class="numero-badge" data-bs-toggle="tooltip" title="Báscula">
-                                                <i class="bi bi-speedometer me-1"></i><?= htmlspecialchars($producto['numero_bascula']) ?>
+                                                <i
+                                                    class="bi bi-speedometer me-1"></i><?= htmlspecialchars($producto['numero_bascula']) ?>
                                             </span>
                                         <?php else: ?>
                                             <span class="text-muted small">-</span>
@@ -1274,17 +1323,25 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     <td>
                                         <?php if (!empty($producto['numero_factura'])): ?>
                                             <!-- Si existe com_factura_producto o doc_factura_producto mostrar un icono para abrir un link en otra pagina de estos documentos -->
-                                             <?php if (!empty($producto['com_factura_producto']) || !empty($producto['doc_factura_producto'])){ ?>
-                                                <button type="button" class="btn btn-success btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-file-earmark-pdf"></i> <?=$producto['numero_factura']?>
+                                            <?php if (!empty($producto['com_factura_producto']) || !empty($producto['doc_factura_producto'])) { ?>
+                                                <button type="button" class="btn btn-success btn-sm rounded-4 dropdown-toggle"
+                                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-file-earmark-pdf"></i> <?= $producto['numero_factura'] ?>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                  <?php if (!empty($producto['com_factura_producto'])): ?><li><a class="dropdown-item" href="<?= $invoiceLK .$producto['doc_factura_producto'] ?>.pdf" target="_blank">Factura</a></li><?php endif; ?>
-                                                  <?php if (!empty($producto['doc_factura_producto'])): ?><li><a class="dropdown-item" href="<?= $invoiceLK.$producto['com_factura_producto'] ?>.pdf" target="_blank">Evidencia</a></li><?php endif; ?>
+                                                    <?php if (!empty($producto['com_factura_producto'])): ?>
+                                                        <li><a class="dropdown-item"
+                                                                href="<?= $invoiceLK . $producto['doc_factura_producto'] ?>.pdf"
+                                                                target="_blank">Factura</a></li><?php endif; ?>
+                                                    <?php if (!empty($producto['doc_factura_producto'])): ?>
+                                                        <li><a class="dropdown-item"
+                                                                href="<?= $invoiceLK . $producto['com_factura_producto'] ?>.pdf"
+                                                                target="_blank">Evidencia</a></li><?php endif; ?>
                                                 </ul>
-                                            <?php }else{ ?>
+                                            <?php } else { ?>
                                                 <span class="numero-badge" data-bs-toggle="tooltip" title="Factura">
-                                                    <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($producto['numero_factura']) ?>
+                                                    <i
+                                                        class="bi bi-receipt me-1"></i><?= htmlspecialchars($producto['numero_factura']) ?>
                                                 </span>
                                             <?php } ?>
                                         <?php else: ?>
@@ -1297,13 +1354,14 @@ if (isset($_POST['guardar_factura_flete'])) {
                                             $cr_folio = htmlspecialchars($producto['folio_CR_producto']);
                                             $cr_url = htmlspecialchars($link . $producto['alias_CR_producto'] . '-' . $producto['folio_CR_producto'], ENT_QUOTES);
                                             $cr_display = $cr_alias . ' - ' . $cr_folio;
-                                        ?>
+                                            ?>
                                             <div class="d-flex align-items-center gap-2">
-                                                <a href="<?= $cr_url ?>" target="_blank" rel="noopener" 
-                                                   class="btn btn-sm btn-teal rounded-4 d-inline-flex align-items-center" 
-                                                   data-bs-toggle="tooltip" title="<?= $cr_display ?>">
+                                                <a href="<?= $cr_url ?>" target="_blank" rel="noopener"
+                                                    class="btn btn-sm btn-teal rounded-4 d-inline-flex align-items-center"
+                                                    data-bs-toggle="tooltip" title="<?= $cr_display ?>">
                                                     <i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>
-                                                    <span class="text-truncate" style="max-width:130px;display:inline-block;vertical-align:middle;">
+                                                    <span class="text-truncate"
+                                                        style="max-width:130px;display:inline-block;vertical-align:middle;">
                                                         <?= $cr_display ?>
                                                     </span>
                                                 </a>
@@ -1314,7 +1372,8 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     </td>
                                     <td>
                                         <?php if (!empty($producto['observaciones'])): ?>
-                                            <small class="d-block text-muted" data-bs-toggle="tooltip" title="<?= htmlspecialchars($producto['observaciones']) ?>">
+                                            <small class="d-block text-muted" data-bs-toggle="tooltip"
+                                                title="<?= htmlspecialchars($producto['observaciones']) ?>">
                                                 <i class="bi bi-chat-left-text me-1"></i>
                                                 <?= strlen($producto['observaciones']) > 30 ? substr($producto['observaciones'], 0, 30) . '...' : $producto['observaciones'] ?>
                                             </small>
@@ -1324,12 +1383,12 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                            
+
                             <!-- Fila de Totales -->
                             <tr class="table-active fw-bold">
                                 <td colspan="2" class="text-end">TOTALES:</td>
                                 <td></td>
-                                
+
                                 <?php if ($tiene_granel || $tiene_ambos): ?>
                                     <td class="text-end">
                                         <?php if ($total_granel > 0): ?>
@@ -1339,7 +1398,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                         <?php endif; ?>
                                     </td>
                                 <?php endif; ?>
-                                
+
                                 <?php if ($tiene_pacas || $tiene_ambos): ?>
                                     <td class="text-end">
                                         <?php if ($total_pacas_cantidad > 0): ?>
@@ -1357,7 +1416,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     </td>
                                     <td class="text-end">-</td>
                                 <?php endif; ?>
-                                
+
                                 <td class="text-end">
                                     <span class="text-success"><?= number_format($total_kilos, 2) ?> kg</span>
                                 </td>
@@ -1389,14 +1448,14 @@ if (isset($_POST['guardar_factura_flete'])) {
     </div>
 
     <!-- Pie de Página -->
-    <div class="row mt-4">
+    <div class="row mt-3">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center py-3">
                     <small class="text-muted">
                         <i class="bi bi-clock-history me-1"></i>
-                        Reporte generado el <?= date('d/m/Y H:i:s') ?> | 
-                        Captación ID: <?= $id_captacion ?> | 
+                        Reporte generado el <?= date('d/m/Y H:i:s') ?> |
+                        Captación ID: <?= $id_captacion ?> |
                         Folio: <?= htmlspecialchars($folio_completo) ?>
                     </small>
                 </div>
@@ -1447,7 +1506,8 @@ if (isset($_POST['guardar_factura_flete'])) {
                         <ul>
                             <li><strong>Windows:</strong> Paint 3D → Cambiar tamaño (70%)</li>
                             <li><strong>Mac:</strong> Vista Previa → Herramientas → Ajustar tamaño</li>
-                            <li><strong>Todos:</strong> <a href="https://tinypng.com" target="_blank">TinyPNG.com</a></li>
+                            <li><strong>Todos:</strong> <a href="https://tinypng.com" target="_blank">TinyPNG.com</a>
+                            </li>
                         </ul>
                     </div>
                     <div class="col-md-6">
@@ -1461,7 +1521,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                 </div>
                 <div class="alert alert-info mt-3">
                     <i class="bi bi-lightbulb"></i>
-                    <strong>Consejo:</strong> El sistema optimizará automáticamente las imágenes a menos de 1MB, 
+                    <strong>Consejo:</strong> El sistema optimizará automáticamente las imágenes a menos de 1MB,
                     pero si subes imágenes ya comprimidas, el proceso será más rápido.
                 </div>
             </div>
@@ -1526,53 +1586,44 @@ if (isset($_POST['guardar_factura_flete'])) {
                                         <td>
                                             <strong><?= htmlspecialchars($producto['cod_producto']) ?></strong>
                                             <br>
-                                            <small class="text-muted"><?= htmlspecialchars($producto['nombre_producto']) ?></small>
-                                            <input type="hidden" name="productos[<?= $index ?>][id_detalle]" value="<?= $producto['id_detalle'] ?>">
+                                            <small
+                                                class="text-muted"><?= htmlspecialchars($producto['nombre_producto']) ?></small>
+                                            <input type="hidden" name="productos[<?= $index ?>][id_detalle]"
+                                                value="<?= $producto['id_detalle'] ?>">
                                         </td>
                                         <td>
-                                            <input type="text"
-                                                   class="form-control form-control-sm numero-input"
-                                                   name="productos[<?= $index ?>][numero_ticket]"
-                                                   value="<?= htmlspecialchars($producto['numero_ticket'] ?? '') ?>"
-                                                   data-id-detalle="<?= $producto['id_detalle'] ?>"
-                                                   data-tipo="ticket"
-                                                   autocomplete="off"
-                                                   placeholder="Ej: 12345">
+                                            <input type="text" class="form-control form-control-sm numero-input"
+                                                name="productos[<?= $index ?>][numero_ticket]"
+                                                value="<?= htmlspecialchars($producto['numero_ticket'] ?? '') ?>"
+                                                data-id-detalle="<?= $producto['id_detalle'] ?>" data-tipo="ticket"
+                                                autocomplete="off" placeholder="Ej: 12345">
                                         </td>
                                         <td>
-                                            <input type="text"
-                                                   class="form-control form-control-sm numero-input"
-                                                   name="productos[<?= $index ?>][numero_bascula]"
-                                                   value="<?= htmlspecialchars($producto['numero_bascula'] ?? '') ?>"
-                                                   data-id-detalle="<?= $producto['id_detalle'] ?>"
-                                                   data-tipo="bascula"
-                                                   autocomplete="off"
-                                                   placeholder="Ej: B-9876">
+                                            <input type="text" class="form-control form-control-sm numero-input"
+                                                name="productos[<?= $index ?>][numero_bascula]"
+                                                value="<?= htmlspecialchars($producto['numero_bascula'] ?? '') ?>"
+                                                data-id-detalle="<?= $producto['id_detalle'] ?>" data-tipo="bascula"
+                                                autocomplete="off" placeholder="Ej: B-9876">
                                         </td>
                                         <td>
-                                            <input type="text"
-                                                   class="form-control form-control-sm numero-input"
-                                                   name="productos[<?= $index ?>][numero_factura]"
-                                                   value="<?= htmlspecialchars($producto['numero_factura'] ?? '') ?>"
-                                                   data-id-detalle="<?= $producto['id_detalle'] ?>"
-                                                   data-tipo="factura"
-                                                   autocomplete="off"
-                                                   placeholder="Ej: F-2023-01">
+                                            <input type="text" class="form-control form-control-sm numero-input"
+                                                name="productos[<?= $index ?>][numero_factura]"
+                                                value="<?= htmlspecialchars($producto['numero_factura'] ?? '') ?>"
+                                                data-id-detalle="<?= $producto['id_detalle'] ?>" data-tipo="factura"
+                                                autocomplete="off" placeholder="Ej: F-2023-01">
                                         </td>
                                         <td>
                                             <div class="input-group input-group-sm">
-                                                <input type="file"
-                                                       class="form-control form-control-sm file-input"
-                                                       name="productos[<?= $index ?>][comprobante]"
-                                                       id="comprobante_<?= $index ?>"
-                                                       accept=".jpg,.jpeg,.png,.pdf,.webp,.gif"
-                                                       onchange="previewFile(this, <?= $index ?>)">
+                                                <input type="file" class="form-control form-control-sm file-input"
+                                                    name="productos[<?= $index ?>][comprobante]"
+                                                    id="comprobante_<?= $index ?>" accept=".jpg,.jpeg,.png,.pdf,.webp,.gif"
+                                                    onchange="previewFile(this, <?= $index ?>)">
                                             </div>
                                             <div class="form-text small">
                                                 <?php if ($has_comprobante): ?>
                                                     <span class="text-success">
-                                                        <i class="bi bi-check-circle"></i> Actual: 
-                                                        <?= $is_pdf ? 'PDF' : 'Imagen' ?> 
+                                                        <i class="bi bi-check-circle"></i> Actual:
+                                                        <?= $is_pdf ? 'PDF' : 'Imagen' ?>
                                                         (<?= $tamano_comprobante > 0 ? formatBytes($tamano_comprobante) : 'N/A' ?>)
                                                     </span>
                                                 <?php else: ?>
@@ -1595,14 +1646,12 @@ if (isset($_POST['guardar_factura_flete'])) {
                                                                 <?= htmlspecialchars($comprobante) ?>
                                                             </small>
                                                         <?php else: ?>
-                                                            <img src="uploads/comprobantes/<?= htmlspecialchars($comprobante) ?>" 
-                                                                 class="img-thumbnail" 
-                                                                 style="max-width: 80px; max-height: 60px;"
-                                                                 alt="Comprobante actual">
+                                                            <img src="uploads/comprobantes/<?= htmlspecialchars($comprobante) ?>"
+                                                                class="img-thumbnail" style="max-width: 80px; max-height: 60px;"
+                                                                alt="Comprobante actual">
                                                         <?php endif; ?>
-                                                        <button type="button" 
-                                                                class="btn btn-sm btn-outline-primary mt-1"
-                                                                onclick="viewComprobante('<?= htmlspecialchars($comprobante) ?>', '<?= $tipo_comprobante ?>', '<?= htmlspecialchars($producto['nombre_producto']) ?>')">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary mt-1"
+                                                            onclick="viewComprobante('<?= htmlspecialchars($comprobante) ?>', '<?= $tipo_comprobante ?>', '<?= htmlspecialchars($producto['nombre_producto']) ?>')">
                                                             <i class="bi bi-eye"></i> Ver
                                                         </button>
                                                     </div>
@@ -1637,137 +1686,137 @@ if (isset($_POST['guardar_factura_flete'])) {
 </div>
 
 <script>
-/* Validación más amigable: debounce, validación local y servidor, mensajes y bloqueo del submit */
-document.addEventListener('DOMContentLoaded', function () {
-    const modal = document.getElementById('modalNumerosProductos');
-    if (!modal) return;
+    /* Validación más amigable: debounce, validación local y servidor, mensajes y bloqueo del submit */
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('modalNumerosProductos');
+        if (!modal) return;
 
-    const form = modal.querySelector('form');
-    const inputs = Array.from(modal.querySelectorAll('.numero-input'));
-    const saveBtn = form.querySelector('button[type="submit"]');
-    const alertBox = document.getElementById('modalAlert');
-    const ID_CAPT = <?= $id_captacion ?>;
-    const ID_PROV = <?= $captacion['id_prov'] ?? 0 ?>;
+        const form = modal.querySelector('form');
+        const inputs = Array.from(modal.querySelectorAll('.numero-input'));
+        const saveBtn = form.querySelector('button[type="submit"]');
+        const alertBox = document.getElementById('modalAlert');
+        const ID_CAPT = <?= $id_captacion ?>;
+        const ID_PROV = <?= $captacion['id_prov'] ?? 0 ?>;
 
-    // debounce timers per input+tipo
-    const timers = {};
+        // debounce timers per input+tipo
+        const timers = {};
 
-    function setValidationState(input, state, message = '') {
-        const icon = document.getElementById('validacion_' + input.dataset.idDetalle);
-        input.classList.remove('duplicado', 'valido');
-        if (state === 'ok') {
-            input.classList.add('valido');
-            icon.innerHTML = '<i class="bi bi-check-circle text-success" title="' + escapeHtml(message || 'Válido') + '"></i>';
-        } else if (state === 'dup') {
-            input.classList.add('duplicado');
-            icon.innerHTML = '<i class="bi bi-x-circle text-danger" title="' + escapeHtml(message || 'Duplicado') + '"></i>';
-        } else if (state === 'loading') {
-            icon.innerHTML = '<i class="bi bi-hourglass text-warning" title="Validando..."></i>';
-        } else {
-            icon.innerHTML = '<i class="bi bi-question-circle text-muted" title="' + escapeHtml(message || 'Sin validar') + '"></i>';
-        }
-        updateSaveState();
-    }
-
-    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-    function checkLocalDuplicates() {
-        const map = {};
-        const duplicates = new Set();
-        inputs.forEach(i => {
-            const val = i.value.trim();
-            if (!val) return;
-            const key = i.dataset.tipo + '::' + val;
-            map[key] = (map[key] || 0) + 1;
-            if (map[key] > 1) duplicates.add(val);
-        });
-        return Array.from(duplicates);
-    }
-
-    function updateSaveState() {
-        const anyServerDup = modal.querySelectorAll('.numero-input.duplicado').length > 0;
-        const localDups = checkLocalDuplicates();
-        if (anyServerDup || localDups.length > 0) {
-            saveBtn.disabled = true;
-            const msgs = [];
-            if (anyServerDup) msgs.push('Hay números duplicados en el sistema.');
-            if (localDups.length > 0) msgs.push('Números repetidos dentro del formulario: ' + localDups.map(x => escapeHtml(x)).join(', '));
-            alertBox.innerHTML = '<div class="alert alert-danger mb-0">' + msgs.join('<br>') + '</div>';
-        } else {
-            saveBtn.disabled = false;
-            alertBox.innerHTML = '';
-        }
-    }
-
-    function validateServer(input) {
-        const val = input.value.trim();
-        const idDetalle = input.dataset.idDetalle;
-        const tipo = input.dataset.tipo;
-        if (!val) {
-            setValidationState(input, 'none', 'Vacío');
-            return;
-        }
-
-        setValidationState(input, 'loading');
-
-        const fd = new FormData();
-        fd.append('id_captacion', ID_CAPT);
-        fd.append('id_detalle', idDetalle);
-        fd.append('tipo', tipo);
-        fd.append('numero', val);
-        fd.append('id_proveedor', ID_PROV);
-
-        fetch('AJAX/validar_numero.php', { method: 'POST', body: fd })
-            .then(r => r.json())
-            .then(data => {
-                if (data && data.existe) {
-                    const msg = data.message || 'Número duplicado';
-                    setValidationState(input, 'dup', msg);
-                } else {
-                    // If the same value is duplicated locally, prefer local dup mark
-                    const localDups = checkLocalDuplicates();
-                    if (localDups.indexOf(val) !== -1) {
-                        setValidationState(input, 'dup', 'Repetido dentro del formulario');
-                    } else {
-                        setValidationState(input, 'ok', 'Válido');
-                    }
-                }
-            })
-            .catch(() => {
-                setValidationState(input, 'none', 'Error al validar');
-            });
-    }
-
-    // Attach handlers with debounce
-    inputs.forEach(input => {
-        const key = input.dataset.idDetalle + '_' + input.dataset.tipo;
-        input.addEventListener('input', function () {
-            // immediate local duplicate check (friendly feedback)
-            const localDups = checkLocalDuplicates();
-            if (localDups.indexOf(this.value.trim()) !== -1 && this.value.trim() !== '') {
-                setValidationState(this, 'dup', 'Repetido dentro del formulario');
+        function setValidationState(input, state, message = '') {
+            const icon = document.getElementById('validacion_' + input.dataset.idDetalle);
+            input.classList.remove('duplicado', 'valido');
+            if (state === 'ok') {
+                input.classList.add('valido');
+                icon.innerHTML = '<i class="bi bi-check-circle text-success" title="' + escapeHtml(message || 'Válido') + '"></i>';
+            } else if (state === 'dup') {
+                input.classList.add('duplicado');
+                icon.innerHTML = '<i class="bi bi-x-circle text-danger" title="' + escapeHtml(message || 'Duplicado') + '"></i>';
+            } else if (state === 'loading') {
+                icon.innerHTML = '<i class="bi bi-hourglass text-warning" title="Validando..."></i>';
             } else {
-                setValidationState(this, 'none', 'Pendiente');
+                icon.innerHTML = '<i class="bi bi-question-circle text-muted" title="' + escapeHtml(message || 'Sin validar') + '"></i>';
+            }
+            updateSaveState();
+        }
+
+        function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+        function checkLocalDuplicates() {
+            const map = {};
+            const duplicates = new Set();
+            inputs.forEach(i => {
+                const val = i.value.trim();
+                if (!val) return;
+                const key = i.dataset.tipo + '::' + val;
+                map[key] = (map[key] || 0) + 1;
+                if (map[key] > 1) duplicates.add(val);
+            });
+            return Array.from(duplicates);
+        }
+
+        function updateSaveState() {
+            const anyServerDup = modal.querySelectorAll('.numero-input.duplicado').length > 0;
+            const localDups = checkLocalDuplicates();
+            if (anyServerDup || localDups.length > 0) {
+                saveBtn.disabled = true;
+                const msgs = [];
+                if (anyServerDup) msgs.push('Hay números duplicados en el sistema.');
+                if (localDups.length > 0) msgs.push('Números repetidos dentro del formulario: ' + localDups.map(x => escapeHtml(x)).join(', '));
+                alertBox.innerHTML = '<div class="alert alert-danger mb-0">' + msgs.join('<br>') + '</div>';
+            } else {
+                saveBtn.disabled = false;
+                alertBox.innerHTML = '';
+            }
+        }
+
+        function validateServer(input) {
+            const val = input.value.trim();
+            const idDetalle = input.dataset.idDetalle;
+            const tipo = input.dataset.tipo;
+            if (!val) {
+                setValidationState(input, 'none', 'Vacío');
+                return;
             }
 
-            clearTimeout(timers[key]);
-            timers[key] = setTimeout(() => validateServer(this), 550);
+            setValidationState(input, 'loading');
+
+            const fd = new FormData();
+            fd.append('id_captacion', ID_CAPT);
+            fd.append('id_detalle', idDetalle);
+            fd.append('tipo', tipo);
+            fd.append('numero', val);
+            fd.append('id_proveedor', ID_PROV);
+
+            fetch('AJAX/validar_numero.php', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.existe) {
+                        const msg = data.message || 'Número duplicado';
+                        setValidationState(input, 'dup', msg);
+                    } else {
+                        // If the same value is duplicated locally, prefer local dup mark
+                        const localDups = checkLocalDuplicates();
+                        if (localDups.indexOf(val) !== -1) {
+                            setValidationState(input, 'dup', 'Repetido dentro del formulario');
+                        } else {
+                            setValidationState(input, 'ok', 'Válido');
+                        }
+                    }
+                })
+                .catch(() => {
+                    setValidationState(input, 'none', 'Error al validar');
+                });
+        }
+
+        // Attach handlers with debounce
+        inputs.forEach(input => {
+            const key = input.dataset.idDetalle + '_' + input.dataset.tipo;
+            input.addEventListener('input', function () {
+                // immediate local duplicate check (friendly feedback)
+                const localDups = checkLocalDuplicates();
+                if (localDups.indexOf(this.value.trim()) !== -1 && this.value.trim() !== '') {
+                    setValidationState(this, 'dup', 'Repetido dentro del formulario');
+                } else {
+                    setValidationState(this, 'none', 'Pendiente');
+                }
+
+                clearTimeout(timers[key]);
+                timers[key] = setTimeout(() => validateServer(this), 550);
+            });
+
+            // also validate on blur (immediate)
+            input.addEventListener('blur', function () {
+                clearTimeout(timers[key]);
+                validateServer(this);
+            });
         });
 
-        // also validate on blur (immediate)
-        input.addEventListener('blur', function () {
-            clearTimeout(timers[key]);
-            validateServer(this);
+        // Reset states each time modal opens
+        modal.addEventListener('show.bs.modal', function () {
+            inputs.forEach(i => setValidationState(i, 'none', 'Sin validar'));
+            updateSaveState();
         });
-    });
 
-    // Reset states each time modal opens
-    modal.addEventListener('show.bs.modal', function () {
-        inputs.forEach(i => setValidationState(i, 'none', 'Sin validar'));
-        updateSaveState();
     });
-
-});
 </script>
 <!-- Modal para Factura de Flete -->
 <?php if ($flete): ?>
@@ -1796,24 +1845,22 @@ document.addEventListener('DOMContentLoaded', function () {
                             <div class="form-control">
                                 <strong><?= htmlspecialchars($captacion['nombre_fletero']) ?></strong>
                                 <br>
-                                <small class="text-muted">Placas: <?= htmlspecialchars($captacion['placas_fletero']) ?></small>
+                                <small class="text-muted">Placas:
+                                    <?= htmlspecialchars($captacion['placas_fletero']) ?></small>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Número de Factura de Flete *</label>
-                            <input type="text" 
-                            class="form-control" 
-                            name="numero_factura_flete" 
-                            id="numero_factura_flete"
-                            value="<?= htmlspecialchars($flete['numero_factura_flete'] ?? '') ?>"
-                            required>
+                            <input type="text" class="form-control" name="numero_factura_flete" id="numero_factura_flete"
+                                value="<?= htmlspecialchars($flete['numero_factura_flete'] ?? '') ?>" required>
                             <div class="form-text">Número único para este fletero</div>
                         </div>
 
                         <div class="mb-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="hidden" name="validar_duplicado" id="validar_duplicado" value="1" checked>
+                                <input class="form-check-input" type="hidden" name="validar_duplicado"
+                                    id="validar_duplicado" value="1" checked>
                             </div>
                         </div>
                     </div>
@@ -1830,16 +1877,16 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php endif; ?>
 <script>
 
-// Validar formulario antes de enviar
-    document.addEventListener('DOMContentLoaded', function() {
+    // Validar formulario antes de enviar
+    document.addEventListener('DOMContentLoaded', function () {
         var formNumerosProductos = document.querySelector('form[action=""]');
 
         if (formNumerosProductos && formNumerosProductos.querySelector('input[name="guardar_numeros_productos"]')) {
-            formNumerosProductos.addEventListener('submit', function(e) {
+            formNumerosProductos.addEventListener('submit', function (e) {
                 var tieneDuplicados = false;
                 var mensajesError = [];
 
-            // Verificar si hay campos con clase 'duplicado'
+                // Verificar si hay campos con clase 'duplicado'
                 var inputsDuplicados = formNumerosProductos.querySelectorAll('.numero-input.duplicado');
 
                 if (inputsDuplicados.length > 0) {
@@ -1847,52 +1894,52 @@ document.addEventListener('DOMContentLoaded', function () {
                     mensajesError.push("Hay números duplicados marcados en rojo.");
                 }
 
-            // Verificar también que no haya campos vacíos que sean requeridos (si aplica)
-            // Puedes agregar más validaciones aquí
+                // Verificar también que no haya campos vacíos que sean requeridos (si aplica)
+                // Puedes agregar más validaciones aquí
 
                 if (tieneDuplicados) {
                     e.preventDefault();
 
-                // Crear mensaje de error
+                    // Crear mensaje de error
                     var mensaje = "No se puede guardar porque hay números duplicados:<br><br>";
 
-                    inputsDuplicados.forEach(function(input) {
+                    inputsDuplicados.forEach(function (input) {
                         var tipo = input.getAttribute('data-tipo');
                         var valor = input.value;
                         var nombreTipo = '';
 
-                        switch(tipo) {
-                        case 'ticket': nombreTipo = 'Ticket'; break;
-                        case 'bascula': nombreTipo = 'Báscula'; break;
-                        case 'factura': nombreTipo = 'Factura'; break;
+                        switch (tipo) {
+                            case 'ticket': nombreTipo = 'Ticket'; break;
+                            case 'bascula': nombreTipo = 'Báscula'; break;
+                            case 'factura': nombreTipo = 'Factura'; break;
                         }
 
                         mensaje += "• " + nombreTipo + ": " + valor + "<br>";
                     });
 
-                // Mostrar alerta personalizada
+                    // Mostrar alerta personalizada
                     alert('error', mensaje);
 
-                // También puedes usar SweetAlert si lo tienes
-                // Swal.fire({
-                //     icon: 'error',
-                //     title: 'Números duplicados',
-                //     html: mensaje,
-                //     confirmButtonText: 'Entendido'
-                // });
+                    // También puedes usar SweetAlert si lo tienes
+                    // Swal.fire({
+                    //     icon: 'error',
+                    //     title: 'Números duplicados',
+                    //     html: mensaje,
+                    //     confirmButtonText: 'Entendido'
+                    // });
 
                     return false;
                 }
 
-            // Si todo está bien, mostrar loading
+                // Si todo está bien, mostrar loading
                 var btnSubmit = formNumerosProductos.querySelector('button[type="submit"]');
                 if (btnSubmit) {
                     var originalText = btnSubmit.innerHTML;
                     btnSubmit.disabled = true;
                     btnSubmit.innerHTML = '<i class="bi bi-hourglass me-1"></i> Guardando...';
 
-                // Restaurar botón si hay error de validación del servidor
-                    setTimeout(function() {
+                    // Restaurar botón si hay error de validación del servidor
+                    setTimeout(function () {
                         btnSubmit.disabled = false;
                         btnSubmit.innerHTML = originalText;
                     }, 5000);
@@ -1902,19 +1949,19 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-    // Validar formulario de flete
+        // Validar formulario de flete
         var formFacturaFlete = document.querySelector('form[action=""] input[name="guardar_factura_flete"]');
         if (formFacturaFlete) {
             formFacturaFlete = formFacturaFlete.closest('form');
-            formFacturaFlete.addEventListener('submit', function(e) {
+            formFacturaFlete.addEventListener('submit', function (e) {
                 var btnSubmit = this.querySelector('button[type="submit"]');
                 if (btnSubmit) {
                     var originalText = btnSubmit.innerHTML;
                     btnSubmit.disabled = true;
                     btnSubmit.innerHTML = '<i class="bi bi-hourglass me-1"></i> Guardando...';
 
-                // Restaurar botón si hay error
-                    setTimeout(function() {
+                    // Restaurar botón si hay error
+                    setTimeout(function () {
                         btnSubmit.disabled = false;
                         btnSubmit.innerHTML = originalText;
                     }, 5000);
@@ -1924,118 +1971,118 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
     });
-// Función para mostrar alertas
-function alert(type, message) {
-    var alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-    var icon = type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle';
-    
-    var alertHTML = `
+    // Función para mostrar alertas
+    function alert(type, message) {
+        var alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        var icon = type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle';
+
+        var alertHTML = `
         <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3" style="z-index: 9999;">
             <i class="bi ${icon} me-2"></i> ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
-    
-    $('body').append(alertHTML);
-    
-    setTimeout(function() {
-        $('.alert').alert('close');
-    }, 5000);
-}
-// Función para previsualizar archivos antes de subir
-function previewFile(input, index) {
-    const preview = document.getElementById('preview_' + index);
-    const file = input.files[0];
-    
-    preview.innerHTML = '';
-    
-    if (file) {
-        const reader = new FileReader();
-        const fileType = file.type;
-        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-        
-        reader.onload = function(e) {
-            const container = document.createElement('div');
-            container.className = 'd-flex flex-column align-items-center';
-            
-            if (fileType.startsWith('image/')) {
-                // Para imágenes: mostrar miniatura con botón de vista previa
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.className = 'file-input-preview mb-1';
-                img.style.cursor = 'pointer';
-                img.onclick = function() {
-                    // Crear un blob temporal para previsualizar
-                    const blob = new Blob([file], { type: fileType });
-                    const url = URL.createObjectURL(blob);
-                    
-                    Swal.fire({
-                        title: 'Vista previa',
-                        html: `<img src="${url}" class="img-fluid" alt="Vista previa">`,
-                        showConfirmButton: false,
-                        showCloseButton: true,
-                        width: '80%'
-                    }).then(() => {
-                        URL.revokeObjectURL(url);
-                    });
-                };
-                container.appendChild(img);
-                
-            } else if (fileType === 'application/pdf') {
-                const icon = document.createElement('i');
-                icon.className = 'bi bi-file-earmark-pdf text-danger fs-3';
-                container.appendChild(icon);
-            }
-            
-            // Nombre del archivo
-            const name = document.createElement('div');
-            name.className = 'small text-truncate text-center';
-            name.style.maxWidth = '100px';
-            name.textContent = file.name.length > 20 ? 
-                file.name.substring(0, 17) + '...' : file.name;
-            name.title = file.name;
-            container.appendChild(name);
-            
-            // Tamaño del archivo
-            const size = document.createElement('div');
-            size.className = 'small';
-            if (file.size > 1024 * 1024) {
-                size.innerHTML = `<span class="text-warning">${fileSizeMB} MB</span>`;
-            } else {
-                size.innerHTML = `<span class="text-success">${fileSizeMB} MB</span>`;
-            }
-            container.appendChild(size);
-            
-            preview.appendChild(container);
+
+        $('body').append(alertHTML);
+
+        setTimeout(function () {
+            $('.alert').alert('close');
+        }, 5000);
+    }
+    // Función para previsualizar archivos antes de subir
+    function previewFile(input, index) {
+        const preview = document.getElementById('preview_' + index);
+        const file = input.files[0];
+
+        preview.innerHTML = '';
+
+        if (file) {
+            const reader = new FileReader();
+            const fileType = file.type;
+            const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+
+            reader.onload = function (e) {
+                const container = document.createElement('div');
+                container.className = 'd-flex flex-column align-items-center';
+
+                if (fileType.startsWith('image/')) {
+                    // Para imágenes: mostrar miniatura con botón de vista previa
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'file-input-preview mb-1';
+                    img.style.cursor = 'pointer';
+                    img.onclick = function () {
+                        // Crear un blob temporal para previsualizar
+                        const blob = new Blob([file], { type: fileType });
+                        const url = URL.createObjectURL(blob);
+
+                        Swal.fire({
+                            title: 'Vista previa',
+                            html: `<img src="${url}" class="img-fluid" alt="Vista previa">`,
+                            showConfirmButton: false,
+                            showCloseButton: true,
+                            width: '80%'
+                        }).then(() => {
+                            URL.revokeObjectURL(url);
+                        });
+                    };
+                    container.appendChild(img);
+
+                } else if (fileType === 'application/pdf') {
+                    const icon = document.createElement('i');
+                    icon.className = 'bi bi-file-earmark-pdf text-danger fs-3';
+                    container.appendChild(icon);
+                }
+
+                // Nombre del archivo
+                const name = document.createElement('div');
+                name.className = 'small text-truncate text-center';
+                name.style.maxWidth = '100px';
+                name.textContent = file.name.length > 20 ?
+                    file.name.substring(0, 17) + '...' : file.name;
+                name.title = file.name;
+                container.appendChild(name);
+
+                // Tamaño del archivo
+                const size = document.createElement('div');
+                size.className = 'small';
+                if (file.size > 1024 * 1024) {
+                    size.innerHTML = `<span class="text-warning">${fileSizeMB} MB</span>`;
+                } else {
+                    size.innerHTML = `<span class="text-success">${fileSizeMB} MB</span>`;
+                }
+                container.appendChild(size);
+
+                preview.appendChild(container);
+            };
+
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Función para descargar el comprobante
+    function downloadComprobante() {
+        if (currentFilename) {
+            window.location.href = 'uploads/comprobantes/' + currentFilename;
+        }
+    }
+
+    // Función mejorada para ver comprobante (para PDF)
+    function viewComprobante(filename, filetype, productName) {
+        const modal = new bootstrap.Modal(document.getElementById('modalViewComprobante'));
+        const modalBody = document.getElementById('modalViewComprobanteBody');
+        const modalTitle = document.getElementById('modalViewComprobanteTitle');
+        const btnDownload = document.getElementById('btnDownloadComprobante');
+
+        modalTitle.innerHTML = `<i class="bi bi-file-earmark me-2"></i> ${productName}`;
+
+        // Configurar enlace de descarga
+        btnDownload.onclick = function () {
+            downloadComprobante();
         };
-        
-        reader.readAsDataURL(file);
-    }
-}
 
-// Función para descargar el comprobante
-function downloadComprobante() {
-    if (currentFilename) {
-        window.location.href = 'uploads/comprobantes/' + currentFilename;
-    }
-}
-
-// Función mejorada para ver comprobante (para PDF)
-function viewComprobante(filename, filetype, productName) {
-    const modal = new bootstrap.Modal(document.getElementById('modalViewComprobante'));
-    const modalBody = document.getElementById('modalViewComprobanteBody');
-    const modalTitle = document.getElementById('modalViewComprobanteTitle');
-    const btnDownload = document.getElementById('btnDownloadComprobante');
-    
-    modalTitle.innerHTML = `<i class="bi bi-file-earmark me-2"></i> ${productName}`;
-    
-    // Configurar enlace de descarga
-    btnDownload.onclick = function() {
-        downloadComprobante();
-    };
-    
-    if (filetype && filetype.includes('pdf')) {
-        modalBody.innerHTML = `
+        if (filetype && filetype.includes('pdf')) {
+            modalBody.innerHTML = `
             <div class="text-center">
                 <h5>${productName}</h5>
                 <div class="alert alert-info">
@@ -2050,8 +2097,8 @@ function viewComprobante(filename, filetype, productName) {
                 </div>
             </div>
         `;
-    } else {
-        modalBody.innerHTML = `
+        } else {
+            modalBody.innerHTML = `
             <div class="text-center">
             <h5>${productName}</h5>
             <div class="alert alert-info">
@@ -2175,18 +2222,18 @@ function viewComprobante(filename, filetype, productName) {
             </div>
             </div>
         `;
+        }
+        modal.show();
     }
-    modal.show();
-}
 
-// Función para rotar imagen en el viewer simple
-function rotateImageInViewer(filename) {
-    const img = document.querySelector('#modalViewComprobanteBody img');
-    if (img) {
-        const currentRotation = parseInt(img.style.transform.replace('rotate(', '').replace('deg)', '')) || 0;
-        const newRotation = currentRotation + 90;
-        img.style.transform = `rotate(${newRotation}deg)`;
-        img.style.transition = 'transform 0.3s ease';
+    // Función para rotar imagen en el viewer simple
+    function rotateImageInViewer(filename) {
+        const img = document.querySelector('#modalViewComprobanteBody img');
+        if (img) {
+            const currentRotation = parseInt(img.style.transform.replace('rotate(', '').replace('deg)', '')) || 0;
+            const newRotation = currentRotation + 90;
+            img.style.transform = `rotate(${newRotation}deg)`;
+            img.style.transition = 'transform 0.3s ease';
+        }
     }
-}
 </script>
