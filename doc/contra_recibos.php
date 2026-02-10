@@ -212,7 +212,7 @@
     $codigo = '';
     $contraInfo = null;
 
-    $sqlVenta = "SELECT v.id_venta, v.folio AS folio_venta, v.fecha_venta, c.cod AS cod_cliente, c.nombre AS nombre_cliente, tv.placas AS placas_fletero, vf.folioven AS folio_cr, vf.aliasven AS alias_cr
+    $sqlVenta = "SELECT v.id_venta, v.folio AS folio_venta, v.fecha_venta, c.cod AS cod_cliente, c.nombre AS nombre_cliente, tv.placas AS placas_fletero, tv.razon_so AS nombre_fletero, vf.folioven AS folio_cr, vf.aliasven AS alias_cr
                  FROM venta_flete vf
                  INNER JOIN ventas v ON vf.id_venta = v.id_venta
                  LEFT JOIN clientes c ON v.id_cliente = c.id_cli
@@ -227,8 +227,8 @@
         if ($resV && $resV->num_rows > 0) {
             $contraInfo = $resV->fetch_assoc();
             $tipo = 'VENTA';
-            $entidad = $contraInfo['nombre_cliente'] ?? '';
-            $codigo = $contraInfo['cod_cliente'] ?? '';
+            $entidad = $contraInfo['nombre_fletero'] ?? $contraInfo['placas_fletero'] ?? '';
+            $codigo = $contraInfo['placas_fletero'] ?? '';
         }
     }
 
@@ -255,10 +255,11 @@
 
         // si no se encontró en detalle, revisar captacion_flete
         if (empty($tipo)) {
-            $sqlCapFlete = "SELECT ca.id_captacion, cf.id_capt_flete, ca.folio AS folio_captacion, ca.fecha_captacion, p.cod AS cod_proveedor, p.rs AS nombre_proveedor, cf.foliocap_flete AS folio_cr, cf.aliascap_flete AS alias_cr
+            $sqlCapFlete = "SELECT ca.id_captacion, cf.id_capt_flete, ca.folio AS folio_captacion, ca.fecha_captacion, p.cod AS cod_proveedor, p.rs AS nombre_proveedor, cf.foliocap_flete AS folio_cr, cf.aliascap_flete AS alias_cr, t.placas AS placas_fletero, t.razon_so AS nombre_fletero
                       FROM captacion ca
                       LEFT JOIN captacion_flete cf ON ca.id_captacion = cf.id_captacion
                       LEFT JOIN proveedores p ON ca.id_prov = p.id_prov
+                      LEFT JOIN transportes t ON cf.id_fletero = t.id_transp
                       WHERE cf.aliascap_flete = ? AND cf.foliocap_flete = ?";
 
             $stmtCF = $conn_mysql->prepare($sqlCapFlete);
@@ -269,8 +270,8 @@
                 if ($resCF && $resCF->num_rows > 0) {
                     $contraInfo = $resCF->fetch_assoc();
                     $tipo = 'CAPTACION_FLETE';
-                    $entidad = $contraInfo['nombre_proveedor'] ?? '';
-                    $codigo = $contraInfo['cod_proveedor'] ?? '';
+                    $entidad = $contraInfo['nombre_fletero'] ?? $contraInfo['placas_fletero'] ?? '';
+                    $codigo = $contraInfo['placas_fletero'] ?? '';
                 }
             }
         }
@@ -320,14 +321,25 @@
     if ($tipo === 'VENTA') {
         $queryVentasRows = "SELECT v.id_venta, CONCAT('V-', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio,4,'0')) AS folio_completo,
                                   v.fecha_venta, c.cod AS cod_cliente, c.nombre AS nombre_cliente,
-                                  pr.nom_pro AS producto, vd.total_kilos, pv.precio AS precio_venta,
+                                  pr.nom_pro AS producto, vd.total_kilos, 
+                                  pf.precio AS precio_flete,
+                                  CASE 
+                                      WHEN pf.tipo = 'MFT' THEN 'Por tonelada'
+                                      WHEN pf.tipo = 'MFV' THEN 'Por viaje'
+                                      ELSE pf.tipo
+                                  END AS tipo_flete,
                                   vf.folioven AS folio_cr, vf.aliasven AS alias_cr, tv.placas AS placas_fletero,
-                                  vf.factura_transportista AS factura_transportista
+                                  tv.razon_so AS nombre_fletero,
+                                  vf.factura_transportista AS factura_transportista,
+                                  vf.subtotal_v AS subtotal_flete,
+                                  vf.impuestoTraslado_v AS impuestoTraslado_flete,
+                                  vf.impuestoRetenido_v AS impuestoRetenido_flete,
+                                  vf.total_v AS total_flete_factura
                            FROM venta_flete vf
                            INNER JOIN ventas v ON vf.id_venta = v.id_venta
-                           LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta
+                           LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta AND vd.status = 1
                            LEFT JOIN productos pr ON vd.id_prod = pr.id_prod
-                           LEFT JOIN precios pv ON vd.id_pre_venta = pv.id_precio
+                           LEFT JOIN precios pf ON vf.id_pre_flete = pf.id_precio
                            LEFT JOIN clientes c ON v.id_cliente = c.id_cli
                            LEFT JOIN zonas z ON v.zona = z.id_zone
                            LEFT JOIN transportes tv ON vf.id_fletero = tv.id_transp
@@ -483,7 +495,11 @@
                 </tr>
                 <tr>
                     <td><strong>Tipo:</strong></td>
-                    <td><?= $tipo ?></td>
+                    <td><?php 
+                        if ($tipo === 'VENTA') echo 'FLETE DE VENTA';
+                        elseif ($tipo === 'CAPTACION_FLETE') echo 'FLETE DE CAPTACIÓN';
+                        else echo $tipo;
+                    ?></td>
                 </tr>
                 <tr>
                     <td><strong>Entidad:</strong></td>
@@ -502,24 +518,28 @@
         
         <!-- Tabla principal según tipo de contra recibo -->
         <h3><?php
-            if ($tipo === 'VENTA') echo 'Ventas del Contra Recibo';
+            if ($tipo === 'VENTA') echo 'Fletes de Venta del Contra Recibo';
             elseif ($tipo === 'CAPTACION' || $tipo === 'CAPTACION_FLETE') echo 'Captaciones del Contra Recibo';
             else echo 'Recolecciones del Contra Recibo';
         ?></h3>
         
         <?php if ($tipo === 'VENTA'): ?>
-            <!-- Vista para contra recibo de VENTA -->
+            <!-- Vista para contra recibo de FLETE DE VENTA -->
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>Folio</th>
+                        <th>Folio Venta</th>
                         <th>Fecha</th>
                         <th>Cliente</th>
+                        <th>Fletero</th>
                         <th>Producto</th>
                         <th>Peso (kg)</th>
-                        <th>Precio</th>
-                        <th>Total</th>
-                        <th>Placas</th>
+                        <th>Tipo Flete</th>
+                        <th>Precio Flete</th>
+                        <th>Subtotal</th>
+                        <th>IVA Traslado</th>
+                        <th>IVA Retenido</th>
+                        <th>Total Neto Flete</th>
                         <th>Factura Transportista</th>
                         <th>C.R. Asignado</th>
                     </tr>
@@ -527,38 +547,80 @@
                 <tbody>
                     <?php
                     $totalPeso = 0;
-                    $totalMonto = 0;
+                    $totalSubtotal = 0;
+                    $totalTraslados = 0;
+                    $totalRetenidos = 0;
+                    $totalNeto = 0;
                     $total_recolecciones = 0;
                     while ($row = $recolecciones->fetch_assoc()):
                         $peso = $row['total_kilos'] ?: 0;
-                        $precio = $row['precio_venta'] ?: 0;
-                        $total = $peso * $precio;
+                        $precio_flete = $row['precio_flete'] ?: 0;
+                        $tipo_flete = $row['tipo_flete'] ?? '';
+                        
+                        // Calcular monto del flete según tipo
+                        if ($tipo_flete == 'Por tonelada') {
+                            $toneladas = $peso / 1000;
+                            $monto_flete = $toneladas * $precio_flete;
+                        } else {
+                            // Por viaje: monto fijo
+                            $monto_flete = $precio_flete;
+                        }
+                        
+                        // Datos fiscales del flete
+                        $subtotal_flete = $row['subtotal_flete'] ?: $monto_flete;
+                        $impTraslado = $row['impuestoTraslado_flete'] ?: 0;
+                        $impRetenido = $row['impuestoRetenido_flete'] ?: 0;
+                        $totalNetoFlete = $row['total_flete_factura'] ?: ($subtotal_flete + $impTraslado - $impRetenido);
+                        
                         $totalPeso += $peso;
-                        $totalMonto += $total;
+                        $totalSubtotal += $subtotal_flete;
+                        $totalTraslados += $impTraslado;
+                        $totalRetenidos += $impRetenido;
+                        $totalNeto += $totalNetoFlete;
                         $total_recolecciones++;
                     ?>
                     <tr>
                         <td><?= htmlspecialchars($row['folio_completo'] ?? $row['folio_venta']) ?></td>
                         <td><?= date('d/m/Y', strtotime($row['fecha_venta'])) ?></td>
                         <td><?= htmlspecialchars($row['nombre_cliente'] ?? '') ?></td>
+                        <td><?= htmlspecialchars($row['nombre_fletero'] ?? $row['placas_fletero'] ?? '') ?></td>
                         <td><?= htmlspecialchars($row['producto'] ?? '') ?></td>
                         <td class="text-right"><?= number_format($peso, 2) ?></td>
-                        <td class="text-right">$<?= number_format($precio, 2) ?></td>
-                        <td class="text-right text-bold">$<?= number_format($total, 2) ?></td>
-                        <td><?= htmlspecialchars($row['placas_fletero'] ?? '') ?></td>
+                        <td>
+                            <?php if ($tipo_flete == 'Por tonelada'): ?>
+                                <span style="color:#17a2b8;">Por tonelada</span>
+                            <?php else: ?>
+                                <span>Por viaje</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-right">
+                            <?php if ($tipo_flete == 'Por tonelada'): ?>
+                                $<?= number_format($precio_flete, 2) ?> / ton
+                            <?php else: ?>
+                                $<?= number_format($precio_flete, 2) ?>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-right">$<?= number_format($subtotal_flete, 2) ?></td>
+                        <td class="text-right">$<?= number_format($impTraslado, 2) ?></td>
+                        <td class="text-right">-$<?= number_format($impRetenido, 2) ?></td>
+                        <td class="text-right text-bold">$<?= number_format($totalNetoFlete, 2) ?></td>
                         <td><?= htmlspecialchars($row['factura_transportista'] ?? '') ?></td>
-                        <td><?= htmlspecialchars($row['folio_cr'] ?? ($row['alias_cr'] ?? '')) ?></td>
+                        <td><?= htmlspecialchars($ContraRecibo) ?></td>
                     </tr>
                     <?php endwhile; ?>
-                    <?php $totalGeneral = $totalMonto; ?>
+                    <?php $totalGeneral = $totalNeto; ?>
                 </tbody>
                 <tfoot>
                     <tr class="text-bold">
-                        <td colspan="4" class="text-right">TOTALES:</td>
+                        <td colspan="5" class="text-right">TOTALES:</td>
                         <td class="text-right"><?= number_format($totalPeso, 2) ?> kg</td>
                         <td></td>
-                        <td class="text-right">$<?= number_format($totalMonto, 2) ?></td>
-                        <td colspan="3"></td>
+                        <td></td>
+                        <td class="text-right">$<?= number_format($totalSubtotal, 2) ?></td>
+                        <td class="text-right">$<?= number_format($totalTraslados, 2) ?></td>
+                        <td class="text-right">-$<?= number_format($totalRetenidos, 2) ?></td>
+                        <td class="text-right">$<?= number_format($totalNeto, 2) ?></td>
+                        <td colspan="2"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -671,7 +733,11 @@
                           t.razon_so AS nombre_fletero,
                           pf.precio AS precio_flete,
                           pf.tipo AS tipo_flete,
-                          cf.numero_factura_flete AS numero_factura_flete
+                          cf.numero_factura_flete AS numero_factura_flete,
+                          cf.subtotal AS subtotal_flete,
+                          cf.impuestoTraslado AS impuestoTraslado_flete,
+                          cf.impuestoRetenido AS impuestoRetenido_flete,
+                          cf.total AS total_flete_neto
                    FROM captacion ca
                    LEFT JOIN captacion_flete cf ON ca.id_captacion = cf.id_captacion
                    LEFT JOIN proveedores p ON ca.id_prov = p.id_prov
@@ -689,6 +755,10 @@
     // Variables para totales
     $totalPeso = 0;
     $totalMonto = 0;
+    $totalSubtotalCF = 0;
+    $totalTrasladosCF = 0;
+    $totalRetenidosCF = 0;
+    $totalNetoCF = 0;
     $total_recolecciones = 0;
     $all_captacion_ids = []; // Para almacenar todas las captaciones
     
@@ -707,7 +777,10 @@
                 <th>Fletero</th>
                 <th>Kilos Totales</th>
                 <th>Precio Flete</th>
-                <th>Monto Flete</th>
+                <th>Subtotal</th>
+                <th>IVA Traslado</th>
+                <th>IVA Retenido</th>
+                <th>Total Neto Flete</th>
                 <th>Factura Flete</th>
                 <th>C.R. Flete</th>
             </tr>
@@ -743,9 +816,19 @@
                         $monto_flete = $precio_flete;
                     }
                     
+                    // Datos fiscales del flete
+                    $subtotal_cf = (float)($fleteInfo['subtotal_flete'] ?: $monto_flete);
+                    $impTraslado_cf = (float)($fleteInfo['impuestoTraslado_flete'] ?: 0);
+                    $impRetenido_cf = (float)($fleteInfo['impuestoRetenido_flete'] ?: 0);
+                    $totalNeto_cf = (float)($fleteInfo['total_flete_neto'] ?: ($subtotal_cf + $impTraslado_cf - $impRetenido_cf));
+                    
                     // Acumular totales
                     $totalPeso += $kilos_totales;
                     $totalMonto += $monto_flete;
+                    $totalSubtotalCF += $subtotal_cf;
+                    $totalTrasladosCF += $impTraslado_cf;
+                    $totalRetenidosCF += $impRetenido_cf;
+                    $totalNetoCF += $totalNeto_cf;
                     $total_recolecciones++;
                 }
                 ?>
@@ -762,19 +845,25 @@
                             $<?= number_format($precio_flete, 2) ?>
                         <?php endif; ?>
                     </td>
-                    <td class="text-right text-bold">$<?= number_format($monto_flete, 2) ?></td>
+                    <td class="text-right">$<?= number_format($subtotal_cf, 2) ?></td>
+                    <td class="text-right">$<?= number_format($impTraslado_cf, 2) ?></td>
+                    <td class="text-right">-$<?= number_format($impRetenido_cf, 2) ?></td>
+                    <td class="text-right text-bold">$<?= number_format($totalNeto_cf, 2) ?></td>
                     <td><?= htmlspecialchars($fleteInfo['numero_factura_flete'] ?? '') ?></td>
                     <td><?= htmlspecialchars($fleteInfo['folio_cr_flete'] ?? $ContraRecibo) ?></td>
                 </tr>
             <?php endwhile; ?>
-            <?php $totalGeneral = $totalMonto; ?>
+            <?php $totalGeneral = $totalNetoCF; ?>
         </tbody>
         <tfoot>
             <tr class="text-bold">
                 <td colspan="4" class="text-right">TOTALES:</td>
                 <td class="text-right"><?= number_format($totalPeso, 2) ?> kg</td>
                 <td></td>
-                <td class="text-right">$<?= number_format($totalMonto, 2) ?></td>
+                <td class="text-right">$<?= number_format($totalSubtotalCF, 2) ?></td>
+                <td class="text-right">$<?= number_format($totalTrasladosCF, 2) ?></td>
+                <td class="text-right">-$<?= number_format($totalRetenidosCF, 2) ?></td>
+                <td class="text-right">$<?= number_format($totalNetoCF, 2) ?></td>
                 <td colspan="2"></td>
             </tr>
         </tfoot>
