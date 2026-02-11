@@ -27,7 +27,7 @@ if (isset($_POST['guardar01'])) {
         }
 
         // Campos adicionales no en catálogo
-        $UsuarioData['zona_adm'] = isset($_POST['zona_adm']) ? 1 : 0;
+        // Nota: 'zona_adm' eliminado — el acceso se controla vía 'zona' (Zonas Asignadas)
 
         // Insertar usuario
         $columns = implode(', ', array_keys($UsuarioData));
@@ -54,6 +54,7 @@ if (isset($_POST['guardar01'])) {
 // Obtener grupos de permisos
 $gruposPermisos = getPermisosFormulario();
 $tiposUsuario = getTiposUsuarioSelect();
+$resumenTipos = getResumenTiposUsuario();
 ?>
 <div class="container mt-2">
     <div class="card shadow-sm">
@@ -112,6 +113,38 @@ $tiposUsuario = getTiposUsuarioSelect();
                     </div>
                 </div>
 
+                <!-- Ayuda: Qué hace cada tipo de usuario -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>¿Qué puede hacer cada tipo?</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Los tipos controlan permisos base (reportes, administración, utilerías). Los switches de abajo agregan permisos específicos de creación/edición.</p>
+                        <div class="row g-3">
+                            <?php foreach ($resumenTipos as $tipo => $info): ?>
+                                <div class="col-md-6 col-lg-3">
+                                    <div class="border rounded p-3 h-100">
+                                        <div class="d-flex align-items-center mb-2 gap-2">
+                                            <span class="badge <?= htmlspecialchars($info['badge']) ?>">Tipo <?= htmlspecialchars($tipo) ?></span>
+                                            <strong><?= htmlspecialchars($info['nombre']) ?></strong>
+                                        </div>
+                                        <p class="mb-2 small"><?= htmlspecialchars($info['descripcion']) ?></p>
+                                        <?php if (!empty($info['permisos_base'])): ?>
+                                            <ul class="mb-0 small ps-3">
+                                                <?php foreach ($info['permisos_base'] as $permisoTexto): ?>
+                                                    <li><?= htmlspecialchars($permisoTexto) ?></li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        <?php else: ?>
+                                            <p class="mb-0 small text-muted">Sin permisos base; depende de los permisos específicos.</p>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Zonas -->
                 <div class="card mb-4">
                     <div class="card-header">
@@ -145,14 +178,7 @@ $tiposUsuario = getTiposUsuarioSelect();
                             </div>
                         </div>
                         
-                        <div class="mt-3">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="zona_adm" id="zona_adm" value="1">
-                                <label class="form-check-label" for="zona_adm">
-                                    <i class="bi bi-eye me-1"></i>Ver datos de todas las zonas (sin restricción)
-                                </label>
-                            </div>
-                        </div>
+                        <!-- 'zona_adm' eliminado del formulario: el sistema usa ahora Zonas Asignadas -->
                     </div>
                 </div>
 
@@ -214,16 +240,17 @@ $tiposUsuario = getTiposUsuarioSelect();
                             <div class="card-body">
                                 <div class="row">
                                     <?php foreach ($gruposPermisos['especial'] ?? [] as $nombre => $config): ?>
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" 
-                                                       name="<?= $config['columna'] ?>" 
-                                                       id="perm_<?= $config['columna'] ?>" value="1">
-                                                <label class="form-check-label" for="perm_<?= $config['columna'] ?>">
-                                                    <?= htmlspecialchars($config['descripcion']) ?>
-                                                </label>
+                                        <?php if (($config['columna'] ?? '') === 'zona_adm') continue; ?>
+                                            <div class="col-md-4 mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" 
+                                                           name="<?= $config['columna'] ?>" 
+                                                           id="perm_<?= $config['columna'] ?>" value="1">
+                                                    <label class="form-check-label" for="perm_<?= $config['columna'] ?>">
+                                                        <?= htmlspecialchars($config['descripcion']) ?>
+                                                    </label>
+                                                </div>
                                             </div>
-                                        </div>
                                     <?php endforeach; ?>
                                 </div>
                             </div>

@@ -148,40 +148,48 @@ if ($usuarioData['zona'] == '0' || $usuarioData['zona'] == '') {
                                 $modulosEditar[$nombre] = $config;
                             }
                             
-                            // Mapeo de permisos relacionados
-                            $parejas = [
-                                'crear_proveedores' => 'editar_proveedores',
-                                'crear_clientes' => 'editar_clientes',
-                                'crear_productos' => 'editar_productos',
-                                'crear_almacenes' => 'editar_almacenes',
-                                'crear_transportistas' => 'editar_transportistas',
-                                'crear_recoleccion' => 'editar_recoleccion',
-                                'crear_captacion' => 'editar_captacion',
-                                'crear_ventas' => 'editar_ventas'
-                            ];
-                            
-                            foreach ($parejas as $crearKey => $editarKey):
+                            // Mapeo dinámico: usar claves del catálogo (ej. PROVEEDORES_CREAR / PROVEEDORES_EDITAR)
+                            $bases = [];
+                            foreach ($modulosCrear as $k => $c) {
+                                if (preg_match('/^(.*)_CREAR$/', $k, $m)) $bases[] = $m[1];
+                            }
+                            foreach ($modulosEditar as $k => $e) {
+                                if (preg_match('/^(.*)_EDITAR$/', $k, $m)) $bases[] = $m[1];
+                            }
+                            $bases = array_values(array_unique($bases));
+
+                            foreach ($bases as $base):
+                                $crearKey = $base . '_CREAR';
+                                $editarKey = $base . '_EDITAR';
                                 $crearConfig = $modulosCrear[$crearKey] ?? null;
                                 $editarConfig = $modulosEditar[$editarKey] ?? null;
-                                
-                                if ($crearConfig):
-                                    // Extraer nombre del módulo
-                                    $nombreModulo = str_replace('Crear ', '', $crearConfig['descripcion']);
+                                if (!$crearConfig && !$editarConfig) continue;
+
+                                // Determinar nombre legible del módulo
+                                if ($crearConfig) {
+                                    $nombreModulo = preg_replace('/^Crear\s+/i', '', $crearConfig['descripcion']);
+                                } elseif ($editarConfig) {
+                                    $nombreModulo = preg_replace('/^Editar\s+/i', '', $editarConfig['descripcion']);
+                                } else {
+                                    $nombreModulo = ucwords(strtolower(str_replace('_', ' ', $base)));
+                                }
                             ?>
                                 <div class="col-6 col-md-4">
                                     <div class="perm-box text-center p-3 rounded-3">
                                         <div class="fw-medium mb-2"><?= htmlspecialchars($nombreModulo) ?></div>
-                                        <span class="badge <?= ($usuarioData[$crearConfig['columna']] == 1) ? 'bg-success' : 'bg-secondary' ?> me-1">
-                                            <i class="bi bi-plus-circle"></i> Crear
-                                        </span>
+                                        <?php if ($crearConfig): ?>
+                                            <span class="badge <?= ($usuarioData[$crearConfig['columna']] == 1) ? 'bg-success' : 'bg-secondary' ?> me-1">
+                                                <i class="bi bi-plus-circle"></i> Crear
+                                            </span>
+                                        <?php endif; ?>
                                         <?php if ($editarConfig): ?>
-                                        <span class="badge <?= ($usuarioData[$editarConfig['columna']] == 1) ? 'bg-success' : 'bg-secondary' ?>">
-                                            <i class="bi bi-pencil-square"></i> Editar
-                                        </span>
+                                            <span class="badge <?= ($usuarioData[$editarConfig['columna']] == 1) ? 'bg-success' : 'bg-secondary' ?>">
+                                                <i class="bi bi-pencil-square"></i> Editar
+                                            </span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
-                            <?php endif; endforeach; ?>
+                            <?php endforeach; ?>
                         </div>
 
                         <hr>
@@ -194,6 +202,7 @@ if ($usuarioData['zona'] == '0' || $usuarioData['zona'] == '') {
                                 </h6>
                             </div>
                             <?php foreach ($gruposPermisos['especial'] ?? [] as $nombre => $config): ?>
+                                <?php if (($config['columna'] ?? '') === 'zona_adm') continue; ?>
                                 <div class="col-6 col-md-4">
                                     <div class="perm-box text-center p-3 rounded-3">
                                         <div class="fw-medium mb-2"><?= htmlspecialchars($config['descripcion']) ?></div>

@@ -469,6 +469,63 @@ function getNombreTipoUsuario(int $tipo): string {
 }
 
 /**
+ * Texto legible para los permisos base por nivel
+ */
+function getDescripcionPermisoBase(string $clave): string {
+    switch ($clave) {
+        case 'VER_INACTIVOS':
+            return 'Puede ver registros inactivos';
+        case 'ACTIVAR_DESACTIVAR':
+            return 'Puede activar o desactivar registros';
+        case 'ADMIN':
+            return 'Acceso a administración y usuarios';
+        case 'REPORTES':
+            return 'Acceso al módulo de reportes';
+        case 'UTILERIAS':
+            return 'Puede usar utilerías y herramientas especiales';
+        default:
+            return $clave;
+    }
+}
+
+/**
+ * Resumen consolidado de tipos de usuario y sus permisos base
+ * @return array
+ */
+function getResumenTiposUsuario(): array {
+    $descripcionesNivel = [
+        'admin' => 'Acceso total al sistema.',
+        'supervisor' => 'Operación diaria con activación/desactivación y reportes.',
+        'operador' => 'Consulta y operación básica con acceso a reportes.',
+        'basico' => 'Acceso mínimo; depende de los permisos específicos activados.',
+    ];
+
+    $resumen = [];
+    foreach (TIPOS_USUARIO as $valor => $info) {
+        $nivel = $info['nivel'] ?? 'basico';
+        $permisosBase = PERMISOS_POR_NIVEL[$nivel] ?? [];
+        $permisosTexto = [];
+
+        foreach ($permisosBase as $clave => $activo) {
+            if ($activo) {
+                $permisosTexto[] = getDescripcionPermisoBase($clave);
+            }
+        }
+
+        $resumen[$valor] = [
+            'tipo' => $valor,
+            'nombre' => $info['nombre'] ?? 'Desconocido',
+            'nivel' => $nivel,
+            'badge' => $info['badge'] ?? 'bg-secondary',
+            'descripcion' => $descripcionesNivel[$nivel] ?? 'Configuración personalizada.',
+            'permisos_base' => $permisosTexto,
+        ];
+    }
+
+    return $resumen;
+}
+
+/**
  * Preparar datos de permisos para guardar en BD
  * @param array $postData Datos del formulario POST
  * @return array Datos listos para INSERT/UPDATE

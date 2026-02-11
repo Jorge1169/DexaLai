@@ -35,6 +35,7 @@ $soloPassword = !$esAdmin;
 // Obtener grupos de permisos
 $gruposPermisos = getPermisosFormulario();
 $tiposUsuario = getTiposUsuarioSelect();
+$resumenTipos = getResumenTiposUsuario();
 
 // Procesar formulario de actualización
 if (isset($_POST['guardar01'])) {
@@ -74,7 +75,7 @@ if (isset($_POST['guardar01'])) {
             }
 
             // Campos adicionales
-            $UsuarioData['zona_adm'] = isset($_POST['zona_adm']) ? 1 : 0;
+            // 'zona_adm' eliminado: el control se realiza con 'zona' (Zonas Asignadas)
 
             // Si se proporcionó nueva contraseña
             if (!empty($_POST['pass'])) {
@@ -196,6 +197,38 @@ if (isset($_POST['guardar01'])) {
                         </div>
                     </div>
 
+                    <!-- Ayuda: Qué puede hacer cada tipo -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>¿Qué puede hacer cada tipo?</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">Los tipos definen permisos base (reportes, administración, utilerías). Los switches de abajo añaden permisos específicos.</p>
+                            <div class="row g-3">
+                                <?php foreach ($resumenTipos as $tipo => $info): ?>
+                                    <div class="col-md-6 col-lg-3">
+                                        <div class="border rounded p-3 h-100">
+                                            <div class="d-flex align-items-center mb-2 gap-2">
+                                                <span class="badge <?= htmlspecialchars($info['badge']) ?>">Tipo <?= htmlspecialchars($tipo) ?></span>
+                                                <strong><?= htmlspecialchars($info['nombre']) ?></strong>
+                                            </div>
+                                            <p class="mb-2 small"><?= htmlspecialchars($info['descripcion']) ?></p>
+                                            <?php if (!empty($info['permisos_base'])): ?>
+                                                <ul class="mb-0 small ps-3">
+                                                    <?php foreach ($info['permisos_base'] as $permisoTexto): ?>
+                                                        <li><?= htmlspecialchars($permisoTexto) ?></li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php else: ?>
+                                                <p class="mb-0 small text-muted">Sin permisos base; depende de los permisos específicos.</p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Zonas -->
                     <div class="card mb-4">
                         <div class="card-header">
@@ -236,15 +269,7 @@ if (isset($_POST['guardar01'])) {
                                 </div>
                             </div>
                             
-                            <div class="mt-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="zona_adm" id="zona_adm" 
-                                           value="1" <?= ($usuarioData['zona_adm'] == 1) ? 'checked' : '' ?>>
-                                    <label class="form-check-label" for="zona_adm">
-                                        <i class="bi bi-eye me-1"></i>Ver datos de todas las zonas (sin restricción)
-                                    </label>
-                                </div>
-                            </div>
+                            <!-- 'zona_adm' eliminado del formulario: el sistema usa Zonas Asignadas -->
                         </div>
                     </div>
 
@@ -308,17 +333,18 @@ if (isset($_POST['guardar01'])) {
                                 <div class="card-body">
                                     <div class="row">
                                         <?php foreach ($gruposPermisos['especial'] ?? [] as $nombre => $config): ?>
-                                            <div class="col-md-4 mb-2">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" 
-                                                           name="<?= $config['columna'] ?>" 
-                                                           id="perm_<?= $config['columna'] ?>" value="1"
-                                                           <?= ($usuarioData[$config['columna']] == 1) ? 'checked' : '' ?>>
-                                                    <label class="form-check-label" for="perm_<?= $config['columna'] ?>">
-                                                        <?= htmlspecialchars($config['descripcion']) ?>
-                                                    </label>
-                                                </div>
-                                            </div>
+                                            <?php if (($config['columna'] ?? '') === 'zona_adm') continue; ?>
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input" type="checkbox" 
+                                                                   name="<?= $config['columna'] ?>" 
+                                                                   id="perm_<?= $config['columna'] ?>" value="1"
+                                                                   <?= ($usuarioData[$config['columna']] == 1) ? 'checked' : '' ?>>
+                                                            <label class="form-check-label" for="perm_<?= $config['columna'] ?>">
+                                                                <?= htmlspecialchars($config['descripcion']) ?>
+                                                            </label>
+                                                        </div>
+                                                    </div>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
