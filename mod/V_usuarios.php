@@ -12,6 +12,11 @@ if (!$usuarioData) {
     exit();
 }
 
+// Usar el sistema dinámico de permisos
+$gruposPermisos = getPermisosFormulario();
+$tipoUsuario = getNombreTipoUsuario($usuarioData['tipo']);
+$badgeClass = getBadgeTipoUsuario($usuarioData['tipo']);
+
 // Obtener información de zonas
 $zonasUsuario = [];
 $zona_user = '';
@@ -43,14 +48,6 @@ if ($usuarioData['zona'] == '0' || $usuarioData['zona'] == '') {
             $zona_user = count($zonasUsuario) . ' zonas asignadas';
         }
     }
-}
-
-switch ($usuarioData['tipo']) {
-    case 100: $tipoUsuario = 'Administrador'; $badgeClass = 'bg-danger'; break;
-    case 50:  $tipoUsuario = 'Usuario A';     $badgeClass = 'bg-primary'; break;
-    case 30:  $tipoUsuario = 'Usuario B';     $badgeClass = 'bg-info'; break;
-    case 10:  $tipoUsuario = 'Usuario C';     $badgeClass = 'bg-secondary'; break;
-    default:  $tipoUsuario = 'Desconocido';   $badgeClass = 'bg-warning text-dark'; break;
 }
 ?>
 
@@ -132,51 +129,78 @@ switch ($usuarioData['tipo']) {
                     <div class="permissions-card p-4 rounded-4 shadow-sm">
                         <h5 class="fw-semibold mb-4"><i class="bi bi-shield-lock me-2 text-primary"></i>Permisos del Sistema</h5>
 
-                        <div class="row g-3">
-                            <?php 
-                            $permisos = [
-                                'a' => 'Proveedores', 
-                                'b' => 'Clientes', 
-                                'c' => 'Productos', 
-                                'd' => 'Almacenes', 
-                                'e' => 'Transportistas',
-                                'f' => 'Recolección',
-                                'g' => 'Captación',
-                                'h' => 'Ventas'
+                        <!-- Permisos de Creación y Edición -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <h6 class="text-success fw-semibold mb-3">
+                                    <i class="bi bi-plus-circle me-2"></i>Módulos (Crear / Editar)
+                                </h6>
+                            </div>
+                            <?php
+                            // Agrupar permisos de creación y edición por módulo
+                            $modulosCrear = [];
+                            $modulosEditar = [];
+                            
+                            foreach ($gruposPermisos['creacion'] ?? [] as $nombre => $config) {
+                                $modulosCrear[$nombre] = $config;
+                            }
+                            foreach ($gruposPermisos['edicion'] ?? [] as $nombre => $config) {
+                                $modulosEditar[$nombre] = $config;
+                            }
+                            
+                            // Mapeo de permisos relacionados
+                            $parejas = [
+                                'crear_proveedores' => 'editar_proveedores',
+                                'crear_clientes' => 'editar_clientes',
+                                'crear_productos' => 'editar_productos',
+                                'crear_almacenes' => 'editar_almacenes',
+                                'crear_transportistas' => 'editar_transportistas',
+                                'crear_recoleccion' => 'editar_recoleccion',
+                                'crear_captacion' => 'editar_captacion',
+                                'crear_ventas' => 'editar_ventas'
                             ];
-                            foreach ($permisos as $key => $label): ?>
+                            
+                            foreach ($parejas as $crearKey => $editarKey):
+                                $crearConfig = $modulosCrear[$crearKey] ?? null;
+                                $editarConfig = $modulosEditar[$editarKey] ?? null;
+                                
+                                if ($crearConfig):
+                                    // Extraer nombre del módulo
+                                    $nombreModulo = str_replace('Crear ', '', $crearConfig['descripcion']);
+                            ?>
                                 <div class="col-6 col-md-4">
                                     <div class="perm-box text-center p-3 rounded-3">
-                                        <div class="fw-medium mb-2"><?= $label ?></div>
-                                        <span class="badge <?= ($usuarioData[$key] == 1) ? 'bg-success' : 'bg-secondary' ?> me-1">
+                                        <div class="fw-medium mb-2"><?= htmlspecialchars($nombreModulo) ?></div>
+                                        <span class="badge <?= ($usuarioData[$crearConfig['columna']] == 1) ? 'bg-success' : 'bg-secondary' ?> me-1">
                                             <i class="bi bi-plus-circle"></i> Crear
                                         </span>
-                                        <span class="badge <?= ($usuarioData[$key.'1'] == 1) ? 'bg-success' : 'bg-secondary' ?>">
+                                        <?php if ($editarConfig): ?>
+                                        <span class="badge <?= ($usuarioData[$editarConfig['columna']] == 1) ? 'bg-success' : 'bg-secondary' ?>">
                                             <i class="bi bi-pencil-square"></i> Editar
                                         </span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                            <?php endforeach; ?>
+                            <?php endif; endforeach; ?>
                         </div>
 
                         <hr>
 
+                        <!-- Permisos Especiales -->
                         <div class="row g-3 mt-2">
-                            <?php
-                            $extras = [
-                                'af' => ['Facturas', 'Actualizar'],
-                                'acr' => ['Contra R.', 'Actualizar'],
-                                'acc' => ['Autorizar', 'Administrativo'],
-                                'en_correo' => ['Enviar correos', 'Correo'],
-                                'prec' => ['Dar de alta precios', 'Precios'],
-                                'zona_adm' => ['Ver todas las zonas', 'Zonas']
-                            ];
-                            foreach ($extras as $key => [$label, $desc]): ?>
+                            <div class="col-12">
+                                <h6 class="text-warning fw-semibold mb-3">
+                                    <i class="bi bi-star me-2"></i>Permisos Especiales
+                                </h6>
+                            </div>
+                            <?php foreach ($gruposPermisos['especial'] ?? [] as $nombre => $config): ?>
                                 <div class="col-6 col-md-4">
                                     <div class="perm-box text-center p-3 rounded-3">
-                                        <div class="fw-medium mb-2"><?= $desc ?></div>
-                                        <span class="badge <?= ($usuarioData[$key] == 1) ? 'bg-success' : 'bg-secondary' ?>">
-                                            <?= ($usuarioData[$key] == 1) ? '<i class="bi bi-check-circle"></i>' : '<i class="bi bi-x-circle"></i>'?> <?= $label ?>
+                                        <div class="fw-medium mb-2"><?= htmlspecialchars($config['descripcion']) ?></div>
+                                        <span class="badge <?= ($usuarioData[$config['columna']] == 1) ? 'bg-success' : 'bg-secondary' ?>">
+                                            <?= ($usuarioData[$config['columna']] == 1) 
+                                                ? '<i class="bi bi-check-circle"></i> Activo' 
+                                                : '<i class="bi bi-x-circle"></i> Inactivo' ?>
                                         </span>
                                     </div>
                                 </div>

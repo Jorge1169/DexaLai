@@ -20,6 +20,9 @@ try {
     $conn_mysql_R = '0'; // conexion xon error
 }
 
+// Incluir sistema de permisos
+require_once __DIR__ . '/permisos.php';
+
 
 // Función para conexión MySQL con configuración de caracteres
 function getMysqlConnection() {
@@ -99,73 +102,9 @@ function alert($txt, $type, $url) {
         }
 
         //===========
-        // Permisos
+        // Permisos - La función permisos() ahora está en config/permisos.php
+        // Mantiene compatibilidad hacia atrás pero usa el nuevo sistema
         //===========
-        function permisos($tipo, $permi) {
-            $permiso = explode(",", $permi);
-            $Admin = '';
-            $DesAct = '';
-            $Inactivos = '';
-            $Reportes = '';
-            $utilerias = '';
-            if ($tipo == 100) {
-                $Admin = '';
-                $DesAct = '';
-                $Inactivos = '';
-                $Reportes = '';
-                $utilerias = '';
-            }
-            elseif ($tipo == 50) {
-                $Admin = 'style="display: none"';
-                $DesAct = '';
-                $Inactivos = 'style="display: none"';
-                $Reportes = '';
-                $utilerias = 'style="display: none"';
-            }elseif ($tipo == 30) {
-                $Admin = 'style="display: none"';
-                $DesAct = 'style="display: none"';
-                $Inactivos = 'style="display: none"';
-                $Reportes = '';
-                $utilerias = 'style="display: none"';
-            }else {
-                $Admin = 'style="display: none"';
-                $DesAct = 'style="display: none"';
-                $Inactivos = 'style="display: none"';
-                $Reportes = 'style="display: none"';
-                $utilerias = 'style="display: none"';
-            }
-
-            return [
-                'Prove_Crear'  => ($permiso[0] == '1') ? "" : 'style="display: none"',//a ->Crear proveedores
-                'Clien_Crear'  => ($permiso[1] == '1') ? "" : 'style="display: none"',//b ->Crear clientes
-                'Produ_Crear'  => ($permiso[2] == '1') ? "" : 'style="display: none"',//c ->Crear producto
-                'Almac_Crear'  => ($permiso[3] == '1') ? "" : 'style="display: none"',//d ->Aun sin asignar un alamcen 
-                'Trans_Crear'  => ($permiso[4] == '1') ? "" : 'style="display: none"',//e ->Crear Transporte
-                'Prove_Editar' => ($permiso[5] == '1') ? "" : 'style="display: none"',//a1 ->Editar Proveedor
-                'Clien_Editar' => ($permiso[6] == '1') ? "" : 'style="display: none"',//b1 ->Editar Cliente
-                'Produ_Editar' => ($permiso[7] == '1') ? "" : 'style="display: none"',//c1 ->Editar Producto
-                'Almac_Editar' => ($permiso[8] == '1') ? "" : 'style="display: none"',//d1 ->Aun sin asignar un almacen
-                'Trans_Editar' => ($permiso[9] == '1') ? "" : 'style="display: none"',//e1 ->Editar transporte
-                'ACT_FAC' => ($permiso[10] == '1') ? "" : 'style="display: none"',//af ->Atualizar Facturas en invoice
-                'ACT_CR' => ($permiso[11] == '1') ? "" : 'style="display: none"',//acr ->Actualizar Contra Recibo
-                'ACT_AC' => ($permiso[12] == '1') ? "" : 'style="display: none"',//acc ->Ver Actividad y acciones
-                'Recole_Crear' => ($permiso[13] == '1') ? "" : 'style="display: none"',//f ->Crear Recoleccion
-                'Recole_Editar' => ($permiso[14] == '1') ? "" : 'style="display: none"',//f1 ->Editar Recoleccion
-                'en_correo' => ($permiso[15] == '1') ? "" : 'style="display: none"',//en_correo ->Enviar correos
-                'sub_precios' => ($permiso[16] == '1') ? "" : 'style="display: none"',//prec ->Dar de alta precios
-                'captacion_crear' => ($permiso[17] == '1') ? "" : 'style="display: none"',//g ->Crear captacion
-                'captacion_editar' => ($permiso[18] == '1') ? "" : 'style="display: none"',//g1 ->Editar captacion
-                'ventas_crear' => ($permiso[19] == '1') ? "" : 'style="display: none"',//h ->Crear venta
-                'ventas_editar' => ($permiso[20] == '1') ? "" : 'style="display: none"',//h1 ->Editar venta
-
-                'ACT_DES' => $DesAct, // Activar o desactivar
-                'ADMIN' => $Admin, // Permisos de ADMIN
-                'INACTIVO' => $Inactivos, // Ver Inactivos
-                'REPORTES' => $Reportes, // Ver reportes
-                'UTILERIAS' => $utilerias // Utilerias Importar en excel, botones en excel y demas
-
-            ];
-        }
 
         // ============================================================================
 // SISTEMA UNIFICADO DE PERMISOS
