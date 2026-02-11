@@ -1,5 +1,9 @@
 <?php
 // E_direccion.php - Editar Bodega de Cliente
+
+// Verificación de permisos - Backend
+requirePermiso('CLIENTES_EDITAR', 'clientes');
+
 $id_direccion = clear($_GET['id'] ?? '');
 $tipoZonaActual = obtenerTipoZonaActual($conn_mysql); // Obtener tipo de zona
 

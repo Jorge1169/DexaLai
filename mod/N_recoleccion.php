@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('RECOLECCION_CREAR', 'recoleccion');
+
 $folio = '';// Folio a guardar
 $folioM = '';// folio a mostrar
 $fecha_seleccionada = $_POST['fecha_recoleccion'] ?? date('Y-m-d'); // Nueva variable para fecha seleccionada

@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('ALMACENES_EDITAR', 'almacenes');
+
 // Obtener ID de la dirección
 $id_direccion = clear($_GET['id'] ?? '');
 $tipoZonaActual = obtenerTipoZonaActual($conn_mysql); // Obtener tipo de zona

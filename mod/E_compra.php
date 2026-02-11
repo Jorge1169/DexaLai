@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('COMPRAS_EDITAR', 'compras');
+
 // Obtener el ID de la compra a editar
 $id_compra = $_GET['id'] ?? 0;
 

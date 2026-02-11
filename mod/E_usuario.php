@@ -18,18 +18,19 @@ if (!$usuarioData) {
     exit();
 }
 
-// Verificar permisos
-if ($TipoUserSession != 100) {
-    // Si no es admin, solo puede editar su propio perfil
-    if ($usuarioData['id_user'] != $idUser) {
-        alert("No tienes permisos para editar este usuario", 0, "usuarios");
-        logActivity('EDITAR', 'Intento editar el usuario '. $id_usuario);
-        exit();
-    }
-    $soloPassword = true;
-} else {
-    $soloPassword = false;
+// Verificar permisos usando las variables de sesión globales
+// Admin puede editar cualquier usuario, otros solo pueden editar su propio perfil
+$esAdmin = ($TipoUserSession == 100);
+$esMiPerfil = ($usuarioData['id_user'] == $idUser);
+
+if (!$esAdmin && !$esMiPerfil) {
+    alert("No tienes permisos para editar este usuario", 0, "usuarios");
+    logActivity('EDITAR', 'Intento editar el usuario '. $id_usuario);
+    exit();
 }
+
+// Solo password si no es admin (editando su propio perfil)
+$soloPassword = !$esAdmin;
 
 // Obtener grupos de permisos
 $gruposPermisos = getPermisosFormulario();

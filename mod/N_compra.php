@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('PROVEEDORES_CREAR', 'compras');
+
 if (isset($_POST['guardar01'])) {
 
     $factura1 = $_POST['fact'] ?? '';

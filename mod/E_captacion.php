@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('CAPTACION_EDITAR', 'captacion');
+
 // Obtener ID de captación
 $id_captacion = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if ($id_captacion <= 0) {

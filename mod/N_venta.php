@@ -1,5 +1,8 @@
 <?php
 // N_venta.php - Módulo de Nueva Venta para zonas MEO
+// Verificación de permisos - Backend
+requirePermiso('VENTAS_CREAR', 'ventas');
+
 // Obtener zona seleccionada (igual que en N_captacion.php)
 $zona_seleccionada = $_SESSION['selected_zone'] ?? 0;
 

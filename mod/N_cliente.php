@@ -1,4 +1,7 @@
    <?php
+   // Verificación de permisos - Backend
+   requirePermiso('CLIENTES_CREAR', 'clientes');
+
    if (isset($_POST['guardar01'])) {
     try {
       $CodCliente = $_POST['cod'] ?? '';

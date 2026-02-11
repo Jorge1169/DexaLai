@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('PRODUCTOS_CREAR', 'productos');
+
 if (isset($_POST['guardar01'])) {
     try {
         $ProductoData = [

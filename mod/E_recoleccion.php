@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('RECOLECCION_EDITAR', 'recoleccion');
+
 // Verificar si se recibió el ID de la recolección a editar
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: ?p=recoleccion");

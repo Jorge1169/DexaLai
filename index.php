@@ -357,11 +357,6 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
     // ============================================================================
     // DATOS PARA LA INTERFAZ
     // ============================================================================
-                                $perMi = $Pruev1['a'].','.$Pruev1['b'].','.$Pruev1['c'].','.$Pruev1['d'].','.$Pruev1['e'].','.
-                                $Pruev1['a1'].','.$Pruev1['b1'].','.$Pruev1['c1'].','.$Pruev1['d1'].','.$Pruev1['e1'].','.
-                                $Pruev1['af'].','.$Pruev1['acr'].','.$Pruev1['acc'].','.$Pruev1['f'].','.$Pruev1['f1'].','.
-                                $Pruev1['en_correo'].','.$Pruev1['prec'].','.$Pruev1['g'].','.$Pruev1['g1'].','.$Pruev1['h'].','.$Pruev1['h1'];
-
                                 $dias = array("DOMINGO","LUNES","MARTES","MIÉRCOLES","JUEVES","VIERNES","SÁBADO");
                                 $meses = array("ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE");
 
@@ -371,7 +366,9 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
                                 $anio = date('Y');
 
                                 $fecha_formateada = $dias[$numero_dia] . ", " . $dia . " DE " . $meses[$numero_mes] . " DE " . $anio;
-                                $perm = permisos($TipoUserSession, $perMi);
+                                
+                                // Cargar permisos directamente desde datos del usuario (ya no necesita $perMi)
+                                $perm = permisos($TipoUserSession, $Pruev1);
                                 ?>
 <!-- Modal para seleccionar zona al iniciar sesión -->
 <div class="modal fade" id="zoneSelectModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="zoneSelectModalLabel" aria-hidden="true">
@@ -724,7 +721,35 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
         <?php
     // Primero, verificar si el módulo está disponible para el tipo de zona actual
         if (moduloDisponibleParaZona($p, $conn_mysql)) {
-            if(file_exists("mod/".$p.".php")){
+            // Verificar permisos de acceso al módulo
+            if (isset(MODULOS_PERMISOS[$p]) && !puedeAccederModulo($p, $TipoUserSession, $Pruev1)) {
+                ?>
+                <div class="container my-4">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-6">
+                            <div class="card border-0 shadow-lg rounded-4">
+                                <div class="card-body text-center p-5">
+                                    <span class="badge bg-warning-subtle text-warning mb-3 px-3 py-2 rounded-pill">
+                                        Acceso Restringido
+                                    </span>
+                                    <div class="display-1 fw-bold text-warning opacity-75 mb-3">
+                                        <i class="bi bi-shield-lock"></i>
+                                    </div>
+                                    <h2 class="fw-bold text-body mb-3">Sin Permisos</h2>
+                                    <p class="text-muted mb-4">
+                                        No tienes permisos para acceder a esta sección. 
+                                        Contacta al administrador si crees que deberías tener acceso.
+                                    </p>
+                                    <a href="./" class="btn btn-primary rounded-pill px-4">
+                                        <i class="bi bi-house me-2"></i>Volver al Inicio
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php
+            } elseif(file_exists("mod/".$p.".php")){
                 include "mod/".$p.".php";
             } else if ($p == "sudo_login") {
                 include "mod/sudo_login.php";

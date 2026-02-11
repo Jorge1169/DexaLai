@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('ALMACENES_EDITAR', 'almacenes');
+
 // Obtener ID del Almacén
 $id = clear($_GET['id'] ?? '');
 

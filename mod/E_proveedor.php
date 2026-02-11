@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('PROVEEDORES_EDITAR', 'proveedores');
+
 // Obtener ID del Cliente
 $id = clear($_GET['id'] ?? '');
 

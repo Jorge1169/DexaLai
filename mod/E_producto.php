@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('PRODUCTOS_EDITAR', 'productos');
+
 // Obtener el ID del producto a editar
 $id_prod = $_GET['id'] ?? 0;
 

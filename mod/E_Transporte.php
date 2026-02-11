@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('TRANSPORTES_EDITAR', 'transportes');
+
 // Obtener ID del transporte
 $id = clear($_GET['id'] ?? '');
 

@@ -52,6 +52,49 @@ define('PERMISOS_CATALOGO', [
 ]);
 
 /**
+ * Mapeo de módulos a permisos requeridos
+ * Define qué permiso se necesita para acceder a cada módulo
+ */
+define('MODULOS_PERMISOS', [
+    // === Módulos de Creación ===
+    'N_proveedor' => 'PROVEEDORES_CREAR',
+    'N_cliente' => 'CLIENTES_CREAR',
+    'N_producto' => 'PRODUCTOS_CREAR',
+    'N_almacen' => 'ALMACENES_CREAR',
+    'N_direccion_almacen' => 'ALMACENES_CREAR',
+    'N_transportista' => 'TRANSPORTES_CREAR',
+    'N_recoleccion' => 'RECOLECCION_CREAR',
+    'N_captacion' => 'CAPTACION_CREAR',
+    'N_venta' => 'VENTAS_CREAR',
+    'N_compra' => 'PROVEEDORES_CREAR', // Compras usa mismo permiso que proveedores
+    'N_usuario' => 'ADMIN',
+    'N_direccion' => 'CLIENTES_EDITAR',
+    'N_direccion_p' => 'PROVEEDORES_EDITAR',
+    
+    // === Módulos de Edición ===
+    'E_proveedor' => 'PROVEEDORES_EDITAR',
+    'E_Cliente' => 'CLIENTES_EDITAR',
+    'E_producto' => 'PRODUCTOS_EDITAR',
+    'E_almacen' => 'ALMACENES_EDITAR',
+    'E_direccion_almacen' => 'ALMACENES_EDITAR',
+    'E_transportista' => 'TRANSPORTES_EDITAR',
+    'E_Transporte' => 'TRANSPORTES_EDITAR',
+    'E_recoleccion' => 'RECOLECCION_EDITAR',
+    'E_captacion' => 'CAPTACION_EDITAR',
+    'E_venta' => 'VENTAS_EDITAR',
+    'E_compra' => 'PROVEEDORES_EDITAR',
+    'E_usuario' => 'ADMIN', // Nota: usuario editándose a sí mismo se maneja aparte
+    'E_direccion' => 'CLIENTES_EDITAR',
+    'E_direccion_p' => 'PROVEEDORES_EDITAR',
+    
+    // === Módulos Administrativos ===
+    'usuarios' => 'ADMIN',
+    'reportes_actividad' => 'ADMINISTRATIVO',
+    'ia_test' => 'ADMINISTRATIVO',
+    'importar_recolecciones' => 'UTILERIAS',
+]);
+
+/**
  * Tipos de usuario y sus niveles
  */
 define('TIPOS_USUARIO', [
@@ -157,7 +200,7 @@ class PermissionManager {
      */
     public function tiene(string $permiso): bool {
         // Admin siempre tiene todos los permisos
-        if ($this->tipoUsuario === 100) {
+        if ($this->tipoUsuario == 100) {
             return true;
         }
         return $this->permisos[$permiso] ?? false;
@@ -204,7 +247,7 @@ class PermissionManager {
      * @return bool
      */
     public function esAdmin(): bool {
-        return $this->tipoUsuario === 100;
+        return $this->tipoUsuario == 100;
     }
     
     /**
@@ -287,12 +330,10 @@ function deshabilitadoSinPermiso(string $permiso): string {
  * Mantiene la misma interfaz pero usa el nuevo sistema internamente
  * 
  * @param int $tipo Tipo de usuario
- * @param string $permi String de permisos separados por coma
+ * @param array|string $datos Array con datos del usuario o string de permisos (legacy)
  * @return array Array asociativo con permisos (formato antiguo)
  */
-function permisos($tipo, $permi): array {
-    $permiso = explode(",", $permi);
-    
+function permisos($tipo, $datos = []): array {
     // Permisos base por tipo de usuario
     $esAdmin = ($tipo == 100);
     $esSupervisor = ($tipo == 50);
@@ -305,36 +346,70 @@ function permisos($tipo, $permi): array {
     $Reportes = ($esAdmin || $esSupervisor || $esOperador) ? '' : 'style="display: none"';
     $utilerias = $esAdmin ? '' : 'style="display: none"';
     
-    // Mapeo de permisos de base de datos
+    // Detectar si es array (nuevo) o string (legacy)
+    if (is_array($datos)) {
+        // Nuevo formato: array directo con datos del usuario
+        $u = $datos;
+        return [
+            // Permisos de Creación
+            'Prove_Crear' => ($esAdmin || ($u['a'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Clien_Crear' => ($esAdmin || ($u['b'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Produ_Crear' => ($esAdmin || ($u['c'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Almac_Crear' => ($esAdmin || ($u['d'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Trans_Crear' => ($esAdmin || ($u['e'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Recole_Crear' => ($esAdmin || ($u['f'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'captacion_crear' => ($esAdmin || ($u['g'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'ventas_crear' => ($esAdmin || ($u['h'] ?? '0') == '1') ? '' : 'style="display: none"',
+            
+            // Permisos de Edición
+            'Prove_Editar' => ($esAdmin || ($u['a1'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Clien_Editar' => ($esAdmin || ($u['b1'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Produ_Editar' => ($esAdmin || ($u['c1'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Almac_Editar' => ($esAdmin || ($u['d1'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Trans_Editar' => ($esAdmin || ($u['e1'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'Recole_Editar' => ($esAdmin || ($u['f1'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'captacion_editar' => ($esAdmin || ($u['g1'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'ventas_editar' => ($esAdmin || ($u['h1'] ?? '0') == '1') ? '' : 'style="display: none"',
+            
+            // Permisos Especiales
+            'ACT_FAC' => ($esAdmin || ($u['af'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'ACT_CR' => ($esAdmin || ($u['acr'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'ACT_AC' => ($esAdmin || ($u['acc'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'en_correo' => ($esAdmin || ($u['en_correo'] ?? '0') == '1') ? '' : 'style="display: none"',
+            'sub_precios' => ($esAdmin || ($u['prec'] ?? '0') == '1') ? '' : 'style="display: none"',
+            
+            // Permisos por nivel de usuario
+            'ACT_DES' => $DesAct,
+            'ADMIN' => $Admin,
+            'INACTIVO' => $Inactivos,
+            'REPORTES' => $Reportes,
+            'UTILERIAS' => $utilerias,
+        ];
+    }
+    
+    // Si no es array, retornar permisos vacíos (formato legacy ya no soportado)
     return [
-        // Permisos de Creación
-        'Prove_Crear' => ($esAdmin || ($permiso[0] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Clien_Crear' => ($esAdmin || ($permiso[1] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Produ_Crear' => ($esAdmin || ($permiso[2] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Almac_Crear' => ($esAdmin || ($permiso[3] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Trans_Crear' => ($esAdmin || ($permiso[4] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Recole_Crear' => ($esAdmin || ($permiso[13] ?? '0') == '1') ? '' : 'style="display: none"',
-        'captacion_crear' => ($esAdmin || ($permiso[17] ?? '0') == '1') ? '' : 'style="display: none"',
-        'ventas_crear' => ($esAdmin || ($permiso[19] ?? '0') == '1') ? '' : 'style="display: none"',
-        
-        // Permisos de Edición
-        'Prove_Editar' => ($esAdmin || ($permiso[5] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Clien_Editar' => ($esAdmin || ($permiso[6] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Produ_Editar' => ($esAdmin || ($permiso[7] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Almac_Editar' => ($esAdmin || ($permiso[8] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Trans_Editar' => ($esAdmin || ($permiso[9] ?? '0') == '1') ? '' : 'style="display: none"',
-        'Recole_Editar' => ($esAdmin || ($permiso[14] ?? '0') == '1') ? '' : 'style="display: none"',
-        'captacion_editar' => ($esAdmin || ($permiso[18] ?? '0') == '1') ? '' : 'style="display: none"',
-        'ventas_editar' => ($esAdmin || ($permiso[20] ?? '0') == '1') ? '' : 'style="display: none"',
-        
-        // Permisos Especiales
-        'ACT_FAC' => ($esAdmin || ($permiso[10] ?? '0') == '1') ? '' : 'style="display: none"',
-        'ACT_CR' => ($esAdmin || ($permiso[11] ?? '0') == '1') ? '' : 'style="display: none"',
-        'ACT_AC' => ($esAdmin || ($permiso[12] ?? '0') == '1') ? '' : 'style="display: none"',
-        'en_correo' => ($esAdmin || ($permiso[15] ?? '0') == '1') ? '' : 'style="display: none"',
-        'sub_precios' => ($esAdmin || ($permiso[16] ?? '0') == '1') ? '' : 'style="display: none"',
-        
-        // Permisos por nivel de usuario
+        'Prove_Crear' => 'style="display: none"',
+        'Clien_Crear' => 'style="display: none"',
+        'Produ_Crear' => 'style="display: none"',
+        'Almac_Crear' => 'style="display: none"',
+        'Trans_Crear' => 'style="display: none"',
+        'Recole_Crear' => 'style="display: none"',
+        'captacion_crear' => 'style="display: none"',
+        'ventas_crear' => 'style="display: none"',
+        'Prove_Editar' => 'style="display: none"',
+        'Clien_Editar' => 'style="display: none"',
+        'Produ_Editar' => 'style="display: none"',
+        'Almac_Editar' => 'style="display: none"',
+        'Trans_Editar' => 'style="display: none"',
+        'Recole_Editar' => 'style="display: none"',
+        'captacion_editar' => 'style="display: none"',
+        'ventas_editar' => 'style="display: none"',
+        'ACT_FAC' => 'style="display: none"',
+        'ACT_CR' => 'style="display: none"',
+        'ACT_AC' => 'style="display: none"',
+        'en_correo' => 'style="display: none"',
+        'sub_precios' => 'style="display: none"',
         'ACT_DES' => $DesAct,
         'ADMIN' => $Admin,
         'INACTIVO' => $Inactivos,
@@ -416,4 +491,156 @@ function prepararPermisosParaGuardar(array $postData): array {
  */
 function usuarioTienePermiso(array $usuarioData, string $columna): bool {
     return ($usuarioData[$columna] ?? 0) == 1;
+}
+
+// ============================================================================
+// FUNCIONES DE CONTROL DE ACCESO A MÓDULOS
+// ============================================================================
+
+/**
+ * Verificar si el usuario actual puede acceder a un módulo
+ * @param string $modulo Nombre del módulo (ej: 'N_usuario', 'E_proveedor')
+ * @param int $tipoUsuario Tipo de usuario actual
+ * @param array $datosUsuario Datos del usuario desde la BD
+ * @return bool
+ */
+function puedeAccederModulo(string $modulo, int $tipoUsuario, array $datosUsuario): bool {
+    // Admin siempre puede acceder
+    if ($tipoUsuario == 100) {
+        return true;
+    }
+    
+    // Caso especial: E_usuario permite editar el propio perfil
+    if ($modulo === 'E_usuario' && isset($_GET['id']) && isset($datosUsuario['id_user'])) {
+        if ($_GET['id'] == $datosUsuario['id_user']) {
+            return true; // Usuario editándose a sí mismo
+        }
+    }
+    
+    // Verificar si el módulo requiere permiso
+    if (!isset(MODULOS_PERMISOS[$modulo])) {
+        return true; // Módulo sin restricción
+    }
+    
+    $permisoRequerido = MODULOS_PERMISOS[$modulo];
+    
+    // Verificar permisos por nivel (ADMIN, UTILERIAS, etc.)
+    if (isset(PERMISOS_POR_NIVEL['admin'][$permisoRequerido])) {
+        $nivel = TIPOS_USUARIO[$tipoUsuario]['nivel'] ?? 'basico';
+        return PERMISOS_POR_NIVEL[$nivel][$permisoRequerido] ?? false;
+    }
+    
+    // Verificar permisos de catálogo (columnas de BD)
+    if (isset(PERMISOS_CATALOGO[$permisoRequerido])) {
+        $columna = PERMISOS_CATALOGO[$permisoRequerido]['columna'];
+        return ($datosUsuario[$columna] ?? 0) == 1;
+    }
+    
+    return false;
+}
+
+/**
+ * Requerir permiso para continuar - redirige si no tiene acceso
+ * Usar al inicio de módulos protegidos
+ * @param string $permiso Nombre del permiso requerido
+ * @param string $redireccion URL a redirigir si no tiene permiso (default: inicio)
+ * @return void
+ */
+function requirePermiso(string $permiso, string $redireccion = 'inicio'): void {
+    global $TipoUserSession, $Pruev1;
+    
+    // Admin siempre tiene acceso
+    if (isset($TipoUserSession) && $TipoUserSession == 100) {
+        return;
+    }
+    
+    $tieneAcceso = false;
+    
+    // Verificar permisos por nivel
+    if (isset($TipoUserSession)) {
+        $nivel = TIPOS_USUARIO[$TipoUserSession]['nivel'] ?? 'basico';
+        if (isset(PERMISOS_POR_NIVEL[$nivel][$permiso])) {
+            $tieneAcceso = PERMISOS_POR_NIVEL[$nivel][$permiso];
+        }
+    }
+    
+    // Verificar permisos de catálogo
+    if (!$tieneAcceso && isset(PERMISOS_CATALOGO[$permiso]) && isset($Pruev1)) {
+        $columna = PERMISOS_CATALOGO[$permiso]['columna'];
+        $tieneAcceso = ($Pruev1[$columna] ?? 0) == 1;
+    }
+    
+    if (!$tieneAcceso) {
+        // Usar función alert si existe, sino redirigir directamente
+        if (function_exists('alert')) {
+            alert("No tienes permiso para acceder a esta sección", 0, $redireccion);
+        } else {
+            header("Location: ?p=" . $redireccion);
+        }
+        exit;
+    }
+}
+
+/**
+ * Verificar permiso de acceso al módulo actual automáticamente
+ * Llama a requirePermiso si el módulo está en MODULOS_PERMISOS
+ * @param string $modulo Nombre del módulo
+ * @return void
+ */
+function verificarAccesoModulo(string $modulo): void {
+    if (isset(MODULOS_PERMISOS[$modulo])) {
+        $permisoRequerido = MODULOS_PERMISOS[$modulo];
+        
+        // Caso especial: E_usuario puede ser el propio usuario editándose
+        if ($modulo === 'E_usuario' && isset($_GET['id']) && isset($_SESSION['id_cliente'])) {
+            if ($_GET['id'] == $_SESSION['id_cliente']) {
+                return; // Usuario editándose a sí mismo, permitido
+            }
+        }
+        
+        requirePermiso($permisoRequerido);
+    }
+}
+
+/**
+ * Obtener el permiso requerido para un módulo
+ * @param string $modulo Nombre del módulo
+ * @return string|null Nombre del permiso o null si no requiere
+ */
+function getPermisoModulo(string $modulo): ?string {
+    return MODULOS_PERMISOS[$modulo] ?? null;
+}
+
+/**
+ * Helper para renderizar solo si tiene permiso
+ * Uso: <?= renderSiPermiso('PERMISO', '<button>...</button>') ?>
+ * @param string $permiso Nombre del permiso
+ * @param string $html HTML a renderizar si tiene permiso
+ * @return string HTML o cadena vacía
+ */
+function renderSiPermiso(string $permiso, string $html): string {
+    global $TipoUserSession, $Pruev1;
+    
+    // Admin siempre ve todo
+    if (isset($TipoUserSession) && $TipoUserSession == 100) {
+        return $html;
+    }
+    
+    // Verificar permiso por nivel
+    if (isset($TipoUserSession)) {
+        $nivel = TIPOS_USUARIO[$TipoUserSession]['nivel'] ?? 'basico';
+        if (isset(PERMISOS_POR_NIVEL[$nivel][$permiso]) && PERMISOS_POR_NIVEL[$nivel][$permiso]) {
+            return $html;
+        }
+    }
+    
+    // Verificar permiso de catálogo
+    if (isset(PERMISOS_CATALOGO[$permiso]) && isset($Pruev1)) {
+        $columna = PERMISOS_CATALOGO[$permiso]['columna'];
+        if (($Pruev1[$columna] ?? 0) == 1) {
+            return $html;
+        }
+    }
+    
+    return '';
 }

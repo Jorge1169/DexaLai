@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('CAPTACION_CREAR', 'captacion');
+
 $folio = '';
 $folioM = '';
 $fecha_seleccionada = $_POST['fecha_captacion'] ?? date('Y-m-d');

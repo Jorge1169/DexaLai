@@ -1,6 +1,9 @@
 <?php
 // E_venta.php - Módulo para Editar una Venta Existente (LÓGICA CORREGIDA)
 
+// Verificación de permisos - Backend
+requirePermiso('VENTAS_EDITAR', 'ventas');
+
 // Obtener ID de la venta a editar
 $id_venta = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if ($id_venta <= 0) {

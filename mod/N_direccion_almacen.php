@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('ALMACENES_CREAR', 'almacenes');
+
 // Obtener ID del Almacén
 $id_almacen = clear($_GET['id'] ?? '');
 $tipoZonaActual = obtenerTipoZonaActual($conn_mysql); // Obtener tipo de zona

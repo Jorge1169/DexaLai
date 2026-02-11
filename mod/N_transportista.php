@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('TRANSPORTES_CREAR', 'transportes');
+
 if (isset($_POST['guardar01'])) {
     try {
 

@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('ALMACENES_CREAR', 'almacenes');
+
 if (isset($_POST['guardar01'])) {
     try {
         $CodAlmacen = $_POST['cod'] ?? '';

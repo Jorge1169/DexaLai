@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('PROVEEDORES_CREAR', 'proveedores');
+
 if (isset($_POST['guardar01'])) {
     try {
         $CodProveedor = $_POST['cod'] ?? '';

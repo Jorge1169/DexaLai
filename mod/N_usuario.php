@@ -4,11 +4,8 @@
  * Formulario para crear nuevos usuarios usando el sistema de permisos profesional
  */
 
-// Verificar permisos (solo admin puede crear usuarios)
-if ($TipoUserSession != 100) {
-    alert("No tienes permisos para crear usuarios", 0, "usuarios");
-    exit();
-}
+// Verificación de permisos - Backend (solo admin puede crear usuarios)
+requirePermiso('ADMIN', 'usuarios');
 
 // Procesar formulario
 if (isset($_POST['guardar01'])) {

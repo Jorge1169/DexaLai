@@ -1,4 +1,7 @@
 <?php
+// Verificación de permisos - Backend
+requirePermiso('CLIENTES_EDITAR', 'clientes');
+
 // Obtener ID del Cliente
 $id = clear($_GET['id'] ?? '');
 

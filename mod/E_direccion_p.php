@@ -1,5 +1,9 @@
 <?php
 // E_direccion.php - Editar Dirección/Bodega
+
+// Verificación de permisos - Backend
+requirePermiso('PROVEEDORES_EDITAR', 'proveedores');
+
 $id_direccion = clear($_GET['id'] ?? '');
 $tipoZonaActual = obtenerTipoZonaActual($conn_mysql); // Obtener tipo de zona
 
