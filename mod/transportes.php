@@ -21,6 +21,9 @@
                 <a <?= $perm['Trans_Crear'];?> href="?p=N_transportista" class="btn btn-primary btn-sm rounded-3">
                     <i class="bi bi-plus"></i> Nuevo Transporte
                 </a>
+                <a <?= $perm['sub_precios'];?> href="?p=subir_precios_masivo" class="btn btn-success btn-sm rounded-3">
+                    <i class="bi bi-upload"></i> Carga Masiva de Precios
+                </a>
                 <button <?= $perm['INACTIVO'];?> class="btn btn-secondary btn-sm rounded-3" onclick="toggleInactive()">
                     <i class="bi bi-eye"></i> Mostrar Inactivos
                 </button>

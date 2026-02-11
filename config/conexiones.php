@@ -445,7 +445,7 @@ function moduloDisponibleParaZona($modulo, $conn_mysql) {
     $modulosPorTipo = [
         'NOR' => ['inicio','clientes','V_cliente','E_Cliente','N_cliente','N_direccion','E_direccion', 
                 'proveedores', 'V_proveedores', 'E_proveedor', 'N_proveedor', 'N_direccion_p','E_direccion_p', 
-                'transportes','V_transporte','E_transportista','N_transportista', 
+                'transportes','V_transporte','E_transportista','N_transportista', 'subir_precios_masivo',
                 'productos', 'reporte_precios', 'V_producto','E_producto','N_producto',
                 'recoleccion', 'V_recoleccion','E_recoleccion','N_recoleccion','correoPF.php',
                 'contra_recibos',
@@ -457,7 +457,7 @@ function moduloDisponibleParaZona($modulo, $conn_mysql) {
         
         'MEO' => ['inicio','clientes','V_cliente','E_Cliente','N_cliente','N_direccion','E_direccion',
                   'proveedores', 'V_proveedores', 'E_proveedor', 'N_proveedor', 'N_direccion_p','E_direccion_p', 
-                  'transportes','V_transporte','E_transportista','N_transportista', 
+                  'transportes','V_transporte','E_transportista','N_transportista', 'subir_precios_masivo',
                   'productos', 'reporte_precios', 'V_producto','E_producto','N_producto',
                   'captacion','N_captacion','reporte_recole_meo', 'usuarios','V_captacion','E_captacion',
                   'almacenes_info','V_detalle_almacen',
