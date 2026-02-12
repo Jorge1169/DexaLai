@@ -150,7 +150,7 @@ $fechaFinDefault = date('Y-m-d');
                         <i class="bi bi-receipt"></i> <span class="d-none d-sm-inline">C. Recibos</span>
                     </button>
                     <!-- BOTÓN DE VERIFICAR DOCUMENTOS AGREGADO -->
-                    <button type="button" class="btn btn-warning btn-xs align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#VerificarDocumentos" <?= $perm['ACT_FAC'];?>>
+                    <button type="button" class="btn btn-warning btn-xs align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#VerificarDocumentos" <?= $perm['ACT_AC'];?>>
                         <i class="bi bi-shield-check"></i> <span class="d-none d-sm-inline">Verificar</span>
                     </button>
                     <!-- Boton para buscar tickets de conpro -->
