@@ -352,6 +352,9 @@ if (isset($_POST['guardar_prov'])) {
     $remixtac = $_POST['remixtac'];
     $peso_proveedor = $_POST['peso_proveedor'];
 
+    // Detectar si la remisión cambió para limpiar vínculos previos
+    $remision_cambiada = ($remision !== $recoleccion['remision']);
+
     // Validar que al menos una remisión esté presente
     if (empty($remision) && empty($remixtac)) {
         alert("Debe ingresar al menos una remisión (normal o Ixtac)", 2, "V_recoleccion&id=".$id_recoleccion);
@@ -380,8 +383,13 @@ if (isset($_POST['guardar_prov'])) {
         }
     }
 
-    // Actualizar los datos
-    $conn_mysql->query("UPDATE recoleccion SET remision = '$remision', remixtac = '$remixtac', peso_prov = '$peso_proveedor' WHERE id_recol = '$id_recoleccion'");
+    // Actualizar los datos; si la remisión cambió, limpiar dependencias ligadas a la remisión anterior
+    $campos_reset = '';
+    if ($remision_cambiada) {
+        $campos_reset = ", peso_conpro = NULL, doc_pro = NULL, d_f_p = NULL, factura_pro = NULL, alias_inv_pro = NULL, folio_inv_pro = NULL";
+    }
+
+    $conn_mysql->query("UPDATE recoleccion SET remision = '$remision', remixtac = '$remixtac', peso_prov = '$peso_proveedor'$campos_reset WHERE id_recol = '$id_recoleccion'");
     
     $conn_mysql->query("UPDATE recoleccion SET remi_compro = '0' WHERE id_recol = '$id_recoleccion'");
     
