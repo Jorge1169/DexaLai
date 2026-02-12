@@ -60,10 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 );
                 
                 if ($stmt_update_factura->execute()) {
+                    logActivity('VENTA_FACTURA', "Factura de venta actualizada en venta {$id_venta}: {$factura_venta}");
                     // Refrescar la página para mostrar los cambios
                     alert("Factura de venta actualizada con éxito", 1, "V_venta&id=$id_venta");
                     exit;
                 } else {
+                    logActivity('VENTA_FACTURA_ERROR', "Error al actualizar factura de venta {$id_venta}: " . $stmt_update_factura->error);
                     alert("Error al actualizar la factura de venta", 0, "V_venta&id=$id_venta");
                 }
             }
@@ -124,10 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 );
                 
                 if ($stmt_update->execute()) {
+                    logActivity('VENTA_FLETE', "Datos de flete actualizados en venta {$id_venta} (factura {$factura_transportista})");
                     // Refrescar la página para mostrar los cambios
                     alert("Datos del fletero actualizados con éxito", 1, "V_venta&id=$id_venta");
                     exit;
                 } else {
+                    logActivity('VENTA_FLETE_ERROR', "Error al actualizar flete en venta {$id_venta}: " . $stmt_update->error);
                     alert("Error al actualizar los datos del fletero", 0, "V_venta&id=$id_venta");
                 }
             }
@@ -562,10 +566,13 @@ if (isset($_GET['validar_factura']) && $_GET['validar_factura'] == 1) {
     $resultado = validarFacturaVenta($id_venta, $conn_mysql);
     
     if ($resultado === true) {
+        logActivity('VENTA_FACTURA_VALIDACION', "Factura validada correctamente para venta {$id_venta}");
         alert("✅ Factura validada correctamente - PDF encontrado", 1, "V_venta&id=$id_venta");
     } elseif ($resultado === false) {
+        logActivity('VENTA_FACTURA_VALIDACION', "Factura no válida (PDF no encontrado) para venta {$id_venta}");
         alert("❌ Factura no válida - PDF no encontrado", 2, "V_venta&id=$id_venta");
     } else {
+        logActivity('VENTA_FACTURA_VALIDACION_ERROR', "No se pudo validar la factura para venta {$id_venta}");
         alert("⚠️ No se pudo validar la factura", 2, "V_venta&id=$id_venta");
     }
 }
@@ -859,6 +866,7 @@ if (isset($_POST['subir_ticket'])) {
         );
         
         if ($stmt_update->execute()) {
+            logActivity('VENTA_TICKET', "Subido ticket de báscula {$folio_ticket} para venta {$id_venta}");
             alert("✅ Ticket de báscula guardado correctamente", 1, "V_venta&id=$id_venta");
             exit;
         } else {
@@ -866,6 +874,7 @@ if (isset($_POST['subir_ticket'])) {
         }
         
     } catch (Exception $e) {
+        logActivity('VENTA_TICKET_ERROR', "Error al subir ticket de báscula para venta {$id_venta}: " . $e->getMessage());
         alert("❌ Error al subir el ticket: " . $e->getMessage(), 2, "V_venta&id=$id_venta");
         exit;
     }
@@ -902,9 +911,11 @@ if (isset($_POST['eliminar_ticket'])) {
         $stmt_delete->bind_param('i', $id_venta);
         
         if ($stmt_delete->execute()) {
+            logActivity('VENTA_TICKET_ELIMINADO', "Ticket de báscula eliminado en venta {$id_venta}");
             alert("✅ Ticket de báscula eliminado correctamente", 1, "V_venta&id=$id_venta");
             exit;
         } else {
+            logActivity('VENTA_TICKET_ERROR', "Error al eliminar ticket de báscula en venta {$id_venta}");
             alert("❌ Error al eliminar el ticket de la base de datos", 2, "V_venta&id=$id_venta");
         }
     }

@@ -658,10 +658,12 @@ if (isset($_POST['guardar_numeros_productos'])) {
 
         if (empty($errores)) {
             $conn_mysql->commit();
+            logActivity('CAPTACION_PRODUCTOS', "Actualizados {$actualizados} productos en captación {$id_captacion_post}");
             alert("Datos actualizados con éxito para $actualizados productos", 1, "V_captacion&id=$id_captacion_post");
         } else {
             $conn_mysql->rollback();
             $mensaje_error = "Errores encontrados: " . implode(', ', $errores);
+            logActivity('CAPTACION_PRODUCTOS_ERROR', "Errores al actualizar productos en captación {$id_captacion_post}: {$mensaje_error}");
             alert($mensaje_error, 0, "V_captacion&id=$id_captacion_post");
         }
 
@@ -669,6 +671,7 @@ if (isset($_POST['guardar_numeros_productos'])) {
         if (isset($conn_mysql)) {
             $conn_mysql->rollback();
         }
+        logActivity('CAPTACION_PRODUCTOS_ERROR', "Excepción al actualizar productos en captación {$id_captacion}: " . $e->getMessage());
         alert("Error: " . $e->getMessage(), 0, "V_captacion&id=$id_captacion");
     }
 }
@@ -755,6 +758,7 @@ if (isset($_POST['guardar_factura_flete'])) {
             $stmt_insert->bind_param('is', $id_captacion, $numero_factura_flete);
 
             if ($stmt_insert->execute()) {
+                logActivity('CAPTACION_FLETE', "Factura de flete {$numero_factura_flete} creada en captación {$id_captacion}");
                 alert("Factura de flete creada correctamente", 1, "V_captacion&id=$id_captacion_post");
             } else {
                 throw new Exception("Error al crear factura: " . $stmt_insert->error);
@@ -769,6 +773,7 @@ if (isset($_POST['guardar_factura_flete'])) {
             $stmt_update->bind_param('si', $numero_factura_flete, $id_captacion);
 
             if ($stmt_update->execute()) {
+                logActivity('CAPTACION_FLETE', "Factura de flete {$numero_factura_flete} actualizada en captación {$id_captacion}");
                 alert("Factura de flete actualizada correctamente", 1, "V_captacion&id=$id_captacion_post");
             } else {
                 throw new Exception("Error al actualizar: " . $stmt_update->error);
@@ -776,7 +781,7 @@ if (isset($_POST['guardar_factura_flete'])) {
         }
 
     } catch (Exception $e) {
-
+        logActivity('CAPTACION_FLETE_ERROR', "Error al registrar factura de flete en captación {$id_captacion}: " . $e->getMessage());
         alert("Error al dar de alta la factura del flete", 0, "V_captacion&id=$id_captacion_post");
     }
 }
