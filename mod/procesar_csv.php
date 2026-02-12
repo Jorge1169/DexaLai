@@ -6,10 +6,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($_POST['accion'] == 'procesar' && isset($_SESSION['csv_data'])) {
             // Procesar el archivo CSV
             $lineas = explode("\n", $_SESSION['csv_data']);
+            $procesadas = 0;
+            $insertadas = 0;
+            $omitidas = 0;
             $i = 0;
             foreach ($lineas as $linea) {
                 if ($i != 0 && !empty(trim($linea))) {
                     $datos = explode(",", $linea);
+                    $procesadas++;
                     
                     // Limpieza y formateo de datos (igual que en el código anterior)
                     $remC     = !empty($datos[0]) ? htmlspecialchars(trim($datos[0])): '-';
@@ -74,12 +78,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                                 $conn_mysql->query("INSERT almacen (id_venta, id_prod, salida, id_user, status,zona) VALUES ('$id_venta','$producto0','$cant_v','$idUser','1','$zona')");
 
+                                $insertadas++;
+
+                                logActivity('CSV_IMPORT', "Importada compra {$remC} / venta {$remV} para producto {$producto0} (almacen registros {$id_compra}-{$id_venta}) por usuario {$idUser}");
+
+                            }
+                            else {
+                                $omitidas++;
                             }
                         }
                         $i++;
                     }
                     
             // Limpiar sesión y mostrar mensaje de éxito
+                    logActivity('CSV_IMPORT_RESUMEN', "CSV procesado: {$procesadas} líneas, {$insertadas} insertadas, {$omitidas} omitidas por usuario {$idUser}");
                     unset($_SESSION['csv_data']);
                     unset($_SESSION['csv_filename']);
                     alert("Archivo procesado correctamente", 1, "masiva_flujo");
@@ -87,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                 } elseif ($_POST['accion'] == 'cancelar') {
             // Limpiar sesión y redirigir
+                    logActivity('CSV_IMPORT_CANCELADO', "Importación cancelada por usuario {$idUser}");
                     unset($_SESSION['csv_data']);
                     unset($_SESSION['csv_filename']);
                     alert("Proceso cancelado", 2, "masiva_flujo");
@@ -96,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
 // Si llega aquí sin procesar, redirigir
+        logActivity('CSV_IMPORT_ERROR', 'Acceso inválido al procesador de CSV');
         alert("Regresar", 0, "masiva_flujo");
         exit();
     ?>

@@ -164,6 +164,7 @@ if ($id_almacen <= 0) {
                       $producto_info['cod'] . " - " . $producto_info['nom_pro'] . "</strong><br>" .
                       "en la bodega <strong>" . $bodega_info['noma'] . "</strong><br>" .
                       "Tipo: <span class='badge bg-success'>" . ucfirst($tipo_movimiento) . "</span>";
+            logActivity('INVENTARIO_ENTRADA', "Entrada {$tipo_entrada} de producto {$producto_info['cod']} en bodega {$bodega_info['noma']} ({$kilos_granel} kg)");
         } else {
             $mensaje = "Entrada registrada exitosamente:<br>" .
                       "<strong>" . $cantidad_pacas . " pacas</strong> de <strong>" . 
@@ -172,6 +173,7 @@ if ($id_almacen <= 0) {
                       "Peso por paca: <strong>" . number_format($peso_por_paca, 2) . " kg</strong><br>" .
                       "en la bodega <strong>" . $bodega_info['noma'] . "</strong><br>" .
                       "Tipo: <span class='badge bg-success'>" . ucfirst($tipo_movimiento) . "</span>";
+            logActivity('INVENTARIO_ENTRADA', "Entrada {$tipo_entrada} de producto {$producto_info['cod']} en bodega {$bodega_info['noma']} ({$cantidad_pacas} pacas / {$peso_pacas} kg)");
         }
         
         $tipo_mensaje = 'success';
@@ -180,6 +182,7 @@ if ($id_almacen <= 0) {
     } catch (Exception $e) {
         $conn_mysql->rollback();
         $mensaje = "Error al registrar la entrada: " . $e->getMessage();
+        logActivity('INVENTARIO_ENTRADA_ERROR', "Error al registrar entrada en almacén {$id_almacen}: " . $e->getMessage());
         $tipo_mensaje = 'error';
         $redirect_url = "V_detalle_almacen&id=" . $id_almacen;
     }

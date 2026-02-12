@@ -315,6 +315,9 @@ try {
     }
     
     $conn_mysql->commit();
+
+    $accionTexto = ($accion === 'desactivar') ? 'canceló' : 'reactivó';
+    logActivity('VENTA_STATUS', "Usuario {$usuario_nombre} {$accionTexto} la venta #{$id}");
     
     echo json_encode([
         'success' => true, 
@@ -327,7 +330,7 @@ try {
     $conn_mysql->rollback();
     
     // Log del error
-    //error_log("Error en actualizar_status_venta_completo: " . $e->getMessage());
+    logActivity('VENTA_STATUS_ERROR', "Error al {$accion} venta #{$id}: " . $e->getMessage());
     
     echo json_encode([
         'success' => false, 

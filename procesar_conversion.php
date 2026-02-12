@@ -209,12 +209,18 @@ if ($id_almacen <= 0 || $id_inventario_origen <= 0 || $id_producto_destino <= 0 
                   "(" . number_format($peso_por_paca, 2) . " kg cada una)";
         $tipo_mensaje = 'success';
         $redirect_url = "V_detalle_almacen&id=" . $id_almacen;
+
+        logActivity(
+            'INVENTARIO_TRANSFORMACION',
+            "Transformación en almacén {$id_almacen}: {$kilos_transformar} kg de {$nombre_origen['cod']} a {$cantidad_pacas} pacas ({$peso_por_paca} kg c/u) de {$nombre_destino['cod']} por usuario {$id_usuario}"
+        );
         
     } catch (Exception $e) {
         $conn_mysql->rollback();
         $mensaje = "Error en la transformación: " . $e->getMessage();
         $tipo_mensaje = 'error';
         $redirect_url = "V_detalle_almacen&id=" . $id_almacen;
+        logActivity('INVENTARIO_TRANSFORMACION_ERROR', "Error al transformar en almacén {$id_almacen}: " . $e->getMessage());
     }
 }
 

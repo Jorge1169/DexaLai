@@ -327,6 +327,10 @@ try {
     }
     
     $conn_mysql->commit();
+
+    // Registro de actividad
+    $accionTexto = ($accion === 'desactivar') ? 'canceló' : 'reactivó';
+    logActivity('CAPTACION_STATUS', "Usuario {$usuario_nombre} {$accionTexto} la captación #{$id}");
     
     echo json_encode([
         'success' => true, 
@@ -337,7 +341,7 @@ try {
     $conn_mysql->rollback();
     
     // Log del error
-    //error_log("Error en actualizar_status_captacion: " . $e->getMessage());
+    logActivity('CAPTACION_STATUS_ERROR', "Error al {$accion} captación #{$id}: " . $e->getMessage());
     
     echo json_encode([
         'success' => false, 

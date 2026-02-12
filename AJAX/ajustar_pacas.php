@@ -38,6 +38,7 @@ try {
     if ($nueva_pacas === $pacas_actuales) {
         echo json_encode(['success' => true, 'message' => 'No hubo cambios en la cantidad de pacas']);
         $conn_mysql->commit();
+        logActivity('INVENTARIO_AJUSTE_PACAS', "Sin cambios de pacas para inventario {$id_inventario} (usuario {$id_usuario})");
         exit;
     }
 
@@ -71,11 +72,13 @@ try {
     $conn_mysql->commit();
 
     $mensaje = "Ajuste aplicado. Pacas: {$pacas_actuales} → {$nuevo_pacas_cantidad}. Peso total en pacas: " . number_format($pacas_kilos, 2) . " kg.";
+    logActivity('INVENTARIO_AJUSTE_PACAS', "Ajuste de pacas en inventario {$id_inventario}: {$pacas_actuales} -> {$nuevo_pacas_cantidad} (usuario {$id_usuario})");
     echo json_encode(['success' => true, 'message' => $mensaje]);
     exit;
 
 } catch (Exception $e) {
     $conn_mysql->rollback();
+    logActivity('INVENTARIO_AJUSTE_PACAS_ERROR', "Error en ajuste de pacas para inventario {$id_inventario}: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
     exit;
 }
