@@ -536,6 +536,7 @@
                         <th>Peso (kg)</th>
                         <th>Tipo Flete</th>
                         <th>Precio Flete</th>
+                        <th>Costo/kg</th>
                         <th>Subtotal</th>
                         <th>IVA Traslado</th>
                         <th>IVA Retenido</th>
@@ -571,6 +572,12 @@
                         $impTraslado = $row['impuestoTraslado_flete'] ?: 0;
                         $impRetenido = $row['impuestoRetenido_flete'] ?: 0;
                         $totalNetoFlete = $row['total_flete_factura'] ?: ($subtotal_flete + $impTraslado - $impRetenido);
+
+                        // Costo por kilo: monto del flete dividido entre el peso (si hay peso)
+                        $costo_por_kilo = 0;
+                        if ($peso > 0) {
+                            $costo_por_kilo = $monto_flete / $peso;
+                        }
                         
                         $totalPeso += $peso;
                         $totalSubtotal += $subtotal_flete;
@@ -600,6 +607,7 @@
                                 $<?= number_format($precio_flete, 2) ?>
                             <?php endif; ?>
                         </td>
+                        <td class="text-right">$<?= number_format($costo_por_kilo, 2) ?></td>
                         <td class="text-right">$<?= number_format($subtotal_flete, 2) ?></td>
                         <td class="text-right">$<?= number_format($impTraslado, 2) ?></td>
                         <td class="text-right">-$<?= number_format($impRetenido, 2) ?></td>
@@ -614,6 +622,7 @@
                     <tr class="text-bold">
                         <td colspan="5" class="text-right">TOTALES:</td>
                         <td class="text-right"><?= number_format($totalPeso, 2) ?> kg</td>
+                        <td></td>
                         <td></td>
                         <td></td>
                         <td class="text-right">$<?= number_format($totalSubtotal, 2) ?></td>
@@ -712,6 +721,7 @@
                     <td class="text-right"><?= number_format($totalPacas, 0) ?></td>
                     <td class="text-right"><?= number_format($totalPeso, 2) ?> kg</td>
                     <td></td>
+                    <td></td>
                     <td class="text-right">$<?= number_format($totalMonto, 2) ?></td>
                     <td></td>
                 </tr>
@@ -777,6 +787,7 @@
                 <th>Fletero</th>
                 <th>Kilos Totales</th>
                 <th>Precio Flete</th>
+                <th>Costo/kg</th>
                 <th>Subtotal</th>
                 <th>IVA Traslado</th>
                 <th>IVA Retenido</th>
@@ -792,7 +803,7 @@
                 $kilos_totales = 0;
                 $monto_flete = 0;
                 
-                if (!empty($fleteInfo['id_captacion'])) {
+                    if (!empty($fleteInfo['id_captacion'])) {
                     $captacion_id = $fleteInfo['id_captacion'];
                     $all_captacion_ids[] = $captacion_id;
                     
@@ -814,6 +825,11 @@
                     } else {
                         // Monto fijo
                         $monto_flete = $precio_flete;
+                    }
+                    // Costo por kilo para este flete (monto del flete dividido entre kilos totales)
+                    $costo_por_kilo = 0;
+                    if ($kilos_totales > 0) {
+                        $costo_por_kilo = $monto_flete / $kilos_totales;
                     }
                     
                     // Datos fiscales del flete
@@ -845,6 +861,7 @@
                             $<?= number_format($precio_flete, 2) ?>
                         <?php endif; ?>
                     </td>
+                    <td class="text-right">$<?= number_format($costo_por_kilo, 2) ?></td>
                     <td class="text-right">$<?= number_format($subtotal_cf, 2) ?></td>
                     <td class="text-right">$<?= number_format($impTraslado_cf, 2) ?></td>
                     <td class="text-right">-$<?= number_format($impRetenido_cf, 2) ?></td>
@@ -859,6 +876,7 @@
             <tr class="text-bold">
                 <td colspan="4" class="text-right">TOTALES:</td>
                 <td class="text-right"><?= number_format($totalPeso, 2) ?> kg</td>
+                <td></td>
                 <td></td>
                 <td class="text-right">$<?= number_format($totalSubtotalCF, 2) ?></td>
                 <td class="text-right">$<?= number_format($totalTrasladosCF, 2) ?></td>
@@ -1076,6 +1094,7 @@
                     <th>Producto</th>
                     <th>Peso (kg)</th>
                     <th>Flete</th>
+                    <th>Costo/kg</th>
                     <th>Imp. Traslados</th>
                     <th>Imp. Retenidos</th>
                     <th>Total</th>
@@ -1096,6 +1115,11 @@
                 while($row = $recolecciones->fetch_assoc()): 
                     $peso = $row['peso_fle'] ?: 0;
                     $flete = $row['sub_tot_inv'] ?: 0;
+                    // Costo por kilo: flete dividido entre peso (si hay peso)
+                    $costo_por_kilo = 0;
+                    if ($peso > 0) {
+                        $costo_por_kilo = $flete / $peso;
+                    }
                     $impTraslados = $row['im_tras_inv'] ?: 0;
                     $impRetenidos = $row['im_rete_inv'] ?: 0;
                     $total = $row['total_inv'] ?: 0;
@@ -1179,6 +1203,7 @@
                         <td><?= htmlspecialchars($row['producto']) ?></td>
                         <td class="text-right"><?= number_format($peso, 2) ?></td>
                         <td class="text-right">$<?= number_format($flete, 2) ?></td>
+                        <td class="text-right">$<?= number_format($costo_por_kilo, 2) ?></td>
                         <td class="text-right">$<?= number_format($impTraslados, 2) ?></td>
                         <td class="text-right">-$<?= number_format($impRetenidos, 2) ?></td>
                         <td class="text-right text-bold">$<?= number_format($total, 2) ?></td>
@@ -1191,6 +1216,7 @@
                     <td colspan="5" class="text-right">TOTALES:</td>
                     <td class="text-right"><?= number_format($totalPeso, 2) ?> kg</td>
                     <td class="text-right">$<?= number_format($totalFlete, 2) ?></td>
+                    <td></td>
                     <td class="text-right">$<?= number_format($totalTraslados, 2) ?></td>
                     <td class="text-right">-$<?= number_format($totalRetenidos, 2) ?></td>
                     <td class="text-right">$<?= number_format($totalGeneral, 2) ?></td>
