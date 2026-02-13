@@ -80,7 +80,12 @@ if ($TipoUserSession != 100) {
                                          <i class="bi bi-pencil"></i> Editar
                                      </a>
 
-                                     <button <?= $perm['ACT_DES'];?> class="btn btn-warning btn-sm rounded-3 desactivar-user-btn" 
+                                         <button <?= $perm['ADMIN'];?> class="btn btn-success btn-sm rounded-3 clone-user-btn" 
+                                             data-id="<?= $Usuario['id_user'] ?>" title="Clonar Usuario">
+                                             <i class="bi bi-files"></i> Clonar
+                                         </button>
+
+                                     <button <?= $perm['ADMIN'];?> class="btn btn-warning btn-sm rounded-3 desactivar-user-btn" 
                                          data-id="<?= $Usuario['id_user'] ?>">
                                          <i class="bi bi-x-circle"></i> Desactivar
                                      </button>
@@ -128,6 +133,40 @@ if ($TipoUserSession != 100) {
         </div>
     </div>
 </div>
+
+            <!-- Modal para clonar usuario -->
+            <div class="modal fade" id="cloneUserModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Clonar Usuario</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="formCloneUser">
+                                <input type="hidden" id="cloneSourceId" name="source_id" value="">
+                                <div class="mb-3">
+                                    <label for="clone_nombre" class="form-label">Nombre Completo <span class="text-danger">*</span></label>
+                                    <input type="text" id="clone_nombre" name="nombre" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="clone_correo" class="form-label">Correo Electrónico <span class="text-danger">*</span></label>
+                                    <input type="email" id="clone_correo" name="correo" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="clone_usuario" class="form-label">Nombre de Usuario <span class="text-danger">*</span></label>
+                                    <input type="text" id="clone_usuario" name="usuario" class="form-control" required>
+                                </div>
+                            </form>
+                            <p class="small text-muted">La contraseña por defecto será <strong>12345</strong>. Se copiarán permisos, tipo y zonas del usuario origen.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="confirmCloneBtn">Clonar Usuario</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
 <script>
     $(document).ready(function() {
@@ -219,6 +258,46 @@ if ($TipoUserSession != 100) {
             });
             
             $('#confirmUserModal').modal('hide');
+        });
+
+        // Abrir modal de clonación
+        $(document).on('click', '.clone-user-btn', function() {
+            const id = $(this).data('id');
+            $('#cloneSourceId').val(id);
+            $('#clone_nombre').val('');
+            $('#clone_correo').val('');
+            $('#clone_usuario').val('');
+            $('#cloneUserModal').modal('show');
+        });
+
+        // Confirmar clonación
+        $('#confirmCloneBtn').click(function() {
+            const nombre = $('#clone_nombre').val().trim();
+            const correo = $('#clone_correo').val().trim();
+            const usuario = $('#clone_usuario').val().trim();
+            const source_id = $('#cloneSourceId').val();
+
+            if (!nombre || !correo || !usuario) {
+                Swal.fire('Error', 'Complete todos los campos requeridos', 'error');
+                return;
+            }
+
+            $.post('AJAX/clone_usuario.php', {
+                source_id: source_id,
+                nombre: nombre,
+                correo: correo,
+                usuario: usuario
+            }, function(response) {
+                if (response && response.success) {
+                    Swal.fire('Listo', response.message || 'Usuario clonado', 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', response.message || 'Ocurrió un error al clonar', 'error');
+                }
+            }, 'json').fail(function(jqXHR, textStatus, errorThrown) {
+                Swal.fire('Error', 'Error en la solicitud: ' + textStatus, 'error');
+            });
+
+            $('#cloneUserModal').modal('hide');
         });
     });
 </script>
