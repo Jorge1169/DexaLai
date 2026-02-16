@@ -10,6 +10,16 @@ if ($id_transporte) {
     $transp = $resulttransporte->fetch_assoc();
 } 
 
+// Verificar que el transportista pertenece a la zona seleccionada en sesión
+$zona_actual = $_SESSION['selected_zone'] ?? '0';
+if ($id_transporte && $transp) {
+    // Si hay una zona seleccionada distinta de '0' y no coinciden, regresar
+    if ($zona_actual !== '0' && isset($transp['zona']) && (string)$transp['zona'] !== (string)$zona_actual) {
+        alert("El transportista no pertenece a la zona seleccionada", 2, "transportes");
+        exit;
+    }
+}
+
 // Procesar eliminación de precio (cambiar status a 0)
 if (isset($_POST['eliminar_precio'])) {
     $id_precio = $_POST['id_precio']; 
@@ -267,8 +277,6 @@ function obtenerEstadoVigencia($fecha_fin) {
         ];
     }
 }
-
-$zona_actual = $_SESSION['selected_zone'] ?? '0';
 
 ?>
 
