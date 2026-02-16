@@ -169,6 +169,23 @@ if ($TipoUserSession != 100) {
             </div>
 
 <script>
+    function showAlert(title, text, icon) {
+        const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        return Swal.fire({
+            title: title,
+            html: text,
+            icon: icon,
+            buttonsStyling: false,
+            background: isDark ? '#1f2937' : '#ffffff',
+            color: isDark ? '#e5e7eb' : '#212529',
+            customClass: {
+                popup: isDark ? 'swal2-dark' : '',
+                confirmButton: 'btn btn-primary'
+            },
+            confirmButtonText: 'Aceptar'
+        });
+    }
+
     $(document).ready(function() {
          // Inicializar DataTable con filtro inicial para mostrar solo activos
         const dataTable = $('#miTabla').DataTable({
@@ -278,7 +295,7 @@ if ($TipoUserSession != 100) {
             const source_id = $('#cloneSourceId').val();
 
             if (!nombre || !correo || !usuario) {
-                Swal.fire('Error', 'Complete todos los campos requeridos', 'error');
+                showAlert('Error', 'Complete todos los campos requeridos', 'error');
                 return;
             }
 
@@ -289,12 +306,12 @@ if ($TipoUserSession != 100) {
                 usuario: usuario
             }, function(response) {
                 if (response && response.success) {
-                    Swal.fire('Listo', response.message || 'Usuario clonado', 'success').then(() => location.reload());
+                    showAlert('Listo', response.message || 'Usuario clonado', 'success').then(() => location.reload());
                 } else {
-                    Swal.fire('Error', response.message || 'Ocurrió un error al clonar', 'error');
+                    showAlert('Error', response.message || 'Ocurrió un error al clonar', 'error');
                 }
             }, 'json').fail(function(jqXHR, textStatus, errorThrown) {
-                Swal.fire('Error', 'Error en la solicitud: ' + textStatus, 'error');
+                showAlert('Error', 'Error en la solicitud: ' + textStatus, 'error');
             });
 
             $('#cloneUserModal').modal('hide');

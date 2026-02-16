@@ -285,6 +285,8 @@ if ($usuarioData['zona'] == '0' || $usuarioData['zona'] == '') {
 
 <script>
 function confirmSudoLogin(userId, userName) {
+    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+
     Swal.fire({
         title: '¿Iniciar sesión como otro usuario?',
         html: `Estás a punto de iniciar sesión como:<br><strong>${userName}</strong><br><br>
@@ -294,8 +296,14 @@ function confirmSudoLogin(userId, userName) {
               </div>`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#ffc107',
-        cancelButtonColor: '#6c757d',
+        buttonsStyling: false,
+        background: isDark ? '#1f2937' : '#ffffff',
+        color: isDark ? '#e5e7eb' : '#212529',
+        customClass: {
+            popup: isDark ? 'swal2-dark' : '',
+            confirmButton: 'btn btn-warning',
+            cancelButton: isDark ? 'btn btn-outline-light' : 'btn btn-secondary'
+        },
         confirmButtonText: '<i class="bi bi-person-check me-1"></i> Sí, continuar',
         cancelButtonText: 'Cancelar'
     }).then((result) => {
@@ -364,5 +372,25 @@ function confirmSudoLogin(userId, userName) {
 }
 #modalZonas .modal-header .btn-close {
     filter: brightness(0) invert(1);
+}
+
+/* SweetAlert2: tema oscuro */
+.swal2-dark {
+    background-color: #1f2937 !important;
+    color: #e5e7eb !important;
+    border: 1px solid #374151;
+}
+.swal2-dark .swal2-title {
+    color: #f3f4f6;
+}
+.swal2-dark .swal2-html-container {
+    color: #d1d5db;
+}
+.swal2-dark .swal2-icon.swal2-warning {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+.swal2-dark .swal2-actions .btn {
+    box-shadow: none;
 }
 </style>
