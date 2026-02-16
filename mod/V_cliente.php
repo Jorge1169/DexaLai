@@ -25,6 +25,15 @@ if ($id_cliente) {
 
     $zon0 = $conn_mysql->query("SELECT * FROM zonas where id_zone = '".$cliente['zona']."'");
     $zon1 = mysqli_fetch_array($zon0);
+
+// Verificar que el cliente pertenece a la zona seleccionada en sesión
+$zona_actual = $_SESSION['selected_zone'] ?? '0';
+if ($id_cliente && $cliente) {
+    if ($zona_actual !== '0' && isset($cliente['zona']) && (string)$cliente['zona'] !== (string)$zona_actual) {
+        alert("El cliente no pertenece a la zona seleccionada", 2, "clientes");
+        exit;
+    }
+}
 }
 ?>
 

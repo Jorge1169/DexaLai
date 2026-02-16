@@ -11,6 +11,15 @@ if ($id_producto) {
     $producto = $resultProducto->fetch_assoc();
 }
 
+// Verificar que el producto pertenece a la zona seleccionada en sesión
+$zona_actual = $_SESSION['selected_zone'] ?? '0';
+if ($id_producto && $producto) {
+    if ($zona_actual !== '0' && isset($producto['zona']) && (string)$producto['zona'] !== (string)$zona_actual) {
+        alert("El producto no pertenece a la zona seleccionada", 2, "productos");
+        exit;
+    }
+}
+
 // Procesar eliminación de precio (cambiar status a 0)
 if (isset($_POST['eliminar_precio'])) {
     $id_precio = $_POST['id_precio']; 
@@ -631,8 +640,6 @@ function diasRestantes($fecha_fin) {
                             <select class="form-select" name="planta" id="planta" required>
                                 <option value="">Selecciona un cliente</option>
                                 <?php
-                                $zona_actual = $_SESSION['selected_zone'] ?? '0';
-
                                 $sqlClientes = "SELECT id_cli FROM clientes WHERE status = '1'";
 
                                 if ($zona_actual != '0') {

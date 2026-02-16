@@ -26,6 +26,15 @@ $tipoZonaActual = obtenerTipoZonaActual($conn_mysql); // Obtener tipo de zona ac
 
     $zon0 = $conn_mysql->query("SELECT * FROM zonas where id_zone = '".$proveedor['zona']."'");
     $zon1 = mysqli_fetch_array($zon0);
+
+// Verificar que el proveedor pertenece a la zona seleccionada en sesión
+$zona_actual = $_SESSION['selected_zone'] ?? '0';
+if ($id_proveedor && $proveedor) {
+    if ($zona_actual !== '0' && isset($proveedor['zona']) && (string)$proveedor['zona'] !== (string)$zona_actual) {
+        alert("El proveedor no pertenece a la zona seleccionada", 2, "proveedores");
+        exit;
+    }
+}
 }
 ?>
 
