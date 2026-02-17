@@ -179,8 +179,18 @@ if (isset($_POST['guardar01'])) {
 
 // Función para verificar si un precio está vigente
 function estaVigente($fecha_ini, $fecha_fin) {
-    $hoy = date('Y-m-d');
-    return ($hoy >= $fecha_ini && $hoy <= $fecha_fin);
+    try {
+        $hoy = new DateTime('today');
+        $inicio = new DateTime($fecha_ini);
+        $fin = new DateTime($fecha_fin);
+
+        $inicio->setTime(0, 0, 0);
+        $fin->setTime(23, 59, 59);
+
+        return ($hoy >= $inicio && $hoy <= $fin);
+    } catch (Exception $e) {
+        return false;
+    }
 }
 
 // Función para obtener la clase Bootstrap según el estado
@@ -211,14 +221,19 @@ function getBadgeEstado($fecha_ini, $fecha_fin, $status) {
 
 // Función para calcular días restantes
 function diasRestantes($fecha_fin) {
-    $hoy = new DateTime();
-    $fin = new DateTime($fecha_fin);
-    $diferencia = $hoy->diff($fin);
-    
-    if ($hoy > $fin) {
-        return '<span class="text-danger">-' . $diferencia->days . ' días</span>';
-    } else {
+    try {
+        $hoy = new DateTime('today');
+        $fin = new DateTime($fecha_fin);
+        $fin->setTime(23, 59, 59);
+        $diferencia = $hoy->diff($fin);
+
+        if ($hoy > $fin) {
+            return '<span class="text-danger">-' . $diferencia->days . ' días</span>';
+        }
+
         return '<span class="text-success">' . $diferencia->days . ' días</span>';
+    } catch (Exception $e) {
+        return '<span class="text-muted">N/D</span>';
     }
 }
 ?>
