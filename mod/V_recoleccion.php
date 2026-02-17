@@ -68,6 +68,12 @@ p.cod AS cod_proveedor,
 dp.noma AS nombre_bodega_proveedor,
 dp.cod_al AS cod_bodega_proveedor,
 dp.email AS correo_proveedor,
+dp.calle AS calle_bodega_proveedor,
+dp.numext AS numext_bodega_proveedor,
+dp.numint AS numint_bodega_proveedor,
+dp.colonia AS colonia_bodega_proveedor,
+dp.estado AS estado_bodega_proveedor,
+dp.c_postal AS cp_bodega_proveedor,
 t.razon_so AS razon_social_fletero,
 t.placas AS placas_fletero,
 t.correo AS correo_fletero,
@@ -76,6 +82,12 @@ c.cod AS cod_cliente,
 c.fac_rem AS factura_remision, -- Nuevo: factura o recoleccion
 dc.noma AS nombre_bodega_cliente,
 dc.cod_al AS cod_bodega_cliente,
+dc.calle AS calle_bodega_cliente,
+dc.numext AS numext_bodega_cliente,
+dc.numint AS numint_bodega_cliente,
+dc.colonia AS colonia_bodega_cliente,
+dc.estado AS estado_bodega_cliente,
+dc.c_postal AS cp_bodega_cliente,
 pr.nom_pro AS nombre_producto,
 pr.cod AS cod_producto,
 z.cod AS cod_zona,
@@ -113,6 +125,59 @@ if ($result->num_rows === 0) {
 }
 
 $recoleccion = $result->fetch_assoc();
+
+// Construye líneas de dirección para bodegas
+function construirDireccionBodega($calle, $numext, $numint, $colonia, $estado, $cp) {
+    $linea1 = [];
+    if (!empty($calle)) {
+        $linea1[] = $calle;
+    }
+    if (!empty($numext)) {
+        $linea1[] = 'No. Ext ' . $numext;
+    }
+    if (!empty($numint)) {
+        $linea1[] = 'Int ' . $numint;
+    }
+
+    $linea2 = [];
+    if (!empty($colonia)) {
+        $linea2[] = $colonia;
+    }
+    if (!empty($estado)) {
+        $linea2[] = $estado;
+    }
+    if (!empty($cp)) {
+        $linea2[] = 'CP ' . $cp;
+    }
+
+    $direccion = [];
+    if (!empty($linea1)) {
+        $direccion[] = implode(' ', $linea1);
+    }
+    if (!empty($linea2)) {
+        $direccion[] = implode(', ', $linea2);
+    }
+
+    return $direccion;
+}
+
+$direccion_bodega_proveedor = construirDireccionBodega(
+    $recoleccion['calle_bodega_proveedor'] ?? '',
+    $recoleccion['numext_bodega_proveedor'] ?? '',
+    $recoleccion['numint_bodega_proveedor'] ?? '',
+    $recoleccion['colonia_bodega_proveedor'] ?? '',
+    $recoleccion['estado_bodega_proveedor'] ?? '',
+    $recoleccion['cp_bodega_proveedor'] ?? ''
+);
+
+$direccion_bodega_cliente = construirDireccionBodega(
+    $recoleccion['calle_bodega_cliente'] ?? '',
+    $recoleccion['numext_bodega_cliente'] ?? '',
+    $recoleccion['numint_bodega_cliente'] ?? '',
+    $recoleccion['colonia_bodega_cliente'] ?? '',
+    $recoleccion['estado_bodega_cliente'] ?? '',
+    $recoleccion['cp_bodega_cliente'] ?? ''
+);
 
 // NUEVA FUNCIÓN PARA CALCULAR EL PRECIO REAL DEL FLETE
 function calcularPrecioFleteReal($recoleccion) {
@@ -250,9 +315,23 @@ $fecha_complemento = !empty($recoleccion['fecha_complemento']) ? date('d/m/Y', s
 // Verificar si los datos están completos
 $remision_completa = !empty($recoleccion['remision']);
 $remixtac_completa = !empty($recoleccion['remixtac']);
-$peso_proveedor_completo = !empty($recoleccion['peso_prov']);
+$peso_proveedor_completo = !empty($recoleccion['peso_prov']) && $recoleccion['peso_prov'] > 0;
 $factura_flete_completa = !empty($recoleccion['factura_fle']);
-$peso_flete_completo = !empty($recoleccion['peso_fle']);
+$peso_flete_completo = !empty($recoleccion['peso_fle']) && $recoleccion['peso_fle'] > 0;
+
+// Validar direcciones y transporte para habilitar la remisión de recolección
+$direccion_proveedor_completa = !empty($recoleccion['calle_bodega_proveedor']) && !empty($recoleccion['colonia_bodega_proveedor']) && !empty($recoleccion['estado_bodega_proveedor']) && !empty($recoleccion['cp_bodega_proveedor']);
+$direccion_cliente_completa = !empty($recoleccion['calle_bodega_cliente']) && !empty($recoleccion['colonia_bodega_cliente']) && !empty($recoleccion['estado_bodega_cliente']) && !empty($recoleccion['cp_bodega_cliente']);
+$transporte_completo = !empty($recoleccion['tipo_fle']) && !empty($recoleccion['nom_fle']) && !empty($recoleccion['placas_fle']);
+
+$recoleccion_lista_remision = $direccion_proveedor_completa && $direccion_cliente_completa && $transporte_completo && $peso_flete_completo && $peso_proveedor_completo;
+$pendientes_remision = [];
+if (!$direccion_proveedor_completa) { $pendientes_remision[] = 'Dirección de bodega del proveedor'; }
+if (!$direccion_cliente_completa) { $pendientes_remision[] = 'Dirección de bodega del cliente'; }
+if (!$transporte_completo) { $pendientes_remision[] = 'Tipo, chofer y placas del transporte'; }
+if (!$peso_flete_completo) { $pendientes_remision[] = 'Peso del fletero'; }
+if (!$peso_proveedor_completo) { $pendientes_remision[] = 'Peso del proveedor'; }
+$pendientes_remision_texto = empty($pendientes_remision) ? '' : 'Completar: ' . implode(' • ', $pendientes_remision);
 
 // Verificar si al menos una remisión está completa
 $alguna_remision_completa = $remision_completa || $remixtac_completa;
@@ -411,10 +490,7 @@ if (isset($_POST['guardar_fle'])) {
     $placas_unidad = $_POST['placas_unidad'] ?? '';
     
     // Validaciones básicas
-    if (empty($factura_flete)) {
-        alert("La factura del flete es obligatoria", 2, "V_recoleccion&id=".$id_recoleccion);
-        exit;
-    }
+    $factura_enviada = !empty($factura_flete);
     
     if (empty($peso_flete) || $peso_flete <= 0) {
         alert("El peso del flete es obligatorio y debe ser mayor a 0", 2, "V_recoleccion&id=".$id_recoleccion);
@@ -454,8 +530,8 @@ if (isset($_POST['guardar_fle'])) {
     $doc_fle_actual = $datos_actuales['doc_fle'];
     $d_f_f_actual = $datos_actuales['d_f_f'];
     
-    // Verificar si la factura nueva ya existe en OTRA recolección (solo si es diferente)
-    if ($factura_flete != $factura_actual) {
+    // Verificar si la factura nueva ya existe en OTRA recolección (solo si fue enviada y es diferente)
+    if ($factura_enviada && $factura_flete != $factura_actual) {
         $BusFac0 = $conn_mysql->query("SELECT * FROM recoleccion WHERE factura_fle = '$factura_flete' AND id_transp = '".$recoleccion['id_transportista']."' AND id_recol != '$id_recoleccion'");
         $BusFac1 = mysqli_fetch_array($BusFac0);
         if (!empty($BusFac1['id_recol'])) {
@@ -464,10 +540,14 @@ if (isset($_POST['guardar_fle'])) {
             exit;
         }
     }
+
+    $factura_cambiada = $factura_enviada && ($factura_flete != $factura_actual);
     
     // Preparar la consulta UPDATE
     $update_fields = [];
-    $update_fields[] = "factura_fle = '$factura_flete'";
+    if ($factura_enviada) {
+        $update_fields[] = "factura_fle = '$factura_flete'";
+    }
     $update_fields[] = "peso_fle = '$peso_flete'";
     
     // Determinar si debemos resetear documentos
@@ -477,7 +557,7 @@ if (isset($_POST['guardar_fle'])) {
     $razon_reset = '';
     
     // REGLA 1: Si la factura cambia, siempre resetear documentos de factura
-    if ($factura_flete != $factura_actual) {
+    if ($factura_cambiada) {
         $update_fields[] = "doc_fle = NULL";
         $update_fields[] = "d_f_f = NULL";
         $resetear_documentos = true;
@@ -499,7 +579,7 @@ if (isset($_POST['guardar_fle'])) {
     }
     
     // REGLA 3: Si se resetean documentos O cambia la factura, resetear contra recibo (excepto si es N/A)
-    if ($resetear_documentos || $factura_flete != $factura_actual) {
+    if ($resetear_documentos || $factura_cambiada) {
         // Solo resetear contra recibo si NO es N/A (precio_flete != 0)
         if ($datos_actuales['precio_flete'] != 0) {
             $update_fields[] = "folio_inv_fle = NULL";
@@ -544,10 +624,13 @@ if (isset($_POST['guardar_fle'])) {
             // Construir mensaje según lo que pasó
             $mensaje = "Datos del fletero ";
             
-            if (empty($factura_actual)) {
+            if (empty($factura_actual) && $factura_cambiada) {
                 // Caso 1: Primera vez que se ingresa
                 $mensaje .= "guardados correctamente";
                 logActivity('REC', 'Agregó factura de flete '.$factura_flete.' en recolección '.$id_recoleccion);
+            } elseif (empty($factura_actual) && !$factura_cambiada) {
+                $mensaje .= "guardados correctamente (sin factura de flete)";
+                logActivity('REC', 'Actualizó datos de transporte sin factura en recolección '. $id_recoleccion);
             } else {
                 // Caso 2: Edición
                 $mensaje .= "actualizados correctamente";
@@ -567,6 +650,10 @@ if (isset($_POST['guardar_fle'])) {
                         $mensaje .= ". Datos de facturación reseteados";
                     }
                 }
+
+                if (!$factura_cambiada && !$resetear_documentos) {
+                    logActivity('REC', 'Actualizó datos de transporte en recolección '. $id_recoleccion);
+                }
             }
             
             alert($mensaje, 1, "V_recoleccion&id=".$id_recoleccion);
@@ -578,7 +665,7 @@ if (isset($_POST['guardar_fle'])) {
 }
 // Después de obtener los datos de la recolección, agrega estas verificaciones:
 $factura_flete_completa = !empty($recoleccion['factura_fle']);
-$peso_flete_completo = !empty($recoleccion['peso_fle']);
+$peso_flete_completo = !empty($recoleccion['peso_fle']) && $recoleccion['peso_fle'] > 0;
 $tipo_camion_completo = !empty($recoleccion['tipo_fle']);
 $nombre_chofer_completo = !empty($recoleccion['nom_fle']);
 $placas_unidad_completas = !empty($recoleccion['placas_fle']);
@@ -821,6 +908,11 @@ if ($recoleccion['remi_compro'] == '1') {
                       </li>
                   </ul>
               </div>
+                <?php if ($recoleccion_lista_remision): ?>
+                    <a href="doc/remision_recoleccion.php?id=<?= $id_recoleccion ?>" target="_blank" class="btn btn-primary btn-sm rounded-3">
+                        <i class="bi bi-file-earmark-text"></i> Remisión
+                    </a>
+                <?php endif; ?>
               <!-- Button trigger modal -->
               <?php if ($recoleccion['remision'] == '' OR $recoleccion['factura_fle'] == ''): ?>
                 <button type="button" class="btn btn-warning btn-sm rounded-3" data-bs-toggle="modal" data-bs-target="#MandarCorreo" <?= $perm['en_correo'];?>>
@@ -868,6 +960,19 @@ if ($recoleccion['remi_compro'] == '1') {
                                     <span class="text-muted">Nombre:</span>
                                     <strong class="text-end"><?= htmlspecialchars($recoleccion['nombre_bodega_proveedor']) ?></strong>
                                 </div>
+
+                                <?php if (!empty($direccion_bodega_proveedor)): ?>
+                                    <div class="list-group-item px-0 py-1">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <span class="text-muted">Dirección:</span>
+                                            <div class="text-end">
+                                                <?php foreach ($direccion_bodega_proveedor as $linea): ?>
+                                                    <div class="small"><?= htmlspecialchars($linea) ?></div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
 
                                 <!-- Factura compra compacta -->
                                 <div class="list-group-item px-0 py-1">
@@ -1011,6 +1116,19 @@ if ($recoleccion['remi_compro'] == '1') {
                     <span class="text-muted">Nombre:</span>
                     <strong class="text-end"><?= htmlspecialchars($recoleccion['nombre_bodega_cliente']) ?></strong>
                 </div>
+
+                <?php if (!empty($direccion_bodega_cliente)): ?>
+                    <div class="list-group-item px-0 py-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="text-muted">Dirección:</span>
+                            <div class="text-end">
+                                <?php foreach ($direccion_bodega_cliente as $linea): ?>
+                                    <div class="small"><?= htmlspecialchars($linea) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <!-- Factura venta compacta -->
                 <div class="list-group-item px-0 py-1">
@@ -1674,16 +1792,20 @@ if ($recoleccion['remi_compro'] == '1') {
                         </div>
                     <?php endif; ?>
                     
-                    <!-- Factura del Flete - SIEMPRE EDITABLE -->
+                    <!-- Factura del Flete - OPCIONAL -->
                     <div class="mb-3">
-                        <label for="factura_flete" class="form-label">Factura del Flete *</label>
+                        <label for="factura_flete" class="form-label">Factura del Flete</label>
                         <input type="text" class="form-control" id="factura_flete" name="factura_flete" 
                         value="<?= $recoleccion['factura_fle'] ?>" 
-                        placeholder="Ingrese el número de factura del flete" required>
+                        placeholder="Ingrese el número de factura del flete">
                         <?php if ($datos_obligatorios_fletero): ?>
                             <div class="form-text text-warning">
                                 <i class="bi bi-info-circle me-1"></i>
                                 Cambiar este valor reseteará los documentos relacionados
+                            </div>
+                        <?php else: ?>
+                            <div class="form-text text-muted">
+                                Puede guardar peso, tipo, chofer y placas aunque no tenga factura de flete.
                             </div>
                         <?php endif; ?>
                     </div>
@@ -1898,13 +2020,6 @@ if ($recoleccion['remi_compro'] == '1') {
                     if (facturaValue.includes(' ')) {
                         e.preventDefault();
                         alert('El campo factura no debe contener espacios');
-                        facturaFleteInput.focus();
-                    }
-                    
-                    // Validar que la factura no esté vacía
-                    if (facturaValue === '') {
-                        e.preventDefault();
-                        alert('El campo factura del flete es obligatorio');
                         facturaFleteInput.focus();
                     }
                 });
