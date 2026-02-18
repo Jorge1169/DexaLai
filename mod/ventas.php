@@ -18,23 +18,22 @@ $fechaFinDefault = date('Y-m-d');
     </div>
 
     <!-- Filtros -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label">Fecha Inicio</label>
-                    <input type="date" id="fechaInicio" class="form-control" 
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-body p-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-sm-6 col-lg-1">
+                    <label class="form-label small fw-semibold mb-1">Fecha Inicio</label>
+                    <input type="date" id="fechaInicio" class="form-control form-control-sm" 
                            value="<?= htmlspecialchars($fechaInicioDefault) ?>">
-                </div>
-                
-                <div class="col-md-3">
-                    <label class="form-label">Fecha Fin</label>
-                    <input type="date" id="fechaFin" class="form-control" 
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-lg-1">
+                    <label class="form-label small fw-semibold mb-1">Fecha Fin</label>
+                    <input type="date" id="fechaFin" class="form-control form-control-sm" 
                            value="<?= htmlspecialchars($fechaFinDefault) ?>">
-                </div>
-                
-                <div class="col-md-3">
-                    <label class="form-label">Cliente</label>
+                    </div>
+                    <div class="col-12 col-lg-2">
+                    <label class="form-label small fw-semibold mb-1">Cliente</label>
                     <select id="filtroCliente" class="form-select">
                         <option value="">Todos los clientes</option>
                         <?php
@@ -44,22 +43,22 @@ $fechaFinDefault = date('Y-m-d');
                         }
                         ?>
                     </select>
-                </div>
-                
-                <div class="col-md-3">
-                    <div class="d-flex gap-2">
-                        <button type="button" id="filterBtn" class="btn btn-primary flex-grow-1">
+                    </div>
+                    <div class="col-12 col-md-auto d-flex gap-2">
+                        <button type="button" id="filterBtn" class="btn btn-primary btn-sm">
                             <i class="bi bi-funnel me-1"></i> Filtrar
                         </button>
-                        <button type="button" id="resetBtn" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i>
-                        </button>
-                        <button type="button" id="toggleInactiveBtn" class="btn btn-info" <?= $perm['INACTIVO']; ?>>
-                            <i class="bi bi-eye"></i> Inactivas
+                        <button type="button" id="resetBtn" class="btn btn-outline-secondary btn-sm" title="Restablecer filtros">
+                            <i class="bi bi-arrow-clockwise"></i> Restablecer
                         </button>
                     </div>
+
+                    <div class="col-12 col-md-auto ms-lg-auto d-grid d-md-block">
+                    <button type="button" id="toggleInactiveBtn" class="btn btn-info btn-sm" <?= $perm['INACTIVO']; ?>>
+                        <i class="bi bi-eye"></i> Inactivas
+                    </button>
+                    </div>
                 </div>
-            </div>
         </div>
     </div>
 
@@ -131,32 +130,6 @@ $fechaFinDefault = date('Y-m-d');
     </div>
 </div>
 
-
-<!-- Estilos adicionales -->
-<style>
-#tablaVentas th {
-    white-space: nowrap;
-    font-size: 0.85rem;
-}
-#tablaVentas td {
-    vertical-align: middle;
-    font-size: 0.9rem;
-}
-.btn-group-sm .btn {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-.text-success {
-    color: #198754 !important;
-}
-.text-warning {
-    color: #ffc107 !important;
-}
-.badge-venta {
-    font-size: 0.7em;
-    padding: 0.2em 0.5em;
-}
-</style>
 
 <!-- Incluir DataTables -->
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">

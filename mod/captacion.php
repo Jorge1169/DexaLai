@@ -17,34 +17,35 @@ $fechaFinDefault = date('Y-m-d');
         </div>
     </div>
 
-    <!-- Filtros SIMPLIFICADOS (solo fechas) -->    
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label">Fecha Inicio</label>
-                    <input type="date" id="fechaInicio" class="form-control" 
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-body p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-sm-6 col-lg-1">
+                    <label class="form-label small fw-semibold mb-1">Fecha Inicio</label>
+                    <input type="date" id="fechaInicio" class="form-control form-control-sm" 
                            value="<?= htmlspecialchars($fechaInicioDefault) ?>">
                 </div>
-                
-                <div class="col-md-4">
-                    <label class="form-label">Fecha Fin</label>
-                    <input type="date" id="fechaFin" class="form-control" 
+
+                <div class="col-12 col-sm-6 col-lg-1">
+                    <label class="form-label small fw-semibold mb-1">Fecha Fin</label>
+                    <input type="date" id="fechaFin" class="form-control form-control-sm" 
                            value="<?= htmlspecialchars($fechaFinDefault) ?>">
                 </div>
-                
-                <div class="col-md-4">
-                    <div class="d-flex gap-2">
-                        <button type="button" id="filterBtn" class="btn btn-primary flex-grow-1">
-                            <i class="bi bi-funnel me-1"></i> Filtrar
-                        </button>
-                        <button type="button" id="resetBtn" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i>
-                        </button>
-                        <button type="button" id="toggleInactiveBtn" class="btn btn-info" <?= $perm['INACTIVO'];?>>
-                            <i class="bi bi-eye"></i> Inactivas
-                        </button>
-                    </div>
+
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="button" id="filterBtn" class="btn btn-primary btn-sm">
+                        <i class="bi bi-funnel me-1"></i> Filtrar
+                    </button>
+                    <button type="button" id="resetBtn" class="btn btn-outline-secondary btn-sm" title="Restablecer filtros">
+                        <i class="bi bi-arrow-clockwise"></i> Restablecer
+                    </button>
+                </div>
+
+                <div class="col-12 col-md-auto ms-lg-auto d-grid d-md-block">
+                    <button type="button" id="toggleInactiveBtn" class="btn btn-info btn-sm" <?= $perm['INACTIVO'];?> title="Ver captaciones inactivas">
+                        <i class="bi bi-eye"></i> Ver Inactivas
+                    </button>
                 </div>
             </div>
         </div>
@@ -334,11 +335,13 @@ $(document).ready(function() {
         showingInactives = !showingInactives;
 
         if (showingInactives) {
-            $(this).html('<i class="bi bi-eye-slash"></i> Activas');
+            $(this).html('<i class="bi bi-eye-slash"></i> Ver Activas');
             $(this).removeClass('btn-info').addClass('btn-warning');
+            $(this).attr('title', 'Ver captaciones activas');
         } else {
-            $(this).html('<i class="bi bi-eye"></i> Inactivas');
+            $(this).html('<i class="bi bi-eye"></i> Ver Inactivas');
             $(this).removeClass('btn-warning').addClass('btn-info');
+            $(this).attr('title', 'Ver captaciones inactivas');
         }
 
         reloadTable();
@@ -357,8 +360,9 @@ $(document).ready(function() {
         $('#fechaInicio').val(firstDay.toISOString().split('T')[0]);
         $('#fechaFin').val(lastDay.toISOString().split('T')[0]);
         showingInactives = false;
-        $('#toggleInactiveBtn').html('<i class="bi bi-eye"></i> Inactivas')
-        .removeClass('btn-warning').addClass('btn-info');
+        $('#toggleInactiveBtn').html('<i class="bi bi-eye"></i> Ver Inactivas')
+        .removeClass('btn-warning').addClass('btn-info')
+        .attr('title', 'Ver captaciones inactivas');
         reloadTable();
     });
 
