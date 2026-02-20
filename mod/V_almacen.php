@@ -143,7 +143,7 @@ if ($id_almacen) {
                         <th>Código</th>
                         <th>Nombre</th>
                         <th>Contacto</th>
-                        <?php if ($tipoZonaActual == 'MEO'): ?>
+                        <?php if (esZonaMEOCompatible($tipoZonaActual)): ?>
                         <th>Dirección</th>
                         <?php endif; ?>
                         <th>Observación</th>
@@ -156,7 +156,7 @@ if ($id_almacen) {
                             <td><?= $index + 1 ?></td>
                             <td>
                                 <strong><?= $direccion['cod_al'] ?></strong>
-                                <?php if ($tipoZonaActual == 'MEO' && !empty($direccion['c_postal'])): ?>
+                                <?php if (esZonaMEOCompatible($tipoZonaActual) && !empty($direccion['c_postal'])): ?>
                                 <div class="small text-muted">
                                     CP: <?= $direccion['c_postal'] ?>
                                 </div>
@@ -170,7 +170,7 @@ if ($id_almacen) {
                                     <strong>Email:</strong> <?= $direccion['email'] ?>
                                 </div>
                             </td>
-                            <?php if ($tipoZonaActual == 'MEO'): ?>
+                            <?php if (esZonaMEOCompatible($tipoZonaActual)): ?>
                             <td>
                                 <?php if (!empty($direccion['calle']) || !empty($direccion['colonia'])): ?>
                                 <div class="small">

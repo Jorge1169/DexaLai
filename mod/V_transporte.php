@@ -346,7 +346,7 @@ function obtenerEstadoVigencia($fecha_fin) {
                                             data-bs-toggle="modal" data-bs-target="#AgregarPrec">
                                             <i class="bi bi-plus-circle me-1"></i> Nuevo Precio
                                         </button>
-                                    <?php elseif ($tipoZonaActual == 'MEO'): ?>
+                                    <?php elseif (esZonaMEOCompatible($tipoZonaActual)): ?>
                                         <!-- BOTÓN solo para zonas MEO -->
                                         <button <?= $perm['sub_precios'];?> type="button" class="btn btn-info btn-sm rounded-3" 
                                             data-bs-toggle="modal" data-bs-target="#AgregarPrecMEO">
@@ -404,7 +404,7 @@ function obtenerEstadoVigencia($fecha_fin) {
                                             </thead>
                                             <tbody>
                                                 <?php
-                                                if ($tipoZonaActual == 'MEO') {
+                                                if (esZonaMEOCompatible($tipoZonaActual)) {
                                                     $PreciFle00 = $conn_mysql->query("
                                                         SELECT p.*, o.cod_al as cod_origen, o.noma as nom_origen,
                                                         d.cod_al as cod_destino, d.noma as nom_destino
@@ -433,7 +433,7 @@ function obtenerEstadoVigencia($fecha_fin) {
 
                                                 while ($PreciFle01 = mysqli_fetch_array($PreciFle00)) {
                                     // Determinar texto y badge según el tipo
-                                                    if ($tipoZonaActual == 'MEO') {
+                                                    if (esZonaMEOCompatible($tipoZonaActual)) {
                                                         $tipo_texto = ($PreciFle01['tipo'] == 'MFT') ? 'Por tonelada (MEO)' : 'Por viaje (MEO)';
                                                         $tipo_badge = ($PreciFle01['tipo'] == 'MFT') ? 'bg-primary' : 'bg-success';
                                                         
@@ -570,7 +570,7 @@ function obtenerEstadoVigencia($fecha_fin) {
                                             <tbody>
                                                 <?php
                                 // MODIFICAR ESTA CONSULTA también
-                                                if ($tipoZonaActual == 'MEO') {
+                                                if (esZonaMEOCompatible($tipoZonaActual)) {
                                                     $PreciFleHistoricos = $conn_mysql->query("
                                                         SELECT p.*, 
                                                         o.cod_al as cod_origen, o.noma as nom_origen,
@@ -600,7 +600,7 @@ function obtenerEstadoVigencia($fecha_fin) {
 
                                                 while ($precioHist = mysqli_fetch_array($PreciFleHistoricos)) {
                                     // Determinar texto y badge según el tipo
-                                                    if ($tipoZonaActual == 'MEO') {
+                                                    if (esZonaMEOCompatible($tipoZonaActual)) {
                                                         $tipo_texto = ($precioHist['tipo'] == 'MFT') ? 'Por tonelada (MEO)' : 'Por viaje (MEO)';
                                                         $tipo_badge = ($precioHist['tipo'] == 'MFT') ? 'bg-primary' : 'bg-success';
                                                         
@@ -920,7 +920,7 @@ function obtenerEstadoVigencia($fecha_fin) {
     </div>
 </div>
 <!-- Modal para precio MEO (solo se muestra si es zona MEO) -->
-<?php if ($tipoZonaActual == 'MEO'): ?>
+<?php if (esZonaMEOCompatible($tipoZonaActual)): ?>
     <div class="modal fade" id="AgregarPrecMEO" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">

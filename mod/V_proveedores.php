@@ -154,7 +154,7 @@ if ($id_proveedor && $proveedor) {
                                 <td><?= $index + 1 ?></td>
                                 <td>
                                     <strong><?= $direccion['cod_al'] ?></strong>
-                                    <?php if ($tipoZonaActual == 'MEO' && !empty($direccion['c_postal'])): ?>
+                                    <?php if (esZonaMEOCompatible($tipoZonaActual) && !empty($direccion['c_postal'])): ?>
                                     <div class="small text-muted">
                                         CP: <?= $direccion['c_postal'] ?>
                                     </div>

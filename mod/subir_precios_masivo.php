@@ -60,7 +60,7 @@ if (isset($_POST['procesar_carga_masiva'])) {
             $types = 'ssss';
             
             // Para MEO, incluir cap_ven en la búsqueda
-            if ($tipoZonaActual == 'MEO' && !empty($cap_ven)) {
+            if (esZonaMEOCompatible($tipoZonaActual) && !empty($cap_ven)) {
                 $sqlCheck .= " AND cap_ven = ?";
                 $params[] = $cap_ven;
                 $types .= 's';
@@ -102,7 +102,7 @@ if (isset($_POST['procesar_carga_masiva'])) {
                 ];
                 
                 // Para MEO, agregar cap_ven
-                if ($tipoZonaActual == 'MEO' && !empty($cap_ven)) {
+                if (esZonaMEOCompatible($tipoZonaActual) && !empty($cap_ven)) {
                     $PrecioData['cap_ven'] = $cap_ven;
                 }
                 
@@ -212,7 +212,7 @@ $resTransportistas = $conn_mysql->query($sqlTransportistas);
                                     <div class="card-body">
                                         <div class="row g-3">
                                             
-                                            <?php if ($tipoZonaActual == 'MEO'): ?>
+                                            <?php if (esZonaMEOCompatible($tipoZonaActual)): ?>
                                                 <!-- Campos específicos para MEO -->
                                                 <div class="col-lg-6">
                                                     <label for="cap_ven" class="form-label">Tipo de Movimiento *</label>
@@ -255,7 +255,7 @@ $resTransportistas = $conn_mysql->query($sqlTransportistas);
                                                     $sqlOrigen = "SELECT d.id_direc, d.cod_al, d.noma
                                                                   FROM direcciones d";
                                                     
-                                                    if ($tipoZonaActual == 'MEO') {
+                                                    if (esZonaMEOCompatible($tipoZonaActual)) {
                                                         // Para MEO inicial, mostrar todo o esperar selección
                                                         $sqlOrigen .= " WHERE d.status = '1'";
                                                     } else {
@@ -285,7 +285,7 @@ $resTransportistas = $conn_mysql->query($sqlTransportistas);
                                                     $sqlDestino = "SELECT d.id_direc, d.cod_al, d.noma
                                                                    FROM direcciones d";
                                                     
-                                                    if ($tipoZonaActual == 'MEO') {
+                                                    if (esZonaMEOCompatible($tipoZonaActual)) {
                                                         // Para MEO inicial, mostrar todo o esperar selección
                                                         $sqlDestino .= " WHERE d.status = '1'";
                                                     } else {
@@ -374,7 +374,7 @@ function toggleFleteros(checkbox, containerId) {
 }
 
 // Función para cambiar origen/destino en MEO (solo para carga manual)
-<?php if ($tipoZonaActual == 'MEO'): ?>
+<?php if (esZonaMEOCompatible($tipoZonaActual)): ?>
 function cambiarOrigenDestinoMEOMasivo(tipo) {
     const origenSelect = document.getElementById('origen');
     const destinoSelect = document.getElementById('destino');

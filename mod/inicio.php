@@ -13,7 +13,7 @@ if ($zona_seleccionada == '0' || empty($zona_seleccionada)) {
 // ============================================================================
 // ESCENARIO 2: ZONA MEO SELECCIONADA
 // ============================================================================
-if ($tipoZonaActual === 'MEO') {
+if (esZonaMEOCompatible($tipoZonaActual)) {
     mostrarDashboardMEO($conn_mysql, $zona_seleccionada);
     return;
 }

@@ -41,7 +41,7 @@ if (isset($_POST['actualizarDireccion'])) {
         ];
 
         // Solo para zonas MEO: agregar datos de dirección física
-        if ($tipoZonaActual == 'MEO') {
+        if (esZonaMEOCompatible($tipoZonaActual)) {
             $DireccionData['calle'] = $_POST['calle'] ?? '';
             $DireccionData['c_postal'] = $_POST['c_postal'] ?? '';
             $DireccionData['numext'] = $_POST['numext'] ?? '';
@@ -138,7 +138,7 @@ if (isset($_POST['actualizarDireccion'])) {
                 </div>
 
                 <!-- SECCIÓN DE DIRECCIÓN FÍSICA (solo para MEO) -->
-                <?php if ($tipoZonaActual == 'MEO'): ?>
+                <?php if (esZonaMEOCompatible($tipoZonaActual)): ?>
                 <div class="form-section mt-4">
                     <h5 class="section-header text-info">
                         <i class="bi bi-geo-alt me-2"></i> Dirección Física

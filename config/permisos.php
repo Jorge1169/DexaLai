@@ -89,6 +89,9 @@ define('MODULOS_PERMISOS', [
     
     // === Módulos Administrativos ===
     'usuarios' => 'ADMIN',
+    'zonas' => 'ADMIN',
+    'N_zona' => 'ADMIN',
+    'E_zona' => 'ADMIN',
     'reportes_actividad' => 'ADMINISTRATIVO',
     'ia_test' => 'ADMINISTRATIVO',
     'importar_recolecciones' => 'UTILERIAS',

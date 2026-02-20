@@ -122,6 +122,7 @@ function verificarPermiso($modulo, $conn_mysql, $permisosUsuario = null) {
             'reportes' => 'REPORTES',
             'utilerias' => 'UTILERIAS',
             'usuarios' => 'ADMIN',
+            'zonas' => 'ADMIN',
             'reportes_actividad' => 'ACT_AC',
             'ia_test' => 'ACT_AC',
             'contra_recibos' => 'REPORTES'
@@ -437,6 +438,17 @@ function obtenerTipoZonaActual($conn_mysql) {
     return 'NOR';
 }
 
+function esZonaMEOCompatible($tipoZona = null, $conn_mysql = null) {
+    if ($tipoZona === null) {
+        if ($conn_mysql === null) {
+            return false;
+        }
+        $tipoZona = obtenerTipoZonaActual($conn_mysql);
+    }
+
+    return in_array($tipoZona, ['MEO', 'SUR'], true);
+}
+
 // Función para verificar si un módulo está disponible para el tipo de zona actual
 function moduloDisponibleParaZona($modulo, $conn_mysql) {
     $tipoZona = obtenerTipoZonaActual($conn_mysql);
@@ -453,18 +465,33 @@ function moduloDisponibleParaZona($modulo, $conn_mysql) {
                 'importar_recolecciones', 
                 'reportes_actividad',
                 //'ia_test', 
+                'zonas','N_zona','E_zona',
                 'usuarios', 'V_usuarios', 'E_usuario', 'N_usuario','sudo_login','sudo_logout','salir'],
         
         'MEO' => ['inicio','clientes','V_cliente','E_Cliente','N_cliente','N_direccion','E_direccion',
                   'proveedores', 'V_proveedores', 'E_proveedor', 'N_proveedor', 'N_direccion_p','E_direccion_p', 
                   'transportes','V_transporte','E_transportista','N_transportista', 'subir_precios_masivo',
                   'productos', 'reporte_precios', 'V_producto','E_producto','N_producto',
-                  'captacion','N_captacion','reporte_recole_meo', 'usuarios','V_captacion','E_captacion',
+                  'captacion','N_captacion', 'usuarios','V_captacion','E_captacion',
                   'almacenes_info','V_detalle_almacen',
                   'V_usuarios', 'E_usuario', 'N_usuario',
                   'almacenes','N_almacen','V_almacen','E_almacen','N_direccion_almacen','E_direccion_almacen',
                   'ventas','N_venta','V_venta','E_venta',
                   'reportes_actividad',
+                  'zonas','N_zona','E_zona',
+                  'usuarios', 'V_usuarios', 'E_usuario', 'N_usuario','sudo_login','sudo_logout','salir'],
+
+        'SUR' => ['inicio','clientes','V_cliente','E_Cliente','N_cliente','N_direccion','E_direccion',
+                  'proveedores', 'V_proveedores', 'E_proveedor', 'N_proveedor', 'N_direccion_p','E_direccion_p', 
+                  'transportes','V_transporte','E_transportista','N_transportista', 'subir_precios_masivo',
+                  'productos', 'reporte_precios', 'V_producto','E_producto','N_producto',
+                  'captacion','N_captacion', 'usuarios','V_captacion','E_captacion',
+                  'almacenes_info','V_detalle_almacen',
+                  'V_usuarios', 'E_usuario', 'N_usuario',
+                  'almacenes','N_almacen','V_almacen','E_almacen','N_direccion_almacen','E_direccion_almacen',
+                  'ventas','N_venta','V_venta','E_venta',
+                  'reportes_actividad',
+                  'zonas','N_zona','E_zona',
                   'usuarios', 'V_usuarios', 'E_usuario', 'N_usuario','sudo_login','sudo_logout','salir'],
         
         // Puedes agregar más tipos aquí
@@ -488,10 +515,8 @@ function obtenerUrlSegunZona($moduloBase, $conn_mysql) {
             'recoleccion' => 'recoleccion',
             'reporte_recole' => 'reporte_recole',
         ],
-        'MEO' => [
-            'recoleccion' => 'recoleccion_meo',
-            'reporte_recole' => 'reporte_recole_meo',
-        ],
+        'MEO' => [],
+        'SUR' => [],
     ];
     
     // Si hay un mapeo específico para este tipo de zona, usarlo
@@ -511,6 +536,7 @@ function mostrarSeccionMenu($seccion, $conn_mysql) {
     $seccionesPorTipo = [
         'NOR' => ['catalogos', 'flujo', 'reportes', 'utilerias', 'usuarios'],
         'MEO' => ['catalogos', 'flujo','reportes', 'utilerias', 'usuarios'],
+        'SUR' => ['catalogos', 'flujo','reportes', 'utilerias', 'usuarios'],
         // 'MEO' no muestra 'utilerias'
     ];
     

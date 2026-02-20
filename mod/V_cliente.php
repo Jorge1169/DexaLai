@@ -157,7 +157,7 @@ if ($id_cliente && $cliente) {
                             <td><?= $index + 1 ?></td>
                             <td>
                                 <strong><?= $bodega['cod_al']?></strong>
-                                <?php if ($tipoZonaActual == 'MEO' && !empty($bodega['c_postal'])): ?>
+                                <?php if (esZonaMEOCompatible($tipoZonaActual) && !empty($bodega['c_postal'])): ?>
                                 <div class="small text-muted">
                                     CP: <?= $bodega['c_postal']?>
                                 </div>

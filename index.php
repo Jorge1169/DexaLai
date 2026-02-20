@@ -580,6 +580,10 @@ if(isset($_SESSION['id_cliente'])){ // si hay una session iniciada este muestra 
             class="boton-Subm <?= obtenerClaseMenu('usuarios', $conn_mysql) ?>">
             Lista de Usuarios
         </a>
+        <a href="?p=zonas" 
+        class="boton-Subm <?= obtenerClaseMenu('zonas', $conn_mysql, $perm) ?>">
+        Zonas
+    </a>
     </div>
 </div>
 </div>
