@@ -3,6 +3,14 @@
 session_start();
 require_once 'config/conexiones.php';
 
+$zona_seleccionada = intval($_SESSION['selected_zone'] ?? 0);
+if (isset($_POST['zona'])) {
+    $zona_post = intval($_POST['zona']);
+    if ($zona_post > 0) {
+        $zona_seleccionada = $zona_post;
+    }
+}
+
 // Limpiar buffer de salida
 ob_clean();
 
@@ -53,6 +61,10 @@ $query = "SELECT SQL_CALC_FOUND_ROWS
           LEFT JOIN precios p ON vd.id_pre_venta = p.id_precio
           LEFT JOIN venta_flete vf ON v.id_venta = vf.id_venta
           WHERE 1=1 ";
+
+if ($zona_seleccionada > 0) {
+    $query .= " AND v.zona = " . $zona_seleccionada;
+}
 
 // Filtro de status
 if ($mostrarInactivos) {

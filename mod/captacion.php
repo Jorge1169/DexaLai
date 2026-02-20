@@ -211,6 +211,7 @@ $(document).ready(function() {
                     d.mostrarInactivos = showingInactives;
                     d.fechaInicio = $('#fechaInicio').val();
                     d.fechaFin = $('#fechaFin').val();
+                    d.zona = <?= (int) $zona_seleccionada ?>;
                 },
                 "timeout": 30000
             },

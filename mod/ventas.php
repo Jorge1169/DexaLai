@@ -160,6 +160,7 @@ $(document).ready(function() {
                     d.fechaInicio = $('#fechaInicio').val();
                     d.fechaFin = $('#fechaFin').val();
                     d.clienteId = $('#filtroCliente').val();
+                    d.zona = <?= (int) $zona_seleccionada ?>;
                 },
                 "timeout": 30000,
                 "error": function(xhr, error, thrown) {

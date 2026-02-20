@@ -3,6 +3,14 @@
 session_start();
 require_once 'config/conexiones.php';
 
+$zona_seleccionada = intval($_SESSION['selected_zone'] ?? 0);
+if (isset($_POST['zona'])) {
+    $zona_post = intval($_POST['zona']);
+    if ($zona_post > 0) {
+        $zona_seleccionada = $zona_post;
+    }
+}
+
 // Parámetros de DataTables
 $start = $_POST['start'] ?? 0;
 $length = $_POST['length'] ?? 10;
@@ -70,6 +78,10 @@ LEFT JOIN precios pc ON cd.id_pre_compra = pc.id_precio
 LEFT JOIN captacion_flete cf ON c.id_captacion = cf.id_captacion
 LEFT JOIN precios pf ON cf.id_pre_flete = pf.id_precio
 WHERE 1=1";
+
+if ($zona_seleccionada > 0) {
+    $query .= " AND c.zona = " . $zona_seleccionada;
+}
 
 // Filtro de estado (activo/inactivo)
 if (isset($_POST['mostrarInactivos'])) {
@@ -181,6 +193,10 @@ LEFT JOIN precios pc ON cd.id_pre_compra = pc.id_precio
 LEFT JOIN captacion_flete cf ON c.id_captacion = cf.id_captacion
 LEFT JOIN precios pf ON cf.id_pre_flete = pf.id_precio
 WHERE 1=1";
+
+if ($zona_seleccionada > 0) {
+    $count_query .= " AND c.zona = " . $zona_seleccionada;
+}
 
 // Aplicar los mismos filtros que en la consulta principal
 if (isset($_POST['mostrarInactivos'])) {

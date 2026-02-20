@@ -171,7 +171,7 @@ function obtenerClaseMenu($modulo, $conn_mysql, $permisosUsuario = null) {
          $link = "http://localhost/DexaLai/doc/contra_recibos.php?id=";
 
 
- // ============================================================================
+// ============================================================================
 // FUNCIÓN PARA REGISTRAR ACTIVIDADES - AGREGAR ESTA NUEVA FUNCIÓN
 // ============================================================================
 function logActivity($action, $description = '') {

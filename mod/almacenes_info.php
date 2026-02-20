@@ -1,5 +1,9 @@
 <?php
 // almacenes_info.php
+$zona_filtro = intval($zona_seleccionada ?? 0);
+$filtro_zona_almacenes = $zona_filtro > 0 ? " AND a.zona = {$zona_filtro}" : '';
+$filtro_zona_inventario = $zona_filtro > 0 ? " AND a.zona = {$zona_filtro}" : '';
+
 // Obtener todos los almacenes activos
 $sql = "SELECT a.*, z.PLANTA as nombre_zona,
                COUNT(DISTINCT ib.id_prod) as total_productos,
@@ -7,7 +11,7 @@ $sql = "SELECT a.*, z.PLANTA as nombre_zona,
         FROM almacenes a
         LEFT JOIN zonas z ON a.zona = z.id_zone
         LEFT JOIN inventario_bodega ib ON a.id_alma = ib.id_alma AND ib.total_kilos_disponible > 0
-        WHERE a.status = 1 and a.zona = '$zona_seleccionada'
+    WHERE a.status = 1{$filtro_zona_almacenes}
         GROUP BY a.id_alma
         ORDER BY a.zona, a.nombre";
 $result = $conn_mysql->query($sql);
@@ -107,59 +111,6 @@ $result = $conn_mysql->query($sql);
                         ?>
                     </tbody>
                 </table>
-            </div>
-            
-            <!-- Resumen -->
-            <div class="row mt-4">
-                <div class="col-md-3">
-                    <div class="card bg-light">
-                        <div class="card-body text-center">
-                            <h5 class="card-title text-muted">Total Almacenes</h5>
-                            <h3 class="text-primary"><?= $contador - 1 ?></h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-light">
-                        <div class="card-body text-center">
-                            <h5 class="card-title text-muted">Con Inventario</h5>
-                            <h3 class="text-success">
-                                <?php
-                                $con_inventario = $conn_mysql->query("
-                                    SELECT COUNT(DISTINCT id_alma) as total 
-                                    FROM inventario_bodega 
-                                    WHERE total_kilos_disponible > 0
-                                ")->fetch_assoc()['total'];
-                                echo $con_inventario;
-                                ?>
-                            </h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-light">
-                        <div class="card-body text-center">
-                            <h5 class="card-title text-muted">Sin Inventario</h5>
-                            <h3 class="text-warning"><?= ($contador - 1) - $con_inventario ?></h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-light">
-                        <div class="card-body text-center">
-                            <h5 class="card-title text-muted">Kilos Totales</h5>
-                            <h3 class="text-info">
-                                <?php
-                                $total_kilos = $conn_mysql->query("
-                                    SELECT SUM(total_kilos_disponible) as total 
-                                    FROM inventario_bodega
-                                ")->fetch_assoc()['total'];
-                                echo number_format($total_kilos, 2) . ' kg';
-                                ?>
-                            </h3>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
