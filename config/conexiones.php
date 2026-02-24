@@ -449,6 +449,28 @@ function esZonaMEOCompatible($tipoZona = null, $conn_mysql = null) {
     return in_array($tipoZona, ['MEO', 'SUR'], true);
 }
 
+function obtenerTipoZonaPorId($zonaId, $conn_mysql) {
+    $zonaId = intval($zonaId);
+    if ($zonaId <= 0) {
+        return 'NOR';
+    }
+
+    $stmt = $conn_mysql->prepare("SELECT tipo FROM zonas WHERE id_zone = ? LIMIT 1");
+    $stmt->bind_param('i', $zonaId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        return $row['tipo'] ?? 'NOR';
+    }
+
+    return 'NOR';
+}
+
+function esZonaSurSinFlete($zonaId, $conn_mysql) {
+    return obtenerTipoZonaPorId($zonaId, $conn_mysql) === 'SUR';
+}
+
 // Función para verificar si un módulo está disponible para el tipo de zona actual
 function moduloDisponibleParaZona($modulo, $conn_mysql) {
     $tipoZona = obtenerTipoZonaActual($conn_mysql);

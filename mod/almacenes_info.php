@@ -4,16 +4,20 @@ $zona_filtro = intval($zona_seleccionada ?? 0);
 $filtro_zona_almacenes = $zona_filtro > 0 ? " AND a.zona = {$zona_filtro}" : '';
 $filtro_zona_inventario = $zona_filtro > 0 ? " AND a.zona = {$zona_filtro}" : '';
 
-// Obtener todos los almacenes activos
+// Obtener almacenes activos separados por bodega (direcciones)
 $sql = "SELECT a.*, z.PLANTA as nombre_zona,
-               COUNT(DISTINCT ib.id_prod) as total_productos,
-               SUM(ib.total_kilos_disponible) as total_kilos
-        FROM almacenes a
-        LEFT JOIN zonas z ON a.zona = z.id_zone
-        LEFT JOIN inventario_bodega ib ON a.id_alma = ib.id_alma AND ib.total_kilos_disponible > 0
+           d.id_direc as id_bodega,
+           d.cod_al as cod_bodega,
+           d.noma as nombre_bodega,
+           COUNT(DISTINCT ib.id_prod) as total_productos,
+           COALESCE(SUM(ib.total_kilos_disponible), 0) as total_kilos
+    FROM almacenes a
+    LEFT JOIN zonas z ON a.zona = z.id_zone
+    LEFT JOIN direcciones d ON d.id_alma = a.id_alma AND d.status = 1
+    LEFT JOIN inventario_bodega ib ON ib.id_bodega = d.id_direc AND ib.total_kilos_disponible > 0
     WHERE a.status = 1{$filtro_zona_almacenes}
-        GROUP BY a.id_alma
-        ORDER BY a.zona, a.nombre";
+    GROUP BY a.id_alma, d.id_direc
+    ORDER BY a.zona, a.nombre, d.noma";
 $result = $conn_mysql->query($sql);
 
 ?>
@@ -48,6 +52,7 @@ $result = $conn_mysql->query($sql);
                             <th>#</th>
                             <th>Código</th>
                             <th>Nombre</th>
+                            <th>Bodega</th>
                             <th>Zona</th>
                             <th>Productos</th>
                             <th>Inventario Total</th>
@@ -63,7 +68,7 @@ $result = $conn_mysql->query($sql);
                                 // Calcular porcentaje de uso (ejemplo: si capacidad máxima es 100,000 kg)
                                 $capacidad_maxima = 100000; // Puedes ajustar esto o agregar campo en BD
                                 $porcentaje_uso = $capacidad_maxima > 0 ? 
-                                    ($almacen['total_kilos'] / $capacidad_maxima) * 100 : 0;
+                                    (floatval($almacen['total_kilos']) / $capacidad_maxima) * 100 : 0;
                                 
                                 // Determinar color de la barra según porcentaje
                                 $color_barra = 'bg-success';
@@ -71,14 +76,22 @@ $result = $conn_mysql->query($sql);
                                 if ($porcentaje_uso > 90) $color_barra = 'bg-danger';
                                 
                                 // Formatear inventario
-                                $total_kilos_formateado = $almacen['total_kilos'] > 0 ? 
+                                $total_kilos_formateado = floatval($almacen['total_kilos']) > 0 ? 
                                     number_format($almacen['total_kilos'], 2) . ' kg' : 
                                     '<span class="text-muted">Sin inventario</span>';
+
+                                $bodega_texto = '<span class="text-muted">Sin bodega</span>';
+                                if (!empty($almacen['id_bodega'])) {
+                                    $cod_bodega = htmlspecialchars($almacen['cod_bodega'] ?? '');
+                                    $nom_bodega = htmlspecialchars($almacen['nombre_bodega'] ?? '');
+                                    $bodega_texto = trim($cod_bodega . ' - ' . $nom_bodega);
+                                }
                                 
                                 echo "<tr>
                                     <td>{$contador}</td>
                                     <td><strong>{$almacen['cod']}</strong></td>
                                     <td>{$almacen['nombre']}</td>
+                                    <td>{$bodega_texto}</td>
                                     <td>{$almacen['nombre_zona']}</td>
                                     <td>
                                         <span class=\"badge bg-info\">{$almacen['total_productos']}</span>
@@ -100,7 +113,7 @@ $result = $conn_mysql->query($sql);
                             }
                         } else {
                             echo "<tr>
-                                <td colspan=\"8\" class=\"text-center\">
+                                <td colspan=\"9\" class=\"text-center\">
                                     <div class=\"alert alert-info\">
                                         <i class=\"bi bi-info-circle me-2\"></i>
                                         No hay almacenes registrados
@@ -227,8 +240,9 @@ function filtrarAlmacenes() {
     var buscarAlmacen = $('#buscarAlmacen').val().toLowerCase();
     
     $('#tablaAlmacenes tbody tr').each(function() {
-        var zona = $(this).find('td:nth-child(4)').text().toLowerCase();
+        var zona = $(this).find('td:nth-child(5)').text().toLowerCase();
         var almacen = $(this).find('td:nth-child(3)').text().toLowerCase();
+        var bodega = $(this).find('td:nth-child(4)').text().toLowerCase();
         var codigo = $(this).find('td:nth-child(2)').text().toLowerCase();
         
         var mostrar = true;
@@ -241,6 +255,7 @@ function filtrarAlmacenes() {
         // Filtrar por búsqueda
         if (buscarAlmacen && 
             almacen.indexOf(buscarAlmacen) === -1 && 
+            bodega.indexOf(buscarAlmacen) === -1 && 
             codigo.indexOf(buscarAlmacen) === -1) {
             mostrar = false;
         }

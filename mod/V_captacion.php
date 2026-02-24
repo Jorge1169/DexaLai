@@ -222,6 +222,7 @@ if (!$result_captacion || $result_captacion->num_rows == 0) {
 }
 
 $captacion = $result_captacion->fetch_assoc();
+$esZonaSur = esZonaSurSinFlete((int) ($captacion['zona'] ?? 0), $conn_mysql);
 
 // Obtener el folio completo desde la base de datos
 $folio_completo = $captacion['folio'];
@@ -284,6 +285,10 @@ $stmt_flete = $conn_mysql->prepare($sql_flete);
 $stmt_flete->bind_param('i', $id_captacion);
 $stmt_flete->execute();
 $flete = $stmt_flete->get_result()->fetch_assoc();
+
+if ($esZonaSur) {
+    $flete = null;
+}
 
 // Calcular totales y costos
 $total_kilos = 0;
@@ -361,7 +366,7 @@ if (isset($_POST['guardar_numeros_productos'])) {
             // Obtener y limpiar valores
             $numero_ticket = isset($producto['numero_ticket']) ? trim($producto['numero_ticket']) : '';
             $numero_bascula = isset($producto['numero_bascula']) ? trim($producto['numero_bascula']) : '';
-            $numero_factura = isset($producto['numero_factura']) ? trim($producto['numero_factura']) : '';
+            $numero_factura = $esZonaSur ? '' : (isset($producto['numero_factura']) ? trim($producto['numero_factura']) : '');
 
             if ($id_detalle <= 0)
                 continue;
@@ -413,7 +418,7 @@ if (isset($_POST['guardar_numeros_productos'])) {
             }
 
             // Validar factura duplicada
-            if (!empty($numero_factura)) {
+            if (!$esZonaSur && !empty($numero_factura)) {
                 $sql_factura = "SELECT cd.id_detalle, p.cod, p.nom_pro 
                 FROM captacion_detalle cd
                 INNER JOIN captacion c ON cd.id_captacion = c.id_captacion
@@ -455,7 +460,7 @@ if (isset($_POST['guardar_numeros_productos'])) {
             // Obtener y limpiar valores
             $numero_ticket = isset($producto['numero_ticket']) ? trim($producto['numero_ticket']) : '';
             $numero_bascula = isset($producto['numero_bascula']) ? trim($producto['numero_bascula']) : '';
-            $numero_factura = isset($producto['numero_factura']) ? trim($producto['numero_factura']) : '';
+            $numero_factura = $esZonaSur ? '' : (isset($producto['numero_factura']) ? trim($producto['numero_factura']) : '');
 
             if ($id_detalle <= 0) {
                 $errores[] = "ID de detalle inválido en índice $index";
@@ -680,6 +685,10 @@ if (isset($_POST['guardar_numeros_productos'])) {
 // ============================================
 if (isset($_POST['guardar_factura_flete'])) {
     try {
+        if ($esZonaSur) {
+            throw new Exception("La zona SUR no maneja fletero/factura de flete");
+        }
+
         $id_captacion_post = $_POST['id_captacion'] ?? 0;
         $numero_factura_flete = trim($_POST['numero_factura_flete'] ?? '');
         $validar_duplicado = isset($_POST['validar_duplicado']) ? (int) $_POST['validar_duplicado'] : 0;
@@ -823,7 +832,7 @@ if (isset($_POST['guardar_factura_flete'])) {
                         <?php endif; ?>
 
                         <!-- Botón para actualizar factura de flete -->
-                        <?php if ($flete): ?>
+                        <?php if ($flete && !$esZonaSur): ?>
                             <button class="btn btn-sm rounded-3 btn-warning align-items-center" data-bs-toggle="modal"
                                 data-bs-target="#modalFacturaFlete">
                                 <i class="bi bi-receipt"></i> Factura Flete
@@ -1031,135 +1040,139 @@ if (isset($_POST['guardar_factura_flete'])) {
                         </div>
                     </div>
                 <?php else: ?>
-                    <div class="card border-0 shadow h-100">
-                        <div
-                            class="card-body d-flex flex-column justify-content-center align-items-center text-center py-5">
-                            <div class="bg-warning bg-opacity-10 rounded-3 p-3 mb-2">
-                                <i class="bi bi-truck-flatbed text-warning fs-2"></i>
+                    <?php if (!$esZonaSur): ?>
+                        <div class="card border-0 shadow h-100">
+                            <div
+                                class="card-body d-flex flex-column justify-content-center align-items-center text-center py-5">
+                                <div class="bg-warning bg-opacity-10 rounded-3 p-3 mb-2">
+                                    <i class="bi bi-truck-flatbed text-warning fs-2"></i>
+                                </div>
+                                <h6 class="fw-bold mb-1">Sin Flete</h6>
+                                <p class="text-muted small mb-0">No hay servicio de flete registrado</p>
                             </div>
-                            <h6 class="fw-bold mb-1">Sin Flete</h6>
-                            <p class="text-muted small mb-0">No hay servicio de flete registrado</p>
                         </div>
-                    </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
         <!-- Resumen Financiero -->
         <div class="col-lg-5">
             <div class="card finance-card border-0 shadow-lg h-100">
-            <div class="card-header card-header-custom">
-                <h6 class="mb-0 d-flex align-items-center">
-                <i class="bi bi-calculator text-success me-2" aria-hidden="true"></i> Resumen Financiero
-                </h6>
-            </div>
-            <div class="card-body">
-                <!-- Alerta de discrepancia de flete -->
-                <?php if ($flete && !empty($flete['subtotal_flete']) && floatval($flete['subtotal_flete']) > 0 && abs($costo_total_flete - floatval($flete['subtotal_flete'])) > 0.01): ?>
-                <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>Advertencia:</strong> El costo de flete calculado ($<?= $costoFleteFmt ?>) no coincide con el subtotal registrado ($<?= number_format($flete['subtotal_flete'], 2) ?>). Verifica los datos del flete.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                <?php endif; ?>
-
-                <!-- Sección de Productos -->
-                <div class="financial-section mb-3 pb-3 border-bottom">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="d-flex align-items-center gap-2">
-                    <div class="bg-primary bg-opacity-10 p-2 rounded-circle">
-                        <i class="bi bi-box-seam text-primary"></i>
-                    </div>
-                    <span class="fw-semibold">Costo de Productos</span>
-                    </div>
-                    <span class="cost-display text-primary fw-bold fs-5">$<?= $costoProdFmt ?></span>
-                </div>
-                <small class="text-muted d-block ms-4"><?= $totalKilosFmt ?> kg comprados</small>
-                </div>
-
-                <!-- Sección de Flete (si aplica) -->
-                <?php if ($flete): ?>
-                <div class="financial-section mb-3 pb-3 border-bottom">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="bg-warning bg-opacity-10 p-2 rounded-circle">
-                        <i class="bi bi-truck text-warning"></i>
-                        </div>
-                        <span class="fw-semibold">Costo de Flete</span>
-                    </div>
-                    <span class="cost-display text-warning fw-bold fs-5">$<?= $costoFleteFmt ?></span>
-                    </div>
-                    <small class="text-muted d-block ms-4">
-                    <?= $fleteTipo === 'MFT' ? number_format($total_kilos / 1000, 2) . ' ton transportadas' : 'Viaje completo' ?>
-                    </small>
-                </div>
-                <?php endif; ?>
-
-                <!-- Total Principal -->
-                <div class="mt-4 pt-3 mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0">Total Captación</h5>
-                    <div class="text-end">
-                    <h4 class="fw-bold text-success mb-0">$<?= $costoCaptacionFmt ?></h4>
-                    <small class="text-muted">Importe Total</small>
-                    </div>
-                </div>
-                <div class="p-3 rounded-3 border border-success border-opacity-25"
-                    style="background: rgba(28,200,138,0.08);">
-                    <small class="text-muted d-block mb-2">Costo promedio por kilogramo</small>
-                    <div class="h5 fw-bold text-success mb-0">
-                    $<?= $promedioKilo ?><span class="text-muted fs-6"> / kg</span>
-                    </div>
-                </div>
-                </div>
-
-                <!-- Desglose de Impuestos (si aplica) -->
-                <?php if (!empty($flete['impuestoTraslado_flete'])): ?>
-                <div class="border-top pt-3">
-                    <h6 class="text-muted mb-3 d-flex align-items-center">
-                    <i class="bi bi-receipt text-secondary me-2"></i> Desglose Fiscal Flete
+                <div class="card-header card-header-custom">
+                    <h6 class="mb-0 d-flex align-items-center">
+                        <i class="bi bi-calculator text-success me-2" aria-hidden="true"></i> Resumen Financiero
                     </h6>
-
-                    <div class="financial-subsection mb-2 pb-2 border-bottom border-opacity-50">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-muted small">Subtotal</span>
-                        <span
-                        class="fw-semibold text-secondary">$<?= number_format($flete['subtotal_flete'], 2) ?></span>
-                    </div>
-                    </div>
-
-                    <div class="financial-subsection mb-2 pb-2 border-bottom border-opacity-50">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-plus-circle text-success fs-6"></i>
-                        <span class="text-muted small">IVA Traslado</span>
-                        </div>
-                        <span
-                        class="fw-semibold text-success">+$<?= number_format($flete['impuestoTraslado_flete'], 2) ?></span>
-                    </div>
-                    </div>
-
-                    <div class="financial-subsection mb-3 pb-3 border-bottom border-opacity-50">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-dash-circle text-danger fs-6"></i>
-                        <span class="text-muted small">IVA Retenido</span>
-                        </div>
-                        <span
-                        class="fw-semibold text-danger">-$<?= number_format($flete['impuestoRetenido_flete'], 2) ?></span>
-                    </div>
-                    </div>
-
-                    <div class="p-3 rounded-3 border-2"
-                    style="border-color: rgba(52,152,219,0.3); background: rgba(52,152,219,0.08);">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-bold">Total Neto Flete</span>
-                        <span
-                        class="fw-bold text-info fs-5">$<?= number_format($flete['total_flete'], 2) ?></span>
-                    </div>
-                    </div>
                 </div>
-                <?php endif; ?>
-            </div>
+                <div class="card-body">
+                    <!-- Alerta de discrepancia de flete -->
+                    <?php if ($flete && !empty($flete['subtotal_flete']) && floatval($flete['subtotal_flete']) > 0 && abs($costo_total_flete - floatval($flete['subtotal_flete'])) > 0.01): ?>
+                        <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Advertencia:</strong> El costo de flete calculado ($<?= $costoFleteFmt ?>) no coincide
+                            con el subtotal registrado ($<?= number_format($flete['subtotal_flete'], 2) ?>). Verifica los
+                            datos del flete.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Sección de Productos -->
+                    <div class="financial-section mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="bg-primary bg-opacity-10 p-2 rounded-circle">
+                                    <i class="bi bi-box-seam text-primary"></i>
+                                </div>
+                                <span class="fw-semibold">Costo de Productos</span>
+                            </div>
+                            <span class="cost-display text-primary fw-bold fs-5">$<?= $costoProdFmt ?></span>
+                        </div>
+                        <small class="text-muted d-block ms-4"><?= $totalKilosFmt ?> kg comprados</small>
+                    </div>
+
+                    <!-- Sección de Flete (si aplica) -->
+                    <?php if ($flete): ?>
+                        <div class="financial-section mb-3 pb-3 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="bg-warning bg-opacity-10 p-2 rounded-circle">
+                                        <i class="bi bi-truck text-warning"></i>
+                                    </div>
+                                    <span class="fw-semibold">Costo de Flete</span>
+                                </div>
+                                <span class="cost-display text-warning fw-bold fs-5">$<?= $costoFleteFmt ?></span>
+                            </div>
+                            <small class="text-muted d-block ms-4">
+                                <?= $fleteTipo === 'MFT' ? number_format($total_kilos / 1000, 2) . ' ton transportadas' : 'Viaje completo' ?>
+                            </small>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Total Principal -->
+                    <div class="mt-4 pt-3 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0">Total Captación</h5>
+                            <div class="text-end">
+                                <h4 class="fw-bold text-success mb-0">$<?= $costoCaptacionFmt ?></h4>
+                                <small class="text-muted">Importe Total</small>
+                            </div>
+                        </div>
+                        <div class="p-3 rounded-3 border border-success border-opacity-25"
+                            style="background: rgba(28,200,138,0.08);">
+                            <small class="text-muted d-block mb-2">Costo promedio por kilogramo</small>
+                            <div class="h5 fw-bold text-success mb-0">
+                                $<?= $promedioKilo ?><span class="text-muted fs-6"> / kg</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desglose de Impuestos (si aplica) -->
+                    <?php if (!empty($flete['impuestoTraslado_flete'])): ?>
+                        <div class="border-top pt-3">
+                            <h6 class="text-muted mb-3 d-flex align-items-center">
+                                <i class="bi bi-receipt text-secondary me-2"></i> Desglose Fiscal Flete
+                            </h6>
+
+                            <div class="financial-subsection mb-2 pb-2 border-bottom border-opacity-50">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Subtotal</span>
+                                    <span
+                                        class="fw-semibold text-secondary">$<?= number_format($flete['subtotal_flete'], 2) ?></span>
+                                </div>
+                            </div>
+
+                            <div class="financial-subsection mb-2 pb-2 border-bottom border-opacity-50">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-plus-circle text-success fs-6"></i>
+                                        <span class="text-muted small">IVA Traslado</span>
+                                    </div>
+                                    <span
+                                        class="fw-semibold text-success">+$<?= number_format($flete['impuestoTraslado_flete'], 2) ?></span>
+                                </div>
+                            </div>
+
+                            <div class="financial-subsection mb-3 pb-3 border-bottom border-opacity-50">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-dash-circle text-danger fs-6"></i>
+                                        <span class="text-muted small">IVA Retenido</span>
+                                    </div>
+                                    <span
+                                        class="fw-semibold text-danger">-$<?= number_format($flete['impuestoRetenido_flete'], 2) ?></span>
+                                </div>
+                            </div>
+
+                            <div class="p-3 rounded-3 border-2"
+                                style="border-color: rgba(52,152,219,0.3); background: rgba(52,152,219,0.08);">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">Total Neto Flete</span>
+                                    <span
+                                        class="fw-bold text-info fs-5">$<?= number_format($flete['total_flete'], 2) ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -1201,8 +1214,10 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 <th class="text-end">Subtotal</th>
                                 <th>N° Ticket / Comprobante</th>
                                 <th>N° Báscula</th>
-                                <th>N° Factura</th>
-                                <th>Contra Recibo</th>
+                                <?php if (!$esZonaSur): ?>
+                                    <th>N° Factura</th>
+                                    <th>Contra Recibo</th>
+                                <?php endif; ?>
                                 <th>Observaciones</th>
                             </tr>
                         </thead>
@@ -1325,56 +1340,59 @@ if (isset($_POST['guardar_factura_flete'])) {
                                             <span class="text-muted small">-</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td>
-                                        <?php if (!empty($producto['numero_factura'])): ?>
-                                            <!-- Si existe com_factura_producto o doc_factura_producto mostrar un icono para abrir un link en otra pagina de estos documentos -->
-                                            <?php if (!empty($producto['com_factura_producto']) || !empty($producto['doc_factura_producto'])) { ?>
-                                                <button type="button" class="btn btn-success btn-sm rounded-4 dropdown-toggle"
-                                                    data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-file-earmark-pdf"></i> <?= $producto['numero_factura'] ?>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <?php if (!empty($producto['com_factura_producto'])): ?>
-                                                        <li><a class="dropdown-item"
-                                                                href="<?= $invoiceLK . $producto['doc_factura_producto'] ?>.pdf"
-                                                                target="_blank">Factura</a></li><?php endif; ?>
-                                                    <?php if (!empty($producto['doc_factura_producto'])): ?>
-                                                        <li><a class="dropdown-item"
-                                                                href="<?= $invoiceLK . $producto['com_factura_producto'] ?>.pdf"
-                                                                target="_blank">Evidencia</a></li><?php endif; ?>
-                                                </ul>
-                                            <?php } else { ?>
-                                                <span class="numero-badge" data-bs-toggle="tooltip" title="Factura">
-                                                    <i
-                                                        class="bi bi-receipt me-1"></i><?= htmlspecialchars($producto['numero_factura']) ?>
-                                                </span>
-                                            <?php } ?>
-                                        <?php else: ?>
-                                            <span class="text-muted small">-</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?php if (!empty($producto['folio_CR_producto'])):
-                                            $cr_alias = htmlspecialchars($producto['alias_CR_producto']);
-                                            $cr_folio = htmlspecialchars($producto['folio_CR_producto']);
-                                            $cr_url = htmlspecialchars($link . $producto['alias_CR_producto'] . '-' . $producto['folio_CR_producto'], ENT_QUOTES);
-                                            $cr_display = $cr_alias . ' - ' . $cr_folio;
-                                            ?>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <a href="<?= $cr_url ?>" target="_blank" rel="noopener"
-                                                    class="btn btn-sm btn-teal rounded-4 d-inline-flex align-items-center"
-                                                    data-bs-toggle="tooltip" title="<?= $cr_display ?>">
-                                                    <i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>
-                                                    <span class="text-truncate"
-                                                        style="max-width:130px;display:inline-block;vertical-align:middle;">
-                                                        <?= $cr_display ?>
+                                    <?php if (!$esZonaSur): ?>
+                                        <td>
+                                            <?php if (!empty($producto['numero_factura'])): ?>
+                                                <!-- Si existe com_factura_producto o doc_factura_producto mostrar un icono para abrir un link en otra pagina de estos documentos -->
+                                                <?php if (!empty($producto['com_factura_producto']) || !empty($producto['doc_factura_producto'])) { ?>
+                                                    <button type="button" class="btn btn-success btn-sm rounded-4 dropdown-toggle"
+                                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="bi bi-file-earmark-pdf"></i> <?= $producto['numero_factura'] ?>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <?php if (!empty($producto['com_factura_producto'])): ?>
+                                                            <li><a class="dropdown-item"
+                                                                    href="<?= $invoiceLK . $producto['doc_factura_producto'] ?>.pdf"
+                                                                    target="_blank">Factura</a></li><?php endif; ?>
+                                                        <?php if (!empty($producto['doc_factura_producto'])): ?>
+                                                            <li><a class="dropdown-item"
+                                                                    href="<?= $invoiceLK . $producto['com_factura_producto'] ?>.pdf"
+                                                                    target="_blank">Evidencia</a></li><?php endif; ?>
+                                                    </ul>
+                                                <?php } else { ?>
+                                                    <span class="numero-badge" data-bs-toggle="tooltip" title="Factura">
+                                                        <i
+                                                            class="bi bi-receipt me-1"></i><?= htmlspecialchars($producto['numero_factura']) ?>
                                                     </span>
-                                                </a>
-                                            </div>
-                                        <?php else: ?>
-                                            <span class="text-muted small">-</span>
-                                        <?php endif; ?>
-                                    </td>
+                                                <?php } ?>
+                                            <?php else: ?>
+                                                <span class="text-muted small">-</span>
+                                            <?php endif; ?>
+                                        </td>
+
+                                        <td>
+                                            <?php if (!empty($producto['folio_CR_producto'])):
+                                                $cr_alias = htmlspecialchars($producto['alias_CR_producto']);
+                                                $cr_folio = htmlspecialchars($producto['folio_CR_producto']);
+                                                $cr_url = htmlspecialchars($link . $producto['alias_CR_producto'] . '-' . $producto['folio_CR_producto'], ENT_QUOTES);
+                                                $cr_display = $cr_alias . ' - ' . $cr_folio;
+                                                ?>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <a href="<?= $cr_url ?>" target="_blank" rel="noopener"
+                                                        class="btn btn-sm btn-teal rounded-4 d-inline-flex align-items-center"
+                                                        data-bs-toggle="tooltip" title="<?= $cr_display ?>">
+                                                        <i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>
+                                                        <span class="text-truncate"
+                                                            style="max-width:130px;display:inline-block;vertical-align:middle;">
+                                                            <?= $cr_display ?>
+                                                        </span>
+                                                    </a>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted small">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endif; ?>
                                     <td>
                                         <?php if (!empty($producto['observaciones'])): ?>
                                             <small class="d-block text-muted" data-bs-toggle="tooltip"
@@ -1433,7 +1451,9 @@ if (isset($_POST['guardar_factura_flete'])) {
                                 <!-- Espacios para columnas: Ticket/Comprobante, Báscula, Factura, Observaciones -->
                                 <td></td>
                                 <td></td>
-                                <td></td>
+                                <?php if (!$esZonaSur): ?>
+                                    <td></td>
+                                <?php endif; ?>
                                 <td></td>
                                 <td></td>
                             </tr>
@@ -1572,7 +1592,9 @@ if (isset($_POST['guardar_factura_flete'])) {
                                     <th width="15%">Producto</th>
                                     <th width="10%">N° Ticket</th>
                                     <th width="10%">N° Báscula</th>
-                                    <th width="10%">N° Factura</th>
+                                    <?php if (!$esZonaSur): ?>
+                                        <th width="10%">N° Factura</th>
+                                    <?php endif; ?>
                                     <th width="20%">Comprobante</th>
                                     <th width="5%">Validación</th>
                                     <th width="15%">Archivo Actual</th>
@@ -1610,13 +1632,15 @@ if (isset($_POST['guardar_factura_flete'])) {
                                                 data-id-detalle="<?= $producto['id_detalle'] ?>" data-tipo="bascula"
                                                 autocomplete="off" placeholder="Ej: B-9876">
                                         </td>
-                                        <td>
-                                            <input type="text" class="form-control form-control-sm numero-input"
-                                                name="productos[<?= $index ?>][numero_factura]"
-                                                value="<?= htmlspecialchars($producto['numero_factura'] ?? '') ?>"
-                                                data-id-detalle="<?= $producto['id_detalle'] ?>" data-tipo="factura"
-                                                autocomplete="off" placeholder="Ej: F-2023-01">
-                                        </td>
+                                        <?php if (!$esZonaSur): ?>
+                                            <td>
+                                                <input type="text" class="form-control form-control-sm numero-input"
+                                                    name="productos[<?= $index ?>][numero_factura]"
+                                                    value="<?= htmlspecialchars($producto['numero_factura'] ?? '') ?>"
+                                                    data-id-detalle="<?= $producto['id_detalle'] ?>" data-tipo="factura"
+                                                    autocomplete="off" placeholder="Ej: F-2023-01">
+                                            </td>
+                                        <?php endif; ?>
                                         <td>
                                             <div class="input-group input-group-sm">
                                                 <input type="file" class="form-control form-control-sm file-input"
@@ -1824,7 +1848,7 @@ if (isset($_POST['guardar_factura_flete'])) {
     });
 </script>
 <!-- Modal para Factura de Flete -->
-<?php if ($flete): ?>
+<?php if ($flete && !$esZonaSur): ?>
     <div class="modal fade" id="modalFacturaFlete" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">

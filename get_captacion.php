@@ -99,6 +99,15 @@ if ($accion == 'almacenes' && isset($_POST['zonaAlmacen'])) {
 // 4. Cargar fleteros por zona
 if ($accion == 'fleteros' && isset($_POST['zonaFletero'])) {
     $zonaId0 = $_POST['zonaFletero'];
+    if (esZonaSurSinFlete($zonaId0, $conn_mysql)) {
+        ?>
+        <label for="idFletero" class="form-label">Fletero</label>
+        <select class="form-select" id="idFletero" disabled>
+            <option value="">No aplica para zona SUR</option>
+        </select>
+        <?php
+        exit;
+    }
     ?>
     <label for="idFletero" class="form-label">Fletero</label>
     <select class="form-select" name="idFletero" id="idFletero" onchange="cargarPrecioFlete()" required>
@@ -195,6 +204,16 @@ if ($accion == 'precio_flete' && isset($_POST['idFletero']) && isset($_POST['tip
     $origen = $_POST['origen'];
     $destino = $_POST['destino'];
     $fechaConsulta = isset($_POST['fechaCaptacion']) ? $_POST['fechaCaptacion'] : date('Y-m-d');
+
+    if (empty($idFletero) || intval($idFletero) <= 0) {
+        ?>
+        <label for="id_preFle" class="form-label">Precio flete</label>
+        <select class="form-select" id="id_preFle" disabled>
+            <option value="">No aplica para esta zona</option>
+        </select>
+        <?php
+        exit;
+    }
     
     $precFl0 = $conn_mysql->query("
         SELECT p.*, 

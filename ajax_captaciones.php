@@ -40,6 +40,7 @@ c.fecha_captacion,
 c.status,
 z.cod as cod_zona,
 z.PLANTA as nombre_zona,
+z.tipo as tipo_zona,
 p.cod as cod_proveedor,
 p.rs as nombre_proveedor,
 a.cod as cod_almacen,
@@ -150,7 +151,7 @@ if (!empty($search)) {
 }
 
 // Agrupar
-$query .= " GROUP BY c.id_captacion, c.folio, c.fecha_captacion, z.cod, z.PLANTA, p.cod, p.rs, 
+$query .= " GROUP BY c.id_captacion, c.folio, c.fecha_captacion, z.cod, z.PLANTA, z.tipo, p.cod, p.rs, 
            a.cod, a.nombre, t.placas, t.razon_so, pf.precio, cf.numero_factura_flete, cf.id_capt_flete";
 
 // Ordenamiento
@@ -275,6 +276,7 @@ if ($count_result) {
 }
 
 while ($row = mysqli_fetch_assoc($result)) {
+    $esZonaSur = strtoupper(trim($row['tipo_zona'] ?? '')) === 'SUR';
     
     // Formatear folio completo
     $folio_completo = $row['folio'];
@@ -300,7 +302,9 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     // Info fletero
     $fletero_info = '';
-    if (!empty($row['placas_fletero'])) {
+    if ($esZonaSur) {
+        $fletero_info = '<span class="text-muted">Sin fletero</span>';
+    } elseif (!empty($row['placas_fletero'])) {
         $fletero_info = htmlspecialchars($row['placas_fletero']);
         if (!empty($row['nombre_fletero'])) {
             $fletero_info .= '<br><small class="text-muted">' . htmlspecialchars($row['nombre_fletero']) . '</small>';
@@ -311,7 +315,9 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 // Facturas de productos - Hacer clickeables si hay documentos de factura
 $facturas_productos_html = '';
-if (!empty($row['facturas_productos'])) {
+if ($esZonaSur) {
+    $facturas_productos_html = '<span class="text-muted">-</span>';
+} elseif (!empty($row['facturas_productos'])) {
     $facturas_arr = array_filter(explode(', ', $row['facturas_productos']));
     
     // Obtener documentos de factura para cada producto
@@ -398,7 +404,9 @@ if (!empty($row['facturas_productos'])) {
     
     // Factura del fletero - Hacer clickeable si hay número
 $factura_fletero_html = '';
-if (!empty($row['numero_factura_flete'])) {
+if ($esZonaSur) {
+    $factura_fletero_html = '<span class="text-muted">-</span>';
+} elseif (!empty($row['numero_factura_flete'])) {
     $doc_flete = $row['doc_factura_flete'] ?? '';
     $com_flete = $row['com_factura_flete'] ?? '';
     
@@ -462,7 +470,9 @@ if (!empty($row['contra_recibos_productos'])) {
 
 // Contra recibo de flete
 $contra_recibo_flete_html = '';
-if (!empty($row['aliascap_flete']) && !empty($row['foliocap_flete'])) {
+if ($esZonaSur) {
+    $contra_recibo_flete_html = '<span class="text-muted">-</span>';
+} elseif (!empty($row['aliascap_flete']) && !empty($row['foliocap_flete'])) {
     $cr_flete = $row['aliascap_flete'] . '-' . $row['foliocap_flete'];
     $contra_recibo_flete_html = '<a href="'.$link . urlencode($cr_flete) . '" ' .
         'target="_blank" class="badge bg-success bg-opacity-10 text-success" ' .
@@ -496,7 +506,7 @@ if (!empty($row['aliascap_flete']) && !empty($row['foliocap_flete'])) {
         '<small class="text-muted">peso total</small>',
         '<div class="fw-bold text-indigo">$' . number_format($costo_productos, 2) . '</div>' .
         '<small class="text-muted">$' . number_format($costo_por_kilo_prod, 4) . '/kg</small>',
-        ($costo_flete > 0 ? 
+        (!$esZonaSur && $costo_flete > 0 ? 
             '<div class="fw-bold text-warning">$' . number_format($costo_flete, 2) . '</div>' .
             '<small class="text-muted">flete</small>' : 
             '<div class="text-muted small">Sin flete</div>'),

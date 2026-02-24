@@ -19,6 +19,8 @@ if ($zona_seleccionada == 0) {
     $zona_s0 = $conn_mysql->query("SELECT * FROM zonas where status = '1' AND id_zone = '$zona_seleccionada'");
 } 
 $zona_s1 = mysqli_fetch_array($zona_s0);
+$tipo_zona_actual = $zona_s1['tipo'] ?? 'NOR';
+$es_zona_sur_sin_flete = ($tipo_zona_actual === 'SUR');
 
 // Consulta para obtener el último folio del mes de la fecha seleccionada
 $query = "SELECT folio FROM captacion WHERE status = '1' 
@@ -50,11 +52,19 @@ $folioM = "C-".$zona_s1['cod']."-".$fecha.$folio;
 // Procesar guardar captación completa
 if (isset($_POST['guardar_captacion'])) {
     // Validaciones básicas
+    $zona_captacion = intval($_POST['zona'] ?? 0);
+    $es_zona_sur = esZonaSurSinFlete($zona_captacion, $conn_mysql);
     $tipo_flete = $_POST['tipo_flete'] ?? '';
     $bodega_proveedor = $_POST['bodgeProv'] ?? 0;
     $bodega_almacen = $_POST['bodgeAlm'] ?? 0;
     $precio_flete = $_POST['id_preFle'] ?? 0;
     $idFle = $_POST['idFletero'] ?? 0;
+
+    if ($es_zona_sur) {
+        $tipo_flete = '';
+        $precio_flete = 0;
+        $idFle = 0;
+    }
     
     // Verificar que hay al menos un producto
     if (empty($productos_agregados)) {
@@ -63,7 +73,7 @@ if (isset($_POST['guardar_captacion'])) {
     }
     
     // Validaciones
-    if (empty($tipo_flete)) {
+    if (!$es_zona_sur && empty($tipo_flete)) {
         alert("Debe seleccionar el tipo de flete", 0, "N_captacion");
         exit;
     }
@@ -75,7 +85,7 @@ if (isset($_POST['guardar_captacion'])) {
         alert("Debe seleccionar una bodega de almacén válida", 0, "N_captacion");
         exit;
     }
-    if ($precio_flete <= 0) {
+    if (!$es_zona_sur && $precio_flete <= 0) {
         alert("Debe seleccionar un precio de flete válido", 0, "N_captacion");
         exit;
     }
@@ -88,7 +98,7 @@ if (isset($_POST['guardar_captacion'])) {
         exit;
     }
     
-    if ($idFle > 0) {
+    if (!$es_zona_sur && $idFle > 0) {
         $Verfle0 = $conn_mysql->query("SELECT * FROM transportes WHERE id_transp = '$idFle' AND correo != ''");
         $Verfle1 = mysqli_fetch_array($Verfle0);
         if (empty($Verfle1['id_transp'])) {
@@ -105,15 +115,18 @@ if (isset($_POST['guardar_captacion'])) {
         $CaptacionData = [
             'folio' => $folio,
             'fecha_captacion' => $_POST['fecha_captacion'],
-            'zona' => $_POST['zona'],
+            'zona' => $zona_captacion,
             'id_prov' => $_POST['idProveedor'],
             'id_direc_prov' => $bodega_proveedor,
             'id_alma' => $_POST['idAlmacen'],
             'id_direc_alma' => $bodega_almacen,
-            'id_transp' => $idFle,
             'id_user' => $idUser,
             'status' => 1
         ];
+
+        if (!$es_zona_sur) {
+            $CaptacionData['id_transp'] = $idFle;
+        }
         
         $columns = implode(', ', array_keys($CaptacionData));
         $placeholders = implode(', ', array_fill(0, count($CaptacionData), '?'));
@@ -163,21 +176,23 @@ if (isset($_POST['guardar_captacion'])) {
             $stmtDet->execute();
         }
         
-        // 3. Insertar relación de flete
-        $FleteData = [
-            'id_captacion' => $id_captacion,
-            'id_fletero' => $idFle,
-            'id_pre_flete' => $precio_flete
-        ];
-        
-        $columnsFlete = implode(', ', array_keys($FleteData));
-        $placeholdersFlete = implode(', ', array_fill(0, count($FleteData), '?'));
-        $sqlFlete = "INSERT INTO captacion_flete ($columnsFlete) VALUES ($placeholdersFlete)";
-        $stmtFlete = $conn_mysql->prepare($sqlFlete);
-        
-        $typesFlete = str_repeat('s', count($FleteData));
-        $stmtFlete->bind_param($typesFlete, ...array_values($FleteData));
-        $stmtFlete->execute();
+        // 3. Insertar relación de flete (no aplica para SUR)
+        if (!$es_zona_sur && $idFle > 0 && $precio_flete > 0) {
+            $FleteData = [
+                'id_captacion' => $id_captacion,
+                'id_fletero' => $idFle,
+                'id_pre_flete' => $precio_flete
+            ];
+            
+            $columnsFlete = implode(', ', array_keys($FleteData));
+            $placeholdersFlete = implode(', ', array_fill(0, count($FleteData), '?'));
+            $sqlFlete = "INSERT INTO captacion_flete ($columnsFlete) VALUES ($placeholdersFlete)";
+            $stmtFlete = $conn_mysql->prepare($sqlFlete);
+            
+            $typesFlete = str_repeat('s', count($FleteData));
+            $stmtFlete->bind_param($typesFlete, ...array_values($FleteData));
+            $stmtFlete->execute();
+        }
         
         // 4. Actualizar inventario
         require_once 'config/conexiones.php';
@@ -313,12 +328,12 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                 </div>
                 
                 <!-- SECCIÓN 4: Fletero y Tipo de Flete -->
-                <div class="form-section shadow-sm mb-4">
+                <div class="form-section shadow-sm mb-4" id="seccionFlete">
                     <h5 class="section-header">Fletero y Tipo de Flete</h5>
                     <div class="row g-3">
                         <div class="col-md-4" id="resulfLE">
                             <label for="idFletero" class="form-label">Fletero</label>
-                            <select class="form-select" name="idFletero" id="idFletero" onchange="cargarPrecioFlete()" required>
+                            <select class="form-select" name="idFletero" id="idFletero" onchange="cargarPrecioFlete()" <?= $es_zona_sur_sin_flete ? '' : 'required' ?>>
                                 <option selected disabled value="">Selecciona un transportista...</option>
                                 <?php
                                 if ($zona_seleccionada == 0) {
@@ -337,7 +352,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                         </div>
                         <div class="col-md-3" id="TipoFlete">
                             <label for="tipo_flete" class="form-label">Tipo de Flete</label>
-                            <select class="form-select" name="tipo_flete" id="tipo_flete" onchange="cargarPrecioFlete()" required>
+                            <select class="form-select" name="tipo_flete" id="tipo_flete" onchange="cargarPrecioFlete()" <?= $es_zona_sur_sin_flete ? '' : 'required' ?>>
                                 <option selected disabled value="">Selecciona tipo...</option>
                                 <option value="MFT">Por tonelada (MEO)</option>
                                 <option value="MFV">Por viaje (MEO)</option>
@@ -459,6 +474,42 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
 
 <!-- Scripts JavaScript -->
 <script>
+    const ZONAS_TIPO_CAPTACION = {
+        <?php
+        $zonas_tipo_map = $conn_mysql->query("SELECT id_zone, tipo FROM zonas WHERE status = '1'");
+        $map_items = [];
+        if ($zonas_tipo_map) {
+            while ($z_tipo = mysqli_fetch_assoc($zonas_tipo_map)) {
+                $map_items[] = intval($z_tipo['id_zone']) . ": '" . addslashes($z_tipo['tipo'] ?? 'NOR') . "'";
+            }
+        }
+        echo implode(', ', $map_items);
+        ?>
+    };
+
+    function esZonaSurSinFleteFrontend() {
+        const zonaId = String($('#zona').val() || '');
+        return ZONAS_TIPO_CAPTACION[zonaId] === 'SUR';
+    }
+
+    function aplicarReglaZonaSinFlete() {
+        const esSur = esZonaSurSinFleteFrontend();
+        const $seccion = $('#seccionFlete');
+        const $idFletero = $('#idFletero');
+        const $tipoFlete = $('#tipo_flete');
+
+        if (esSur) {
+            $seccion.hide();
+            $idFletero.prop('required', false).prop('disabled', true).val('');
+            $tipoFlete.prop('required', false).prop('disabled', true).val('');
+            $('#PreFle').html('<label class="form-label">Precio del flete</label><select class="form-select" disabled><option>No aplica para zona SUR</option></select>');
+        } else {
+            $seccion.show();
+            $idFletero.prop('disabled', false).prop('required', true);
+            $tipoFlete.prop('disabled', false).prop('required', true);
+        }
+    }
+
     $(document).ready(function() {
         // Inicializar Select2
         $('#zona, #idProveedor, #idAlmacen, #idFletero, #idProd').select2({
@@ -474,6 +525,8 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
             language: "es",
             width: '100%'
         });
+
+        aplicarReglaZonaSinFlete();
         
         // Inicializar campos de tipo de almacenamiento
         cambiarTipoAlmacen('granel');
@@ -625,8 +678,13 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
             // Recargar selects basados en zona
                 cargarProveedores(zonaId);
                 cargarAlmacenes(zonaId);
-                cargarFleteros(zonaId);
+                if (!esZonaSurSinFleteFrontend()) {
+                    cargarFleteros(zonaId);
+                } else {
+                    $('#resulfLE').html('<label for="idFletero" class="form-label">Fletero</label><select class="form-select" id="idFletero" disabled><option>No aplica para zona SUR</option></select>');
+                }
                 cargarProductos(zonaId);
+                aplicarReglaZonaSinFlete();
             }
         });
     }
@@ -769,6 +827,11 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
 
     // Función para cargar precio de flete
     function cargarPrecioFlete() {
+        if (esZonaSurSinFleteFrontend()) {
+            $('#PreFle').html('<label class="form-label">Precio del flete</label><select class="form-select" disabled><option>No aplica para zona SUR</option></select>');
+            return;
+        }
+
         var idFletero = $('#idFletero').val();
         var tipoFlete = $('#tipo_flete').val();
         var bodgeProv = $('#bodgeProv').val();

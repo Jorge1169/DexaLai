@@ -3,6 +3,7 @@
 
 // Obtener ID del almacén
 $id_almacen = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$id_bodega = isset($_GET['id_bodega']) ? intval($_GET['id_bodega']) : 0;
 if ($id_almacen <= 0) {
     alert("ID de almacén no válido", 0, "almacenes_info");
     exit;
@@ -25,6 +26,20 @@ if (!$result_almacen || $result_almacen->num_rows == 0) {
 }
 
 $almacen = $result_almacen->fetch_assoc();
+
+$bodega_seleccionada = null;
+if ($id_bodega > 0) {
+    $sql_bodega_sel = "SELECT id_direc, cod_al, noma FROM direcciones WHERE id_direc = ? AND id_alma = ? AND status = 1";
+    $stmt_bodega_sel = $conn_mysql->prepare($sql_bodega_sel);
+    $stmt_bodega_sel->bind_param('ii', $id_bodega, $id_almacen);
+    $stmt_bodega_sel->execute();
+    $result_bodega_sel = $stmt_bodega_sel->get_result();
+    if ($result_bodega_sel && $result_bodega_sel->num_rows > 0) {
+        $bodega_seleccionada = $result_bodega_sel->fetch_assoc();
+    } else {
+        $id_bodega = 0;
+    }
+}
 
 // Obtener mes y año para el reporte
 $mes_actual = date('n');
@@ -50,10 +65,14 @@ $sql_meses_disponibles = "SELECT DISTINCT
                           MONTH(mi.created_at) as mes
                           FROM movimiento_inventario mi
                           LEFT JOIN inventario_bodega ib ON mi.id_inventario = ib.id_inventario
-                          WHERE ib.id_alma = ?
+                          WHERE ib.id_alma = ?" . ($id_bodega > 0 ? " AND ib.id_bodega = ?" : "") . "
                           ORDER BY mes_anio DESC";
 $stmt_meses = $conn_mysql->prepare($sql_meses_disponibles);
-$stmt_meses->bind_param('i', $id_almacen);
+if ($id_bodega > 0) {
+    $stmt_meses->bind_param('ii', $id_almacen, $id_bodega);
+} else {
+    $stmt_meses->bind_param('i', $id_almacen);
+}
 $stmt_meses->execute();
 $meses_disponibles = $stmt_meses->get_result();
 
@@ -67,7 +86,7 @@ while ($mes = $meses_disponibles->fetch_assoc()) {
 }
 
 // Función para obtener inventario acumulado hasta un mes específico (INCLUYE VENTAS)
-function obtenerInventarioAcumulado($id_alma, $mes, $anio, $conn_mysql) {
+function obtenerInventarioAcumulado($id_alma, $mes, $anio, $conn_mysql, $id_bodega = 0) {
     // Calcular fecha límite (último día del mes seleccionado) - CORREGIDO
     $fecha_limite = new DateTime("$anio-$mes-01");
     $fecha_limite->modify('last day of this month');
@@ -88,20 +107,24 @@ function obtenerInventarioAcumulado($id_alma, $mes, $anio, $conn_mysql) {
             FROM inventario_bodega ib
             LEFT JOIN productos p ON ib.id_prod = p.id_prod
             LEFT JOIN movimiento_inventario mi ON ib.id_inventario = mi.id_inventario
-            WHERE ib.id_alma = ?
-              AND DATE(mi.created_at) <= ?
+                        WHERE ib.id_alma = ?" . ($id_bodega > 0 ? " AND ib.id_bodega = ?" : "") . "
+                            AND DATE(mi.created_at) <= ?
             GROUP BY ib.id_inventario, ib.id_prod, p.cod, p.nom_pro
             HAVING granel_acumulado > 0 OR pacas_cant_acumulado > 0 OR pacas_kilos_acumulado > 0
             ORDER BY p.cod";
     
     $stmt = $conn_mysql->prepare($sql);
-    $stmt->bind_param('is', $id_alma, $fecha_limite_str);
+        if ($id_bodega > 0) {
+                $stmt->bind_param('iis', $id_alma, $id_bodega, $fecha_limite_str);
+        } else {
+                $stmt->bind_param('is', $id_alma, $fecha_limite_str);
+        }
     $stmt->execute();
     return $stmt->get_result();
 }
 
 // Obtener inventario actual (acumulado hasta hoy)
-$inventario_actual = obtenerInventarioAcumulado($id_almacen, $mes_actual, $anio_actual, $conn_mysql);
+$inventario_actual = obtenerInventarioAcumulado($id_almacen, $mes_actual, $anio_actual, $conn_mysql, $id_bodega);
 
 // Mejor aún, usa DateTime que es más confiable:
 $fecha_inicio = new DateTime("$anio_actual-$mes_actual-01");
@@ -133,12 +156,16 @@ $sql_movimientos = "SELECT mi.*, p.cod as cod_producto, p.nom_pro as nombre_prod
                     LEFT JOIN ventas v ON mi.id_venta = v.id_venta
                     LEFT JOIN clientes cli ON v.id_cliente = cli.id_cli
                     LEFT JOIN almacenes alm ON v.id_alma = alm.id_alma
-                    WHERE ib.id_alma = ?
+                                        WHERE ib.id_alma = ?" . ($id_bodega > 0 ? " AND ib.id_bodega = ?" : "") . "
                       AND DATE(mi.created_at) BETWEEN ? AND ?
                     ORDER BY mi.created_at DESC
                     LIMIT 100";
 $stmt_movimientos = $conn_mysql->prepare($sql_movimientos);
-$stmt_movimientos->bind_param('iss', $id_almacen, $primer_dia_mes, $ultimo_dia_mes);
+if ($id_bodega > 0) {
+        $stmt_movimientos->bind_param('iiss', $id_almacen, $id_bodega, $primer_dia_mes, $ultimo_dia_mes);
+} else {
+        $stmt_movimientos->bind_param('iss', $id_almacen, $primer_dia_mes, $ultimo_dia_mes);
+}
 $stmt_movimientos->execute();
 $movimientos_mes = $stmt_movimientos->get_result();
 
@@ -159,10 +186,14 @@ $sql_totales_mes = "SELECT
                              THEN mi.pacas_kilos_movimiento ELSE 0 END) as pacas_salida_kilos_venta
                     FROM movimiento_inventario mi
                     LEFT JOIN inventario_bodega ib ON mi.id_inventario = ib.id_inventario
-                    WHERE ib.id_alma = ?
+                    WHERE ib.id_alma = ?" . ($id_bodega > 0 ? " AND ib.id_bodega = ?" : "") . "
                       AND DATE(mi.created_at) BETWEEN ? AND ?";
 $stmt_totales = $conn_mysql->prepare($sql_totales_mes);
-$stmt_totales->bind_param('iss', $id_almacen, $primer_dia_mes, $ultimo_dia_mes);
+if ($id_bodega > 0) {
+    $stmt_totales->bind_param('iiss', $id_almacen, $id_bodega, $primer_dia_mes, $ultimo_dia_mes);
+} else {
+    $stmt_totales->bind_param('iss', $id_almacen, $primer_dia_mes, $ultimo_dia_mes);
+}
 $stmt_totales->execute();
 $totales_mes = $stmt_totales->get_result()->fetch_assoc();
 
@@ -175,7 +206,13 @@ $sql_bodegas = "SELECT * FROM direcciones
                 WHERE id_alma = ? AND status = 1 
                 ORDER BY noma";
 $stmt_bodegas = $conn_mysql->prepare($sql_bodegas);
-$stmt_bodegas->bind_param('i', $id_almacen);
+if ($id_bodega > 0) {
+    $sql_bodegas = "SELECT * FROM direcciones WHERE id_alma = ? AND id_direc = ? AND status = 1 ORDER BY noma";
+    $stmt_bodegas = $conn_mysql->prepare($sql_bodegas);
+    $stmt_bodegas->bind_param('ii', $id_almacen, $id_bodega);
+} else {
+    $stmt_bodegas->bind_param('i', $id_almacen);
+}
 $stmt_bodegas->execute();
 $bodegas = $stmt_bodegas->get_result();
 
@@ -184,9 +221,13 @@ $hay_bodegas = $bodegas && $bodegas->num_rows > 0;
 // Calcular inventario total actual
 $sql_total_actual = "SELECT SUM(total_kilos_disponible) as total 
                     FROM inventario_bodega 
-                    WHERE id_alma = ?";
+                    WHERE id_alma = ?" . ($id_bodega > 0 ? " AND id_bodega = ?" : "");
 $stmt_total = $conn_mysql->prepare($sql_total_actual);
-$stmt_total->bind_param('i', $id_almacen);
+if ($id_bodega > 0) {
+    $stmt_total->bind_param('ii', $id_almacen, $id_bodega);
+} else {
+    $stmt_total->bind_param('i', $id_almacen);
+}
 $stmt_total->execute();
 $total_actual = $stmt_total->get_result()->fetch_assoc()['total'];
 
@@ -542,6 +583,9 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                     <form method="get" class="row g-3">
                         <input type="hidden" name="p" value="V_detalle_almacen">
                         <input type="hidden" name="id" value="<?= $id_almacen ?>">
+                        <?php if ($id_bodega > 0): ?>
+                            <input type="hidden" name="id_bodega" value="<?= $id_bodega ?>">
+                        <?php endif; ?>
                         
                         <div class="col-md-5">
                             <label class="form-label fw-semibold">Seleccionar Mes y Año</label>
@@ -609,7 +653,7 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                     $label_es = (isset($mes_nombre[$mes_num]) ? $mes_nombre[$mes_num] : $mes_option['label']) . ' ' . $anio_opt;
                                     $active_class = ($mes_option['value'] == $fecha_seleccionada) ? 'active' : '';
                             ?>
-                                <a href="?p=V_detalle_almacen&id=<?= intval($id_almacen) ?>&fecha=<?= htmlspecialchars($mes_option['value']) ?>" 
+                                <a href="?p=V_detalle_almacen&id=<?= intval($id_almacen) ?>&fecha=<?= htmlspecialchars($mes_option['value']) ?><?= $id_bodega > 0 ? '&id_bodega=' . intval($id_bodega) : '' ?>" 
                                    class="badge bg-light text-dark text-decoration-none px-3 py-2 border <?= $active_class ?>">
                                     <i class="bi bi-calendar2-week me-1"></i>
                                     <?= htmlspecialchars($label_es) ?>
@@ -1019,12 +1063,16 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                                      THEN mi.pacas_kilos_movimiento ELSE 0 END) as pacas_salida
                                            FROM movimiento_inventario mi
                                            LEFT JOIN inventario_bodega ib ON mi.id_inventario = ib.id_inventario
-                                           WHERE ib.id_alma = ?
+                                                                                     WHERE ib.id_alma = ?" . ($id_bodega > 0 ? " AND ib.id_bodega = ?" : "") . "
                                              AND DATE(mi.created_at) BETWEEN ? AND ?
                                            GROUP BY DATE(mi.created_at)
                                            ORDER BY fecha DESC";
                             $stmt_dia = $conn_mysql->prepare($sql_por_dia);
-                            $stmt_dia->bind_param('iss', $id_almacen, $primer_dia_mes, $ultimo_dia_mes);
+                                                        if ($id_bodega > 0) {
+                                                                $stmt_dia->bind_param('iiss', $id_almacen, $id_bodega, $primer_dia_mes, $ultimo_dia_mes);
+                                                        } else {
+                                                                $stmt_dia->bind_param('iss', $id_almacen, $primer_dia_mes, $ultimo_dia_mes);
+                                                        }
                             $stmt_dia->execute();
                             $movimientos_dia = $stmt_dia->get_result();
                             
@@ -1146,13 +1194,17 @@ $count_movimientos = $movimientos_mes ? $movimientos_mes->num_rows : 0;
                                                 FROM inventario_bodega ib
                                                 LEFT JOIN productos p ON ib.id_prod = p.id_prod
                                                 LEFT JOIN movimiento_inventario mi ON ib.id_inventario = mi.id_inventario
-                                                WHERE ib.id_alma = ? AND p.status = 1 and p.zona = '$zona_seleccionada'
+                                                WHERE ib.id_alma = ?" . ($id_bodega > 0 ? " AND ib.id_bodega = ?" : "") . " AND p.status = 1 and p.zona = '$zona_seleccionada'
                                                 GROUP BY ib.id_inventario, p.id_prod, p.cod, p.nom_pro
                                                 HAVING granel_disponible > 0
                                                 ORDER BY p.cod";
                                             
                                             $stmt_granel = $conn_mysql->prepare($sql_granel_disponible);
-                                            $stmt_granel->bind_param('i', $id_almacen);
+                                            if ($id_bodega > 0) {
+                                                $stmt_granel->bind_param('ii', $id_almacen, $id_bodega);
+                                            } else {
+                                                $stmt_granel->bind_param('i', $id_almacen);
+                                            }
                                             $stmt_granel->execute();
                                             $productos_granel = $stmt_granel->get_result();
                                             
