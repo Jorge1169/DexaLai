@@ -86,6 +86,11 @@ $result = $conn_mysql->query($sql);
                                     $nom_bodega = htmlspecialchars($almacen['nombre_bodega'] ?? '');
                                     $bodega_texto = trim($cod_bodega . ' - ' . $nom_bodega);
                                 }
+
+                                $url_detalle = '?p=V_detalle_almacen&id=' . intval($almacen['id_alma']);
+                                if (!empty($almacen['id_bodega'])) {
+                                    $url_detalle .= '&id_bodega=' . intval($almacen['id_bodega']);
+                                }
                                 
                                 echo "<tr>
                                     <td>{$contador}</td>
@@ -103,7 +108,7 @@ $result = $conn_mysql->query($sql);
                                         <span class=\"badge bg-success\">Activo</span>
                                     </td>
                                     <td>
-                                        <a href=\"?p=V_detalle_almacen&id={$almacen['id_alma']}\" 
+                                        <a href=\"{$url_detalle}\" 
                                            class=\"btn btn-sm btn-primary\">
                                             <i class=\"bi bi-eye me-1\"></i> Ver Detalle
                                         </a>
