@@ -2,6 +2,21 @@
 // captacion.php
 $fechaInicioDefault = date('Y-m-01');
 $fechaFinDefault = date('Y-m-d');
+
+$esZonaSurVista = false;
+if (isset($zona_seleccionada) && intval($zona_seleccionada) > 0) {
+    $stmtZonaTipo = $conn_mysql->prepare("SELECT tipo FROM zonas WHERE id_zone = ? LIMIT 1");
+    if ($stmtZonaTipo) {
+        $zonaIdEval = intval($zona_seleccionada);
+        $stmtZonaTipo->bind_param('i', $zonaIdEval);
+        $stmtZonaTipo->execute();
+        $resZonaTipo = $stmtZonaTipo->get_result();
+        if ($resZonaTipo && $resZonaTipo->num_rows > 0) {
+            $zonaTipoRow = $resZonaTipo->fetch_assoc();
+            $esZonaSurVista = (strtoupper(trim($zonaTipoRow['tipo'] ?? '')) === 'SUR');
+        }
+    }
+}
 ?>
 
 <div class="container-fluid py-3">
@@ -64,16 +79,20 @@ $fechaFinDefault = date('Y-m-d');
                             <th>Proveedor / Almacén</th>
                             <th>Zona</th>
                             <th class="text-end">Productos</th>
+                            <th>Ticket</th>
                             <th class="text-end">Peso Total</th>
                             <th class="text-end">Costo Prod.</th>
+                            <?php if (!$esZonaSurVista): ?>
                             <th class="text-end">Costo Flete</th>
+                            <?php endif; ?>
                             <th class="text-end">Total</th>
+                            <?php if (!$esZonaSurVista): ?>
                             <th>Fletero</th>
                             <th>Facturas Productos</th>
                             <th>Factura Flete</th>
-                            <!-- NUEVAS COLUMNAS -->
                             <th>CR Productos</th>
                             <th>CR Flete</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -197,6 +216,10 @@ $(document).ready(function() {
     // Variables globales
     let showingInactives = false;
     let table;
+    const esZonaSurVista = <?= $esZonaSurVista ? 'true' : 'false' ?>;
+    const idIndex = esZonaSurVista ? 10 : 16;
+    const statusIndex = esZonaSurVista ? 11 : 17;
+    const columnasNumericas = esZonaSurVista ? [5, 7, 8, 9] : [5, 7, 8, 9, 10];
 
     // Inicializar DataTable con AJAX
     function initDataTable() {
@@ -252,8 +275,8 @@ $(document).ready(function() {
                     "data": null,
                     "render": function(data, type, row) {
                         // Columna de acciones
-                        const id = row[15]; // ID en la nueva posición (antes 11)
-                        const status = row[16]; // Status en la nueva posición (antes 12)
+                        const id = row[idIndex];
+                        const status = String(row[statusIndex]);
                         
                         let buttons = '';
                         if (status === '1') {
@@ -295,7 +318,7 @@ $(document).ready(function() {
                     "responsivePriority": 1
                 },
                 {
-                    "targets": [5, 6, 7, 8, 9], // Columnas numéricas
+                    "targets": columnasNumericas, // Columnas numéricas
                     "render": function(data, type, row) {
                         if (type === 'sort' || type === 'type') {
                             // Para ordenar, extraer solo el número
@@ -315,7 +338,7 @@ $(document).ready(function() {
             ],
             "createdRow": function(row, data, dataIndex) {
                 // Aplicar estilos según el status
-                const status = data[14]; // Status en la nueva posición (antes 12)
+                const status = String(data[statusIndex]);
                 if (status === '0') {
                     $(row).addClass('table-secondary text-muted');
                 }

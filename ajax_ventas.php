@@ -11,6 +11,20 @@ if (isset($_POST['zona'])) {
     }
 }
 
+$esZonaSur = false;
+if ($zona_seleccionada > 0) {
+    $stmt_zona_tipo = $conn_mysql->prepare("SELECT tipo FROM zonas WHERE id_zone = ? LIMIT 1");
+    if ($stmt_zona_tipo) {
+        $stmt_zona_tipo->bind_param('i', $zona_seleccionada);
+        $stmt_zona_tipo->execute();
+        $res_zona_tipo = $stmt_zona_tipo->get_result();
+        if ($res_zona_tipo && $res_zona_tipo->num_rows > 0) {
+            $zona_row_tipo = $res_zona_tipo->fetch_assoc();
+            $esZonaSur = (strtoupper(trim($zona_row_tipo['tipo'] ?? '')) === 'SUR');
+        }
+    }
+}
+
 // Limpiar buffer de salida
 ob_clean();
 
@@ -35,7 +49,7 @@ $clienteId = intval($clienteId);
 // Construir la consulta base SIMPLIFICADA
 $query = "SELECT SQL_CALC_FOUND_ROWS 
             v.id_venta,
-            CONCAT('V-', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) as folio_compuesto,
+            CONCAT(CASE WHEN z.tipo = 'SUR' THEN 'E-' ELSE 'V-' END, z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) as folio_compuesto,
             DATE_FORMAT(v.fecha_venta, '%d/%m/%Y') as fecha_formateada,
             c.cod as cod_cliente,
             c.nombre as nombre_cliente,
@@ -93,7 +107,7 @@ if ($clienteId > 0) {
 if (!empty($searchValue)) {
     $searchValue = $conn_mysql->real_escape_string($searchValue);
     $query .= " AND (
-        CONCAT('V-', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) LIKE '%$searchValue%' OR
+        CONCAT(CASE WHEN z.tipo = 'SUR' THEN 'E-' ELSE 'V-' END, z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) LIKE '%$searchValue%' OR
         c.cod LIKE '%$searchValue%' OR
         c.nombre LIKE '%$searchValue%' OR
         a.cod LIKE '%$searchValue%' OR
@@ -117,14 +131,25 @@ $columns = [
     6 => 'total_pacas',          // Pacas
     7 => 'total_kilos',          // Kilos
     8 => 'total_venta',          // Venta
-    9 => 'v.id_venta',           // Flete (placeholder)
-    10 => 'v.id_venta',          // Total (placeholder)
-    11 => 'vf.factura_transportista', // Factura Transportista
-    12 => 'vf.folioven',         // Folio CR Venta
-    13 => 'z.PLANTA',            // Zona
-    14 => 'u.nombre',            // Usuario
-    15 => 'v.status'             // Status
+    9 => 'v.id_venta'            // Flete (placeholder)
 ];
+
+if ($esZonaSur) {
+    $columns[10] = 'v.id_venta';             // Servicios (placeholder)
+    $columns[11] = 'v.id_venta';             // Total (placeholder)
+    $columns[12] = 'vf.factura_transportista';
+    $columns[13] = 'vf.folioven';
+    $columns[14] = 'z.PLANTA';
+    $columns[15] = 'u.nombre';
+    $columns[16] = 'v.status';
+} else {
+    $columns[10] = 'v.id_venta';             // Total (placeholder)
+    $columns[11] = 'vf.factura_transportista';
+    $columns[12] = 'vf.folioven';
+    $columns[13] = 'z.PLANTA';
+    $columns[14] = 'u.nombre';
+    $columns[15] = 'v.status';
+}
 
 if (isset($columns[$orderColumn])) {
     $orderColumnName = $columns[$orderColumn];
@@ -171,6 +196,7 @@ if ($result->num_rows > 0) {
         // Obtener el flete para esta venta
         $id_venta = intval($row['id_venta']);
         $total_flete = 0;
+        $total_servicio = 0;
         
         // Consulta separada para flete
         $flete_query = "SELECT 
@@ -187,15 +213,32 @@ if ($result->num_rows > 0) {
         if ($flete_result && $flete_row = $flete_result->fetch_assoc()) {
             $total_flete = floatval($flete_row['precio_flete']);
         }
+
+        if ($esZonaSur) {
+            $servicio_query = "SELECT 
+                                  COALESCE(SUM(CASE 
+                                      WHEN pr.tipo = 'SVT' THEN pr.precio * (vd.total_kilos / 1000)
+                                      ELSE pr.precio 
+                                  END), 0) as precio_servicio
+                               FROM venta_servicio vs
+                               LEFT JOIN precios pr ON vs.id_pre_servicio = pr.id_precio
+                               LEFT JOIN venta_detalle vd ON vs.id_venta = vd.id_venta AND vd.status = 1
+                               WHERE vs.id_venta = $id_venta";
+
+            $servicio_result = $conn_mysql->query($servicio_query);
+            if ($servicio_result && $servicio_row = $servicio_result->fetch_assoc()) {
+                $total_servicio = floatval($servicio_row['precio_servicio']);
+            }
+        }
         
         // Calcular totales
         $total_venta = floatval($row['total_venta']);
-        $total_general = $total_venta - $total_flete;
+        $total_general = $total_venta - $total_flete - $total_servicio;
         $total_kilos = floatval($row['total_kilos']);
         $total_pacas = intval($row['total_pacas']);
         
         // Formatear datos para mostrar
-        $data[] = [
+        $fila = [
             '', // Columna 0: Numeración
             '', // Columna 1: Acciones
             '<strong class="text-primary">' . htmlspecialchars($row['folio_compuesto'] ?? 'N/A').'</strong>',
@@ -207,8 +250,16 @@ if ($result->num_rows > 0) {
             '<span class="badge bg-primary rounded-pill">' . number_format($total_pacas, 0) . '</span>',
             number_format($total_kilos, 2) . ' kg',
             '<span class="text-success fw-bold">$' . number_format($total_venta, 2) . '</span>',
-            '<span class="text-danger">$' . number_format($total_flete, 2) . '</span>',
-            '<strong class="' . ($total_general >= 0 ? 'text-success' : 'text-danger') . '">$' . number_format($total_general, 2) . '</strong>',
+            '<span class="text-danger">$' . number_format($total_flete, 2) . '</span>'
+        ];
+
+        if ($esZonaSur) {
+            $fila[] = '<span class="text-primary">$' . number_format($total_servicio, 2) . '</span>';
+        }
+
+        $fila[] = '<strong class="' . ($total_general >= 0 ? 'text-success' : 'text-danger') . '">$' . number_format($total_general, 2) . '</strong>';
+
+        $fila[] =
             // Factura Transportista
             (!empty($row['factura_transportista']) 
                 ? ((!empty($row['doc_factura_CR_venta']) || !empty($row['com_factura_CR_venta'])) 
@@ -222,16 +273,20 @@ if ($result->num_rows > 0) {
                         </ul>
                       </div>'
                     : '<strong class="badge bg-info bg-opacity-25 text-info">' . htmlspecialchars($row['factura_transportista']) . '</strong>')
-                : '<span class="text-muted"><small>Pendiente</small></span>'),
+                : '<span class="text-muted"><small>Pendiente</small></span>');
+
+        $fila[] =
             // Folio CR Venta
             (!empty($row['folio_CR_venta']) 
                 ? '<a href="' . $link . urlencode($row['alias_CR_venta']) . '-' . $row['folio_CR_venta'] . '" target="_blank" class="btn btn-sm btn-info rounded-5"><i class="bi bi-file-earmark-text me-1"></i>' . htmlspecialchars($row['alias_CR_venta'] ?? '') . ' - ' . htmlspecialchars($row['folio_CR_venta']) . '</a>' 
-                : '<span class="text-muted"><small>Pendiente</small></span>'),
-            '<span class="badge bg-primary">' . htmlspecialchars($row['nombre_zona'] ?? '') . '</span>',
-            '<small>' . htmlspecialchars($row['nombre_usuario'] ?? '') . '</small>',
-            $id_venta, // ID para acciones
-            intval($row['status']) // Status para estilos
-        ];
+                : '<span class="text-muted"><small>Pendiente</small></span>');
+
+        $fila[] = '<span class="badge bg-primary">' . htmlspecialchars($row['nombre_zona'] ?? '') . '</span>';
+        $fila[] = '<small>' . htmlspecialchars($row['nombre_usuario'] ?? '') . '</small>';
+        $fila[] = $id_venta; // ID para acciones
+        $fila[] = intval($row['status']); // Status para estilos
+
+        $data[] = $fila;
     }
 }
 

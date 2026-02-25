@@ -2,6 +2,24 @@
 // ventas.php
 $fechaInicioDefault = date('Y-m-01');
 $fechaFinDefault = date('Y-m-d');
+
+$esZonaSur = false;
+if (isset($zona_seleccionada) && intval($zona_seleccionada) > 0) {
+    $stmt_zona_tipo = $conn_mysql->prepare("SELECT tipo FROM zonas WHERE id_zone = ? LIMIT 1");
+    if ($stmt_zona_tipo) {
+        $zona_id_eval = intval($zona_seleccionada);
+        $stmt_zona_tipo->bind_param('i', $zona_id_eval);
+        $stmt_zona_tipo->execute();
+        $res_zona_tipo = $stmt_zona_tipo->get_result();
+        if ($res_zona_tipo && $res_zona_tipo->num_rows > 0) {
+            $zona_row_tipo = $res_zona_tipo->fetch_assoc();
+            $esZonaSur = (strtoupper(trim($zona_row_tipo['tipo'] ?? '')) === 'SUR');
+        }
+    }
+}
+
+$moduloSingular = $esZonaSur ? 'Entrega' : 'Venta';
+$moduloPlural = $esZonaSur ? 'Entregas' : 'Ventas';
 ?>
 
 <div class="container-fluid py-3">
@@ -9,10 +27,10 @@ $fechaFinDefault = date('Y-m-d');
     <div class="card shadow-sm mb-4">
         <div class="card-header encabezado-col text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
-                <i class="bi bi-cart-check me-2"></i>Ventas Registradas
+                <i class="bi bi-cart-check me-2"></i><?= $moduloPlural ?> Registradas
             </h5>
             <a class="btn btn-sm btn-light" href="?p=N_venta" <?= $perm['ventas_crear']; ?> target="_blank">
-                <i class="bi bi-plus-circle me-1"></i> Nueva Venta
+                <i class="bi bi-plus-circle me-1"></i> Nueva <?= $moduloSingular ?>
             </a>
         </div>
     </div>
@@ -79,9 +97,12 @@ $fechaFinDefault = date('Y-m-d');
                             <th class="text-end">Kilos</th>
                             <th class="text-end">Venta</th>
                             <th class="text-end">Flete</th>
+                            <?php if ($esZonaSur): ?>
+                            <th class="text-end">Servicios</th>
+                            <?php endif; ?>
+                            <th class="text-end">Total</th>
                             <th class="text-end">Factura Flete</th>
                             <th class="text-end">Contra recibo</th>
-                            <th class="text-end">Total</th>
                             <th>Zona</th>
                             <th>Usuario</th>
                         </tr>
@@ -145,6 +166,14 @@ $(document).ready(function() {
     // Variables globales
     let showingInactives = false;
     let table;
+    const esZonaSur = <?= $esZonaSur ? 'true' : 'false' ?>;
+    const idIndex = esZonaSur ? 16 : 15;
+    const statusIndex = esZonaSur ? 17 : 16;
+    const totalColIndex = esZonaSur ? 11 : 10;
+    const totalTdPosition = totalColIndex + 1;
+    const columnasNumericas = esZonaSur ? [6, 7, 8, 9, 10, 11] : [6, 7, 8, 9, 10];
+    const columnasSecundarias = esZonaSur ? [14, 15] : [13, 14];
+    const moduloSingular = <?= json_encode($moduloSingular) ?>;
 
     // Inicializar DataTable con AJAX
     function initDataTable() {
@@ -205,8 +234,8 @@ $(document).ready(function() {
                     "data": null,
                     "render": function(data, type, row) {
                         // Columna de acciones
-                        const id = row[15]; // ID en la nueva posición
-                        const status = row[16]; // Status (1 = activo, 0 = inactivo)
+                        const id = row[idIndex]; // ID en la posición dinámica
+                        const status = row[statusIndex]; // Status (1 = activo, 0 = inactivo)
                         
                         console.log("ID:", id, "Status:", status, "Tipo:", typeof status); // DEBUG
                         
@@ -220,11 +249,11 @@ $(document).ready(function() {
                                     </a>
                                     
                                     <a href="?p=E_venta&id=${id}" 
-                                    class="btn btn-warning" title="Editar venta" data-bs-toggle="tooltip" <?= $perm['ventas_editar']; ?> target="_blank">
+                                    class="btn btn-warning" title="Editar ${moduloSingular.toLowerCase()}" data-bs-toggle="tooltip" <?= $perm['ventas_editar']; ?> target="_blank">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button class="btn btn-danger desactivar-venta-btn" 
-                                        data-id="${id}" title="Desactivar venta" data-bs-toggle="tooltip" <?= $perm['ACT_DES']; ?>>
+                                        data-id="${id}" title="Desactivar ${moduloSingular.toLowerCase()}" data-bs-toggle="tooltip" <?= $perm['ACT_DES']; ?>>
                                         <i class="bi bi-x-circle"></i>
                                     </button>
                                     
@@ -238,7 +267,7 @@ $(document).ready(function() {
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <button class="btn btn-success activar-venta-btn" 
-                                        data-id="${id}" title="Activar venta" data-bs-toggle="tooltip">
+                                        data-id="${id}" title="Activar ${moduloSingular.toLowerCase()}" data-bs-toggle="tooltip">
                                         <i class="bi bi-check-circle"></i>
                                     </button>
                                 </div>
@@ -250,7 +279,7 @@ $(document).ready(function() {
                     "responsivePriority": 1
                 },
                 {
-                    "targets": [6, 7, 8, 9, 12], // Columnas numéricas (pacas,kilos,venta,flete,total)
+                    "targets": columnasNumericas, // Columnas numéricas (pacas,kilos,venta,flete,servicio,total)
                     "render": function(data, type, row) {
                         if (type === 'sort' || type === 'type') {
                             // Para ordenar, extraer solo el número
@@ -268,12 +297,12 @@ $(document).ready(function() {
                     "className": "text-end"
                 },
                 {
-                    "targets": [13, 14], // Zona y Usuario (ajustados por nuevas columnas)
+                    "targets": columnasSecundarias, // Zona y Usuario
                     "responsivePriority": 2
                 }
             ],
             "createdRow": function(row, data, dataIndex) {
-                const status = data[16]; // Status como número (nueva posición)
+                const status = data[statusIndex]; // Status como número (posición dinámica)
 
                 if (status === 0) {
                     $(row).addClass('table-secondary text-muted');
@@ -281,15 +310,15 @@ $(document).ready(function() {
                     $(row).find('td:eq(2)').append('<br><span class="badge bg-danger badge-venta">Inactiva</span>');
                 } else {
                     // Resaltar totales altos solo en activas
-                    const totalText = data[12]; // ahora la columna Total está en la posición 12
+                    const totalText = data[totalColIndex]; // columna Total según zona
                     if (typeof totalText === 'string') {
                         const totalMatch = totalText.match(/\$([\d,]+\.\d{2})/);
                         if (totalMatch) {
                             const total = parseFloat(totalMatch[1].replace(/,/g, ''));
                             if (total > 50000) {
-                                $(row).find('td:nth-child(13)').addClass('fw-bold text-success');
+                                $(row).find(`td:nth-child(${totalTdPosition})`).addClass('fw-bold text-success');
                             } else if (total < 0) {
-                                $(row).find('td:nth-child(13)').addClass('fw-bold text-danger');
+                                $(row).find(`td:nth-child(${totalTdPosition})`).addClass('fw-bold text-danger');
                             }
                         }
                     }
@@ -361,11 +390,11 @@ $(document).ready(function() {
         $('#motivoContainer').show();
         $('#motivoCancelacion').val('').prop('required', true);
         
-        $('#modalVentaMessage').text('¿Estás seguro de que deseas cancelar esta venta?');
+        $('#modalVentaMessage').text(`¿Estás seguro de que deseas cancelar esta ${moduloSingular.toLowerCase()}?`);
         $('#confirmVentaModal').modal('show');
         $('#modalVentaHeader').addClass('text-bg-danger');
         $('#confirmVentaBtn').addClass('btn-danger').removeClass('btn-success')
-                            .html('<i class="bi bi-x-circle me-1"></i>Cancelar Venta');
+                    .html(`<i class="bi bi-x-circle me-1"></i>Cancelar ${moduloSingular}`);
     });
 
     $(document).on('click', '.activar-venta-btn', function() {
@@ -377,11 +406,11 @@ $(document).ready(function() {
         $('#motivoContainer').hide();
         $('#motivoCancelacion').val('').prop('required', false);
         
-        $('#modalVentaMessage').text('¿Estás seguro de que deseas reactivar esta venta?');
+        $('#modalVentaMessage').text(`¿Estás seguro de que deseas reactivar esta ${moduloSingular.toLowerCase()}?`);
         $('#confirmVentaModal').modal('show');
         $('#modalVentaHeader').addClass('text-bg-success');
         $('#confirmVentaBtn').addClass('btn-success').removeClass('btn-danger')
-                            .html('<i class="bi bi-check-circle me-1"></i>Reactivar Venta');
+                    .html(`<i class="bi bi-check-circle me-1"></i>Reactivar ${moduloSingular}`);
     });
 
     // Confirmar acción para ventas
@@ -428,8 +457,8 @@ $('#confirmVentaBtn').click(function() {
                 showToast(response.message || 'Error desconocido', 'error');
                 $btn.prop('disabled', false).html(
                     accion === 'activar' ? 
-                    '<i class="bi bi-check-circle me-1"></i>Reactivar Venta' : 
-                    '<i class="bi bi-x-circle me-1"></i>Cancelar Venta'
+                    `<i class="bi bi-check-circle me-1"></i>Reactivar ${moduloSingular}` : 
+                    `<i class="bi bi-x-circle me-1"></i>Cancelar ${moduloSingular}`
                 );
             }
         },
@@ -449,8 +478,8 @@ $('#confirmVentaBtn').click(function() {
             showToast(errorMsg, 'error');
             $btn.prop('disabled', false).html(
                 accion === 'activar' ? 
-                '<i class="bi bi-check-circle me-1"></i>Reactivar Venta' : 
-                '<i class="bi bi-x-circle me-1"></i>Cancelar Venta'
+                `<i class="bi bi-check-circle me-1"></i>Reactivar ${moduloSingular}` : 
+                `<i class="bi bi-x-circle me-1"></i>Cancelar ${moduloSingular}`
             );
         }
     });

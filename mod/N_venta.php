@@ -22,6 +22,10 @@ if ($zona_seleccionada == 0) {
     $zona_s0 = $conn_mysql->query("SELECT * FROM zonas where status = '1' AND id_zone = '$zona_seleccionada'");
 } 
 $zona_s1 = mysqli_fetch_array($zona_s0);
+$zona_tipo_actual = strtoupper(trim($zona_s1['tipo'] ?? ''));
+$es_zona_sur_actual = ($zona_tipo_actual === 'SUR');
+$etiqueta_operacion_actual = $es_zona_sur_actual ? 'Entrega' : 'Venta';
+$prefijo_folio_actual = $es_zona_sur_actual ? 'E' : 'V';
 
 // Consulta para obtener el último folio del mes de la fecha seleccionada
 $query = "SELECT folio FROM ventas WHERE status = '1' 
@@ -47,8 +51,8 @@ if ($Venta00 && $Venta00->num_rows > 0) {
     $folio = '0001';
 }
 
-// Formato del folio: V-ZONA-AAMM0001
-$folioM = "V-".$zona_s1['cod']."-".$fecha.$folio;
+// Formato del folio compuesto: (V|E)-ZONA-AAMM0001
+$folioM = $prefijo_folio_actual."-".$zona_s1['cod']."-".$fecha.$folio;
 
 // Procesar guardar venta completa
 if (isset($_POST['guardar_venta'])) {
@@ -64,6 +68,30 @@ if (isset($_POST['guardar_venta'])) {
     $idFletero = $_POST['idFletero'] ?? 0;
     $idCliente = $_POST['idCliente'] ?? 0;
     $idAlmacen = $_POST['idAlmacen'] ?? 0;
+    $tipo_servicio = $_POST['tipo_servicio'] ?? '';
+    $id_precio_servicio = $_POST['id_preSer'] ?? 0;
+
+    $zona_guardar = isset($_POST['zona']) ? intval($_POST['zona']) : intval($zona_seleccionada);
+    $zona_tipo_guardar = '';
+    $zona_cod_guardar = '';
+    $stmt_zona = $conn_mysql->prepare("SELECT tipo, cod FROM zonas WHERE id_zone = ? LIMIT 1");
+    if ($stmt_zona) {
+        $stmt_zona->bind_param('i', $zona_guardar);
+        $stmt_zona->execute();
+        $res_zona = $stmt_zona->get_result();
+        if ($res_zona && $res_zona->num_rows > 0) {
+            $row_zona = $res_zona->fetch_assoc();
+            $zona_tipo_guardar = strtoupper(trim($row_zona['tipo'] ?? ''));
+            $zona_cod_guardar = trim($row_zona['cod'] ?? '');
+        }
+        $stmt_zona->close();
+    }
+
+    $esZonaSurGuardar = ($zona_tipo_guardar === 'SUR');
+    $etiqueta_operacion_guardar = $esZonaSurGuardar ? 'Entrega' : 'Venta';
+    $prefijo_folio_guardar = $esZonaSurGuardar ? 'E' : 'V';
+    $fecha_folio_guardar = date('ym', strtotime($_POST['fecha_venta']));
+    $folioM_guardar = $prefijo_folio_guardar . "-" . $zona_cod_guardar . "-" . $fecha_folio_guardar . $folio;
     
     // Validar campos obligatorios
     $errores = [];
@@ -94,6 +122,16 @@ if (isset($_POST['guardar_venta'])) {
     
     if ($idAlmacen <= 0) {
         $errores[] = "Debe seleccionar un almacén válido";
+    }
+
+    if ($esZonaSurGuardar) {
+        if (!in_array($tipo_servicio, ['SVT', 'SVV'], true)) {
+            $errores[] = "Debe seleccionar un tipo de servicio válido para zona SUR";
+        }
+
+        if ($id_precio_servicio <= 0) {
+            $errores[] = "Debe seleccionar un precio de servicio válido para zona SUR";
+        }
     }
     
     if (!empty($errores)) {
@@ -169,9 +207,18 @@ if (isset($_POST['guardar_venta'])) {
         $placeholders = implode(', ', array_fill(0, count($VentaData), '?'));
         $sql = "INSERT INTO ventas ($columns) VALUES ($placeholders)";
         $stmt = $conn_mysql->prepare($sql);
-        
-        $types = str_repeat('s', count($VentaData));
-        $stmt->bind_param($types, ...array_values($VentaData));
+
+        $v_folio = $VentaData['folio'];
+        $v_fecha_venta = $VentaData['fecha_venta'];
+        $v_zona = $VentaData['zona'];
+        $v_id_cliente = $VentaData['id_cliente'];
+        $v_id_direc_cliente = $VentaData['id_direc_cliente'];
+        $v_id_alma = $VentaData['id_alma'];
+        $v_id_direc_alma = $VentaData['id_direc_alma'];
+        $v_id_transp = $VentaData['id_transp'];
+        $v_id_user = $VentaData['id_user'];
+        $v_status = $VentaData['status'];
+        $stmt->bind_param('ssssssssss', $v_folio, $v_fecha_venta, $v_zona, $v_id_cliente, $v_id_direc_cliente, $v_id_alma, $v_id_direc_alma, $v_id_transp, $v_id_user, $v_status);
         $stmt->execute();
         
         $id_venta = $conn_mysql->insert_id;
@@ -192,9 +239,16 @@ if (isset($_POST['guardar_venta'])) {
         $placeholdersDet = implode(', ', array_fill(0, count($DetalleData), '?'));
         $sqlDet = "INSERT INTO venta_detalle ($columnsDet) VALUES ($placeholdersDet)";
         $stmtDet = $conn_mysql->prepare($sqlDet);
-        
-        $typesDet = str_repeat('s', count($DetalleData));
-        $stmtDet->bind_param($typesDet, ...array_values($DetalleData));
+
+        $d_id_venta = $DetalleData['id_venta'];
+        $d_id_prod = $DetalleData['id_prod'];
+        $d_id_pre_venta = $DetalleData['id_pre_venta'];
+        $d_pacas_cantidad = $DetalleData['pacas_cantidad'];
+        $d_total_kilos = $DetalleData['total_kilos'];
+        $d_observaciones = $DetalleData['observaciones'];
+        $d_id_user = $DetalleData['id_user'];
+        $d_status = $DetalleData['status'];
+        $stmtDet->bind_param('ssssssss', $d_id_venta, $d_id_prod, $d_id_pre_venta, $d_pacas_cantidad, $d_total_kilos, $d_observaciones, $d_id_user, $d_status);
         $stmtDet->execute();
         
         // 3. Insertar relación de flete (si hay fletero)
@@ -212,19 +266,42 @@ if (isset($_POST['guardar_venta'])) {
             $placeholdersFlete = implode(', ', array_fill(0, count($FleteData), '?'));
             $sqlFlete = "INSERT INTO venta_flete ($columnsFlete) VALUES ($placeholdersFlete)";
             $stmtFlete = $conn_mysql->prepare($sqlFlete);
-            
-            $typesFlete = str_repeat('s', count($FleteData));
-            $stmtFlete->bind_param($typesFlete, ...array_values($FleteData));
+
+            $f_id_venta = $FleteData['id_venta'];
+            $f_id_fletero = $FleteData['id_fletero'];
+            $f_id_pre_flete = $FleteData['id_pre_flete'];
+            $f_tipo_camion = $FleteData['tipo_camion'];
+            $f_nombre_chofer = $FleteData['nombre_chofer'];
+            $f_placas_unidad = $FleteData['placas_unidad'];
+            $stmtFlete->bind_param('ssssss', $f_id_venta, $f_id_fletero, $f_id_pre_flete, $f_tipo_camion, $f_nombre_chofer, $f_placas_unidad);
             $stmtFlete->execute();
         }
+
+        // 4. Insertar relación de servicio (solo zona SUR)
+        if ($esZonaSurGuardar && $id_precio_servicio > 0) {
+            $ServicioData = [
+                'id_venta' => $id_venta,
+                'id_pre_servicio' => $id_precio_servicio
+            ];
+
+            $columnsServicio = implode(', ', array_keys($ServicioData));
+            $placeholdersServicio = implode(', ', array_fill(0, count($ServicioData), '?'));
+            $sqlServicio = "INSERT INTO venta_servicio ($columnsServicio) VALUES ($placeholdersServicio)";
+            $stmtServicio = $conn_mysql->prepare($sqlServicio);
+
+            $s_id_venta = $ServicioData['id_venta'];
+            $s_id_pre_servicio = $ServicioData['id_pre_servicio'];
+            $stmtServicio->bind_param('ss', $s_id_venta, $s_id_pre_servicio);
+            $stmtServicio->execute();
+        }
         
-        // 4. Actualizar inventario (descontar stock)
+        // 5. Actualizar inventario (descontar stock)
         actualizarInventarioVenta($id_venta, $conn_mysql, $idUser);
         
         $conn_mysql->commit();
         
-        alert("Venta registrada exitosamente con folio: " . $folioM, 1, "V_venta&id=" . $id_venta);
-        logActivity('CREAR', 'Dio de alta una nueva venta '. $id_venta);
+        alert($etiqueta_operacion_guardar . " registrada exitosamente con folio: " . $folioM_guardar, 1, "V_venta&id=" . $id_venta);
+        logActivity('CREAR', 'Dio de alta una nueva ' . strtolower($etiqueta_operacion_guardar) . ' ' . $id_venta);
         
     } catch (Exception $e) {
         $conn_mysql->rollback();
@@ -371,7 +448,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
 <div class="container mt-2">
     <div class="card shadow-sm">
         <div class="card-header encabezado-col text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Nueva Venta</h5>
+            <h5 class="mb-0" id="tituloOperacion">Nueva <?= $etiqueta_operacion_actual ?></h5>
             <button id="btnCerrar" class="btn btn-sm rounded-3 btn-danger"><i class="bi bi-x-circle"></i> Cerrar</button>
         </div>
         <div class="card-body">
@@ -392,7 +469,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                                 }
                                 while ($zona1 = mysqli_fetch_array($zona0)) {
                                     ?>
-                                    <option value="<?=$zona1['id_zone']?>"><?=$zona1['PLANTA']?></option>
+                                    <option value="<?=$zona1['id_zone']?>" data-tipo="<?= htmlspecialchars($zona1['tipo'] ?? '') ?>"><?=$zona1['PLANTA']?></option>
                                     <?php
                                 } 
                                 ?>
@@ -404,7 +481,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                             <input type="hidden" name="folio" value="<?=$folio?>">
                         </div>
                         <div class="col-md-4">
-                            <label for="fecha_venta" class="form-label">Fecha de Venta</label>
+                            <label for="fecha_venta" class="form-label" id="labelFechaOperacion">Fecha de <?= $etiqueta_operacion_actual ?></label>
                             <input type="date" name="fecha_venta" id="fecha_venta" class="form-control" 
                             value="<?=$fecha_seleccionada?>" max="<?=date('Y-m-d')?>" 
                             onchange="actualizarFolioYPreciosVenta()" required>
@@ -538,10 +615,31 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                         </div>
                     </div>
                 </div>
+
+                <!-- SECCIÓN 4.5: Servicio de Almacenaje (solo SUR) -->
+                <div class="form-section shadow-sm mb-4" id="seccionServicioSUR" style="display: <?= ($zona_tipo_actual === 'SUR') ? 'block' : 'none' ?>;">
+                    <h5 class="section-header">Servicio de Almacenaje (SUR)</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4" id="TipoServicio">
+                            <label for="tipo_servicio" class="form-label">Tipo de Servicio</label>
+                            <select class="form-select" name="tipo_servicio" id="tipo_servicio" onchange="cargarPrecioServicioVenta()">
+                                <option selected disabled value="">Selecciona tipo...</option>
+                                <option value="SVT">Por tonelada</option>
+                                <option value="SVV">Por viaje</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4" id="PreSer">
+                            <label for="id_preSer" class="form-label">Precio de servicio</label>
+                            <select class="form-select" disabled>
+                                <option>Selecciona tipo y ruta</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- SECCIÓN 5: Producto y Cantidades -->
                 <div class="form-section shadow-sm mb-4">
-                    <h5 class="section-header">Producto a Vender</h5>
+                    <h5 class="section-header" id="tituloProductoOperacion">Producto a <?= $es_zona_sur_actual ? 'Entregar' : 'Vender' ?></h5>
                     
                     <div class="row g-3">
                         <div class="col-md-4" id="resulProd">
@@ -613,7 +711,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                 <!-- Botón para guardar toda la venta -->
                 <div class="d-flex justify-content-md-end mt-4">
                     <button type="submit" name="guardar_venta" class="btn btn-primary">
-                        <i class="bi bi-check-circle me-1"></i> Guardar Venta
+                        <i class="bi bi-check-circle me-1"></i><span id="textoBotonGuardar"> Guardar <?= $etiqueta_operacion_actual ?></span>
                     </button>
                 </div>
             </form>
@@ -652,10 +750,53 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
             language: "es",
             width: '100%'
         });
+
+        $('#tipo_servicio').select2({
+            placeholder: "Selecciona tipo de servicio",
+            allowClear: false,
+            language: "es",
+            width: '100%'
+        });
         
         // Establecer la zona seleccionada
         $('#zona').val('<?= $zona_seleccionada ?>').trigger('change');
+        toggleServicioSUR();
+        actualizarTextosOperacion();
     });
+
+    function esZonaSURSeleccionada() {
+        var zonaSeleccionada = $('#zona option:selected').data('tipo');
+        return (zonaSeleccionada || '').toString().toUpperCase() === 'SUR';
+    }
+
+    function actualizarTextosOperacion() {
+        var esSUR = esZonaSURSeleccionada();
+        var etiqueta = esSUR ? 'Entrega' : 'Venta';
+        var accion = esSUR ? 'Entregar' : 'Vender';
+
+        $('#tituloOperacion').text('Nueva ' + etiqueta);
+        $('#labelFechaOperacion').text('Fecha de ' + etiqueta);
+        $('#tituloProductoOperacion').text('Producto a ' + accion);
+        $('#textoBotonGuardar').text(' Guardar ' + etiqueta);
+    }
+
+    function toggleServicioSUR() {
+        var esSUR = esZonaSURSeleccionada();
+
+        if (esSUR) {
+            $('#seccionServicioSUR').show();
+            $('#tipo_servicio').prop('required', true);
+
+            if ($('#id_preSer').length) {
+                $('#id_preSer').prop('required', true);
+            }
+        } else {
+            $('#seccionServicioSUR').hide();
+            $('#tipo_servicio').val('').trigger('change');
+            $('#tipo_servicio').prop('required', false);
+            $('#PreSer').html('<label class="form-label">Precio de servicio</label><select class="form-select" disabled><option>Disponible solo para zona SUR</option></select>');
+        }
+    }
 
     // Función para cambiar zona en ventas
     function cambiarZonaVenta() {
@@ -677,6 +818,8 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                 cargarClientesVenta(zonaId);
                 cargarFleterosVenta(zonaId);
                 cargarProductosVenta(zonaId);
+                toggleServicioSUR();
+                actualizarTextosOperacion();
             }
         });
     }
@@ -790,6 +933,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                 // Actualizar precios si ya están seleccionados
                 if ($('#id_producto').val()) cargarPrecioVentaYStock();
                 if ($('#idFletero').val() && $('#tipo_flete').val()) cargarPrecioFleteVenta();
+                if (esZonaSURSeleccionada() && $('#tipo_servicio').val()) cargarPrecioServicioVenta();
             },
             error: function(xhr, status, error) {
                 console.error('Error al actualizar folio:', error);
@@ -821,6 +965,7 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                 }).on('change', function() {
                     if ($('#id_producto').val()) cargarPrecioVentaYStock();
                     if ($('#idFletero').val() && $('#tipo_flete').val()) cargarPrecioFleteVenta();
+                    if (esZonaSURSeleccionada() && $('#tipo_servicio').val()) cargarPrecioServicioVenta();
                 });
             }
         });
@@ -850,6 +995,9 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                 }).on('change', function() {
                     // Cuando se selecciona bodega, cargar precio de flete
                     cargarPrecioFleteVenta();
+                    if (esZonaSURSeleccionada() && $('#tipo_servicio').val()) {
+                        cargarPrecioServicioVenta();
+                    }
                     
                     // Y si ya hay producto seleccionado, actualizar precios también
                     if ($('#id_producto').val()) {
@@ -860,6 +1008,47 @@ $Primer_zona_select = $Primera_zona1['id_zone'];
                 // Después de cargar bodegas, si hay producto seleccionado, cargar precios
                 if ($('#id_producto').val()) {
                     cargarPrecioVentaYStock();
+                }
+            }
+        });
+    }
+
+    // Función para cargar precio de servicio para venta/entrega SUR
+    function cargarPrecioServicioVenta() {
+        if (!esZonaSURSeleccionada()) {
+            $('#PreSer').html('<label class="form-label">Precio de servicio</label><select class="form-select" disabled><option>Disponible solo para zona SUR</option></select>');
+            return;
+        }
+
+        var tipoServicio = $('#tipo_servicio').val();
+        var idAlmacen = $('#idAlmacen').val();
+        var bodgeAlm = $('#bodgeAlm').val();
+        var bodgeCli = $('#bodgeCli').val();
+        var fechaVenta = $('#fecha_venta').val();
+
+        if (!tipoServicio || !idAlmacen || !bodgeAlm || !bodgeCli || !fechaVenta) {
+            $('#PreSer').html('<label class="form-label">Precio de servicio</label><select class="form-select" disabled><option>Complete tipo, almacén, ruta y fecha</option></select>');
+            return;
+        }
+
+        $.ajax({
+            url: 'get_venta.php',
+            type: 'POST',
+            data: {
+                idAlmacen: idAlmacen,
+                tipoServicio: tipoServicio,
+                origen: bodgeAlm,
+                destino: bodgeCli,
+                fechaVenta: fechaVenta,
+                accion: 'precio_servicio_venta'
+            },
+            beforeSend: function() {
+                $('#PreSer').html('<label class="form-label">Precio de servicio</label><div class="form-control">Buscando precios...</div>');
+            },
+            success: function(response) {
+                $('#PreSer').html(response);
+                if ($('#id_preSer').length) {
+                    $('#id_preSer').prop('required', true);
                 }
             }
         });
@@ -1112,6 +1301,20 @@ $('form').on('submit', function(e) {
             e.preventDefault();
             alert('Por favor complete los siguientes campos:\n\n' + errores.join('\n'));
             return false;
+        }
+
+        if (esZonaSURSeleccionada()) {
+            if (!$('#tipo_servicio').val()) {
+                e.preventDefault();
+                alert('Para zona SUR debe seleccionar el tipo de servicio');
+                return false;
+            }
+
+            if (!$('#id_preSer').length || !$('#id_preSer').val()) {
+                e.preventDefault();
+                alert('Para zona SUR debe seleccionar el precio de servicio');
+                return false;
+            }
         }
     }
 });

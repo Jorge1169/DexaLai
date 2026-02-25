@@ -11,6 +11,20 @@ if (isset($_POST['zona'])) {
     }
 }
 
+$esZonaSurVista = false;
+if ($zona_seleccionada > 0) {
+    $stmtZonaTipo = $conn_mysql->prepare("SELECT tipo FROM zonas WHERE id_zone = ? LIMIT 1");
+    if ($stmtZonaTipo) {
+        $stmtZonaTipo->bind_param('i', $zona_seleccionada);
+        $stmtZonaTipo->execute();
+        $resZonaTipo = $stmtZonaTipo->get_result();
+        if ($resZonaTipo && $resZonaTipo->num_rows > 0) {
+            $zonaTipoRow = $resZonaTipo->fetch_assoc();
+            $esZonaSurVista = (strtoupper(trim($zonaTipoRow['tipo'] ?? '')) === 'SUR');
+        }
+    }
+}
+
 // Parámetros de DataTables
 $start = $_POST['start'] ?? 0;
 $length = $_POST['length'] ?? 10;
@@ -25,12 +39,22 @@ $columns = [
     3 => 'p.rs', // Proveedor/Almacén
     4 => 'z.PLANTA', // Zona
     5 => 'cantidad_productos', // Productos
-    6 => 'total_kilos', // Peso Total
-    7 => 'costo_productos', // Costo Prod.
-    8 => 'costo_flete', // Costo Flete
-    9 => 'costo_total', // Total
-    10 => 't.razon_so' // Fletero
+    6 => 'tickets_productos', // Ticket
+    7 => 'total_kilos', // Peso Total
+    8 => 'costo_productos' // Costo Prod.
 ];
+
+if (!$esZonaSurVista) {
+    $columns[9] = 'costo_flete'; // Costo Flete
+    $columns[10] = 'costo_total'; // Total
+    $columns[11] = 't.razon_so'; // Fletero
+    $columns[12] = 'facturas_productos';
+    $columns[13] = 'cf.numero_factura_flete';
+    $columns[14] = 'contra_recibos_productos';
+    $columns[15] = 'cf.foliocap_flete';
+} else {
+    $columns[9] = 'costo_total'; // Total
+}
 
 // Modificar la consulta principal para incluir contra recibos
 $query = "SELECT 
@@ -52,6 +76,7 @@ COALESCE(SUM(cd.total_kilos), 0) as total_kilos,
 COALESCE(SUM(pc.precio * cd.total_kilos), 0) as costo_productos,
 COALESCE(pf.precio, 0) as costo_flete,
 (COALESCE(SUM(pc.precio * cd.total_kilos), 0) + COALESCE(pf.precio, 0)) as costo_total,
+GROUP_CONCAT(DISTINCT cd.numero_ticket SEPARATOR ', ') as tickets_productos,
 GROUP_CONCAT(DISTINCT cd.numero_factura SEPARATOR ', ') as facturas_productos,
 GROUP_CONCAT(DISTINCT cd.comprobante_ticket SEPARATOR '; ') as comprobantes_productos_list,
 -- Documentos de factura de productos
@@ -121,6 +146,12 @@ if (!empty($search)) {
         OR a.nombre LIKE '%$search%'
         OR t.placas LIKE '%$search%'
         OR t.razon_so LIKE '%$search%'
+        OR EXISTS (
+            SELECT 1 FROM captacion_detalle cd4
+            WHERE cd4.id_captacion = c.id_captacion
+            AND cd4.status = 1
+            AND cd4.numero_ticket LIKE '%$search%'
+        )
         -- Búsqueda por facturas de productos
         OR EXISTS (
             SELECT 1 FROM captacion_detalle cd2 
@@ -233,6 +264,12 @@ if (!empty($search)) {
         OR a.nombre LIKE '%$search%'
         OR t.placas LIKE '%$search%'
         OR t.razon_so LIKE '%$search%'
+        OR EXISTS (
+            SELECT 1 FROM captacion_detalle cd4
+            WHERE cd4.id_captacion = c.id_captacion
+            AND cd4.status = 1
+            AND cd4.numero_ticket LIKE '%$search%'
+        )
         OR EXISTS (
             SELECT 1 FROM captacion_detalle cd2 
             WHERE cd2.id_captacion = c.id_captacion 
@@ -482,9 +519,28 @@ if ($esZonaSur) {
 } else {
     $contra_recibo_flete_html = '<span class="text-muted">-</span>';
 }
+
+// Tickets de productos
+$tickets_html = '';
+if (!empty($row['tickets_productos'])) {
+    $tickets_arr = array_unique(array_filter(array_map('trim', explode(',', $row['tickets_productos']))));
+    $tiene_comprobante = !empty($row['comprobantes_productos_list']);
+    foreach ($tickets_arr as $ticket_num) {
+        if ($ticket_num === '') {
+            continue;
+        }
+        $tickets_html .= '<span class="badge bg-info bg-opacity-10 text-info me-1 mb-1">' .
+            '<i class="bi bi-ticket-detailed me-1"></i>' . htmlspecialchars($ticket_num) .
+            '</span>';
+    }
+    if ($tiene_comprobante) {
+        $tickets_html .= '<span class="badge bg-success bg-opacity-10 text-success"><i class="bi bi-paperclip"></i></span>';
+    }
+} else {
+    $tickets_html = '<span class="text-muted">-</span>';
+}
     
-    // En el array $data[], agrega las nuevas columnas al final:
-    $data[] = [
+    $fila = [
         '', // Columna # (se llena en el frontend)
         '', // Columna Acciones (se genera en el frontend)
         '<div class="fw-bold text-primary mb-1">' . htmlspecialchars($folio_completo) . '</div>' .
@@ -502,25 +558,35 @@ if ($esZonaSur) {
         '</div>',
         '<div class="fw-bold"><span class="badge bg-primary rounded-pill">' . $cantidad_productos . '</span></div>' .
         '<small class="text-muted">productos</small>',
+        '<div class="small">' . $tickets_html . '</div>',
         '<div class="fw-bold text-success">' . number_format($total_kilos, 2) . ' kg</div>' .
         '<small class="text-muted">peso total</small>',
         '<div class="fw-bold text-indigo">$' . number_format($costo_productos, 2) . '</div>' .
-        '<small class="text-muted">$' . number_format($costo_por_kilo_prod, 4) . '/kg</small>',
-        (!$esZonaSur && $costo_flete > 0 ? 
+        '<small class="text-muted">$' . number_format($costo_por_kilo_prod, 4) . '/kg</small>'
+    ];
+
+    if (!$esZonaSurVista) {
+        $fila[] = (!$esZonaSur && $costo_flete > 0 ? 
             '<div class="fw-bold text-warning">$' . number_format($costo_flete, 2) . '</div>' .
             '<small class="text-muted">flete</small>' : 
-            '<div class="text-muted small">Sin flete</div>'),
-        '<div class="fw-bold text-success">$' . number_format($costo_total, 2) . '</div>' .
-        '<small class="text-muted">$' . number_format($costo_por_kilo_total, 4) . '/kg</small>',
-        $fletero_info,
-        '<div class="small">' . $facturas_productos_html . '</div>',
-        '<div class="small">' . $factura_fletero_html . '</div>',
-        // NUEVAS COLUMNAS
-        '<div class="small">' . $contra_recibos_html . '</div>',
-        '<div class="small">' . $contra_recibo_flete_html . '</div>',
-        $row['id_captacion'], // ID para las acciones
-        $row['status'] // Status para filtrado
-    ];
+            '<div class="text-muted small">Sin flete</div>');
+    }
+
+    $fila[] = '<div class="fw-bold text-success">$' . number_format($costo_total, 2) . '</div>' .
+        '<small class="text-muted">$' . number_format($costo_por_kilo_total, 4) . '/kg</small>';
+
+    if (!$esZonaSurVista) {
+        $fila[] = $fletero_info;
+        $fila[] = '<div class="small">' . $facturas_productos_html . '</div>';
+        $fila[] = '<div class="small">' . $factura_fletero_html . '</div>';
+        $fila[] = '<div class="small">' . $contra_recibos_html . '</div>';
+        $fila[] = '<div class="small">' . $contra_recibo_flete_html . '</div>';
+    }
+
+    $fila[] = $row['id_captacion']; // ID para las acciones
+    $fila[] = $row['status']; // Status para filtrado
+
+    $data[] = $fila;
 }
 
 // Obtener el total de registros sin filtrar

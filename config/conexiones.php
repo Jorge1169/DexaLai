@@ -471,6 +471,17 @@ function esZonaSurSinFlete($zonaId, $conn_mysql) {
     return obtenerTipoZonaPorId($zonaId, $conn_mysql) === 'SUR';
 }
 
+function obtenerEtiquetaVentaPorZona($conn_mysql, $formato = 'singular') {
+    $tipoZona = obtenerTipoZonaActual($conn_mysql);
+    $esSur = (strtoupper(trim($tipoZona ?? '')) === 'SUR');
+
+    if ($formato === 'plural') {
+        return $esSur ? 'Entregas' : 'Ventas';
+    }
+
+    return $esSur ? 'Entrega' : 'Venta';
+}
+
 // Función para verificar si un módulo está disponible para el tipo de zona actual
 function moduloDisponibleParaZona($modulo, $conn_mysql) {
     $tipoZona = obtenerTipoZonaActual($conn_mysql);

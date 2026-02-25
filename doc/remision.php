@@ -45,10 +45,11 @@ $id_venta = intval($_GET['id']);
 $sql_venta = "SELECT 
     v.*,
     v.estado_remision as estado_remision,
-    CONCAT('V-', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) as folio_compuesto,
+    CONCAT(CASE WHEN z.tipo = 'SUR' THEN 'E-' ELSE 'V-' END, z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) as folio_compuesto,
     c.cod as cod_cliente, c.nombre as nombre_cliente, c.rfc as rfc_cliente,
     a.cod as cod_almacen, a.nombre as nombre_almacen,
     z.PLANTA as nombre_zona,
+    z.tipo as tipo_zona,
     t.placas as placas_fletero, t.razon_so as nombre_fletero,
     u.nombre as nombre_usuario,
     DATE_FORMAT(v.fecha_venta, '%d/%m/%Y') as fecha_venta_formateada,
@@ -72,6 +73,9 @@ if ($result_venta->num_rows === 0) {
 }
 
 $venta = $result_venta->fetch_assoc();
+$esZonaSur = (strtoupper(trim($venta['tipo_zona'] ?? '')) === 'SUR');
+$etiquetaOperacion = $esZonaSur ? 'ENTREGA' : 'VENTA';
+$etiquetaOperacionTexto = $esZonaSur ? 'entrega' : 'venta';
 
 // Obtener detalles de la venta
 $sql_detalles = "SELECT 
@@ -534,7 +538,7 @@ if ($estado == '1') {
         
         <!-- Título del documento -->
         <div class="document-title">
-            <h2>REMISIÓN DE VENTA</h2>
+            <h2>REMISIÓN DE <?= $etiquetaOperacion ?></h2>
             <div class="folio">Folio: <?= htmlspecialchars($venta['folio_compuesto']) ?></div>
             <div>Fecha de remisión: <?= date('d/m/Y') ?></div>
         </div>
@@ -560,8 +564,8 @@ if ($estado == '1') {
             
             <!-- Información de la venta -->
             <div class="info-box">
-                <h3>DATOS DE LA VENTA</h3>
-                <p><span class="label">Fecha venta:</span> <?= htmlspecialchars($venta['fecha_venta_formateada']) ?></p>
+                <h3>DATOS DE LA <?= $etiquetaOperacion ?></h3>
+                <p><span class="label">Fecha <?= $etiquetaOperacionTexto ?>:</span> <?= htmlspecialchars($venta['fecha_venta_formateada']) ?></p>
                 <p><span class="label">Almacén origen:</span> <?= htmlspecialchars($venta['nombre_almacen']) ?></p>
                 <?php if($dir_almacen): ?>
                 <p class="small-text"><span class="label">Dirección almacén:</span> 

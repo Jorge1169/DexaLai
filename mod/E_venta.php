@@ -17,13 +17,14 @@ $sql_venta = "SELECT v.*,
                      vf.id_fletero, vf.id_pre_flete,
                      p.cod as cod_producto, p.nom_pro as nombre_producto,
                      pr.precio as precio_actual,
-                     CONCAT('V-', z.cod, '-', 
+               CONCAT(CASE WHEN z.tipo = 'SUR' THEN 'E-' ELSE 'V-' END, z.cod, '-', 
                            DATE_FORMAT(v.fecha_venta, '%y%m'), 
                            LPAD(v.folio, 4, '0')) as folio_compuesto,
                      DATE_FORMAT(v.fecha_venta, '%Y-%m-%d') as fecha_venta_form,
                      c.cod as cod_cliente, c.nombre as nombre_cliente,
                      a.cod as cod_almacen, a.nombre as nombre_almacen,
-                     z.cod as nombre_zona
+               z.cod as nombre_zona,
+               z.tipo as tipo_zona
               FROM ventas v
               LEFT JOIN venta_detalle vd ON v.id_venta = vd.id_venta AND vd.status = 1
               LEFT JOIN venta_flete vf ON v.id_venta = vf.id_venta
@@ -44,6 +45,7 @@ if (!$result_venta || $result_venta->num_rows == 0) {
 }
 
 $venta = $result_venta->fetch_assoc();
+$etiquetaOperacion = (strtoupper(trim($venta['tipo_zona'] ?? '')) === 'SUR') ? 'Entrega' : 'Venta';
 
 // Obtener información actual del inventario para este producto/bodega
 $sql_inventario_actual = "SELECT 
@@ -274,7 +276,7 @@ $precios_disponibles = $stmt_precios->get_result();
 <div class="container mt-2">
     <div class="card shadow-sm">
         <div class="card-header encabezado-col text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Editar Venta: <?= htmlspecialchars($venta['folio_compuesto']) ?></h5>
+            <h5 class="mb-0">Editar <?= htmlspecialchars($etiquetaOperacion) ?>: <?= htmlspecialchars($venta['folio_compuesto']) ?></h5>
             <button id="btnCerrar" type="button" class="btn btn-sm rounded-3 btn-danger"
                 onclick="(function(){ try{ window.open('','_self'); window.close(); }catch(e){ console.error(e); } })();">
                 <i class="bi bi-x-circle"></i> Cerrar

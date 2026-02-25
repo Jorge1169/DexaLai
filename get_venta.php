@@ -40,7 +40,9 @@ if ($accion == 'folio_venta' && isset($_POST['zona']) && isset($_POST['fecha_ven
         $fol = '0001';
     }
     
-    $folM = "V-".$z_s1['cod']."-".$fe.$fol;
+    $zona_tipo = strtoupper(trim($z_s1['tipo'] ?? ''));
+    $prefijo_folio = ($zona_tipo === 'SUR') ? 'E' : 'V';
+    $folM = $prefijo_folio."-".$z_s1['cod']."-".$fe.$fol;
     
     ?>
     <label for="folio" class="form-label">Folio</label>
@@ -242,7 +244,74 @@ if ($accion == 'precio_flete_venta' && isset($_POST['idFletero']) && isset($_POS
     exit;
 }
 
-// 9. Precio de venta del producto - VERSIÓN MEJORADA CON DEBUG
+// 9. Precios de servicio para venta/entrega SUR
+if ($accion == 'precio_servicio_venta' && isset($_POST['idAlmacen']) && isset($_POST['tipoServicio'])) {
+    $idAlmacen = $_POST['idAlmacen'];
+    $tipoServicio = $_POST['tipoServicio'];
+    $origen = $_POST['origen'] ?? 0;
+    $destino = $_POST['destino'] ?? 0;
+    $fechaConsulta = $_POST['fechaVenta'] ?? date('Y-m-d');
+
+    if (!in_array($tipoServicio, ['SVT', 'SVV'], true)) {
+        ?>
+        <label for="id_preSer" class="form-label">Precio de servicio</label>
+        <input type="text" class="form-control is-invalid" value="Tipo de servicio inválido" disabled>
+        <?php
+        exit;
+    }
+
+    $precSer0 = $conn_mysql->query("
+        SELECT p.*, 
+        o.cod_al as cod_origen, o.noma as nom_origen,
+        d.cod_al as cod_destino, d.noma as nom_destino
+        FROM precios p
+        LEFT JOIN direcciones o ON p.origen = o.id_direc
+        LEFT JOIN direcciones d ON p.destino = d.id_direc
+        WHERE p.id_prod = '$idAlmacen'
+        AND p.tipo = '$tipoServicio'
+        AND p.origen = '$origen'
+        AND p.destino = '$destino'
+        AND p.cap_ven = 'VEN'
+        AND p.status = '1'
+        AND p.fecha_ini <= '$fechaConsulta'
+        AND p.fecha_fin >= '$fechaConsulta'
+        ORDER BY p.fecha_ini DESC
+    ");
+
+    if ($precSer0 && $precSer0->num_rows > 0) {
+        ?>
+        <label for="id_preSer" class="form-label">Precio de servicio</label>
+        <select class="form-select" name="id_preSer" id="id_preSer" required>
+            <?php
+            while ($precSer1 = mysqli_fetch_array($precSer0)) {
+                $fecha_fin_text = ($precSer1['fecha_fin'] && $precSer1['fecha_fin'] != '0000-00-00')
+                ? date('d/m/Y', strtotime($precSer1['fecha_fin']))
+                : 'Indefinido';
+
+                $peso_minimo = $precSer1['conmin'] > 0 ? " - Mín. " . $precSer1['conmin'] . " ton" : "";
+                $tipo_texto = ($tipoServicio == 'SVT') ? 'Servicio por tonelada' : 'Servicio por viaje';
+                ?>
+                <option value="<?=$precSer1['id_precio']?>">
+                    $<?=number_format($precSer1['precio'], 2)?>
+                    (<?=$tipo_texto?><?=$peso_minimo?>)
+                    - Hasta: <?=$fecha_fin_text?>
+                </option>
+                <?php
+            }
+            ?>
+        </select>
+        <?php
+    } else {
+        ?>
+        <label for="id_preSer" class="form-label">Precio de servicio</label>
+        <input type="text" class="form-control is-invalid" value="Sin precio vigente para esta ruta" disabled>
+        <small class="text-danger">Configure el precio de servicio en el almacén</small>
+        <?php
+    }
+    exit;
+}
+
+// 10. Precio de venta del producto - VERSIÓN MEJORADA CON DEBUG
 if ($accion == 'precio_venta' && isset($_POST['idProd'])) {
     $idProd = $_POST['idProd'];
     $fechaConsulta = $_POST['fechaVenta'] ?? date('Y-m-d');
@@ -398,7 +467,7 @@ if ($accion == 'precio_venta' && isset($_POST['idProd'])) {
     exit;
 }
 
-// 10. Stock del producto en bodega específica - VERSIÓN CORREGIDA
+// 11. Stock del producto en bodega específica - VERSIÓN CORREGIDA
 if ($accion == 'stock_producto' && isset($_POST['idProd']) && isset($_POST['bodegaId'])) {
     $idProd = $_POST['idProd'];
     $bodegaId = $_POST['bodegaId'];

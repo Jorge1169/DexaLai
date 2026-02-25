@@ -71,6 +71,70 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
     }
+
+    // Procesar actualización de factura de servicio de almacenaje
+    if (isset($_POST['actualizar_factura_servicio'])) {
+        $factura_servicio = trim($_POST['factura_servicio'] ?? '');
+
+        // Verificar que la venta tenga servicio asociado
+        $sql_check_servicio_existente = "SELECT id_venta_servicio FROM venta_servicio WHERE id_venta = ? LIMIT 1";
+        $stmt_check_servicio_existente = $conn_mysql->prepare($sql_check_servicio_existente);
+
+        if ($stmt_check_servicio_existente) {
+            $stmt_check_servicio_existente->bind_param('i', $id_venta);
+            $stmt_check_servicio_existente->execute();
+            $res_servicio_existente = $stmt_check_servicio_existente->get_result();
+
+            if (!$res_servicio_existente || $res_servicio_existente->num_rows === 0) {
+                $error_factura_servicio = "No se encontró un registro de servicio de almacenaje para esta venta.";
+            }
+        }
+
+        // Validar que la factura de servicio no se repita en otras ventas activas
+        if (!isset($error_factura_servicio) && !empty($factura_servicio)) {
+            $sql_check_factura_servicio = "SELECT vs.id_venta, v.folio
+                                          FROM venta_servicio vs
+                                          INNER JOIN ventas v ON vs.id_venta = v.id_venta
+                                          WHERE vs.factura_servicio = ?
+                                          AND v.status = 1
+                                          AND vs.id_venta != ?";
+
+            $stmt_check_factura_servicio = $conn_mysql->prepare($sql_check_factura_servicio);
+            if ($stmt_check_factura_servicio) {
+                $stmt_check_factura_servicio->bind_param('si', $factura_servicio, $id_venta);
+                $stmt_check_factura_servicio->execute();
+                $result_check_factura_servicio = $stmt_check_factura_servicio->get_result();
+
+                if ($result_check_factura_servicio->num_rows > 0) {
+                    $factura_duplicada_servicio = $result_check_factura_servicio->fetch_assoc();
+                    $error_factura_servicio = "La factura de servicio '$factura_servicio' ya está registrada en la venta activa con folio: " .
+                                             htmlspecialchars($factura_duplicada_servicio['folio']) .
+                                             ". Por favor, utiliza un número de factura diferente.";
+                }
+            }
+        }
+
+        if (!isset($error_factura_servicio)) {
+            $sql_update_factura_servicio = "UPDATE venta_servicio
+                                           SET factura_servicio = ?,
+                                               fecha_actualizacion = NOW()
+                                           WHERE id_venta = ?";
+
+            $stmt_update_factura_servicio = $conn_mysql->prepare($sql_update_factura_servicio);
+            if ($stmt_update_factura_servicio) {
+                $stmt_update_factura_servicio->bind_param('si', $factura_servicio, $id_venta);
+
+                if ($stmt_update_factura_servicio->execute()) {
+                    logActivity('VENTA_SERVICIO_FACTURA', "Factura de servicio actualizada en venta {$id_venta}: {$factura_servicio}");
+                    alert("Factura de servicio actualizada con éxito", 1, "V_venta&id=$id_venta");
+                    exit;
+                } else {
+                    logActivity('VENTA_SERVICIO_FACTURA_ERROR', "Error al actualizar factura de servicio en venta {$id_venta}: " . $stmt_update_factura_servicio->error);
+                    alert("Error al actualizar la factura de servicio", 0, "V_venta&id=$id_venta");
+                }
+            }
+        }
+    }
     
     // Procesar actualización de datos del fletero (mantener la funcionalidad existente)
     if (isset($_POST['actualizar_flete'])) {
@@ -141,13 +205,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 // Obtener información de la venta (incluyendo los nuevos campos)
 $sql_venta = "SELECT v.*, 
-                     CONCAT('V-', z.cod, '-', 
+               CONCAT(CASE WHEN z.tipo = 'SUR' THEN 'E-' ELSE 'V-' END, z.cod, '-', 
                            DATE_FORMAT(v.fecha_venta, '%y%m'), 
                            LPAD(v.folio, 4, '0')) as folio_compuesto,
                      v.folio as folio_simple,
                      c.cod as cod_cliente, c.nombre as nombre_cliente,
                      a.cod as cod_almacen, a.nombre as nombre_almacen,
-                     z.PLANTA as nombre_zona, z.cod as cod_zona,
+                     z.PLANTA as nombre_zona, z.cod as cod_zona, z.tipo as tipo_zona,
                      t.placas as placas_fletero, t.razon_so as nombre_fletero,
                      d_alm.cod_al as cod_bodega_almacen, d_alm.noma as nombre_bodega_almacen,
                      d_cli.cod_al as cod_bodega_cliente, d_cli.noma as nombre_bodega_cliente,
@@ -276,6 +340,23 @@ $stmt_flete->bind_param('i', $id_venta);
 $stmt_flete->execute();
 $flete = $stmt_flete->get_result();
 
+// Obtener información del servicio de almacenaje (SUR)
+$sql_servicio = "SELECT vs.*, 
+                        p.precio as precio_servicio,
+                        p.tipo as tipo_servicio_codigo,
+                        CASE 
+                            WHEN p.tipo = 'SVT' THEN 'Por tonelada'
+                            WHEN p.tipo = 'SVV' THEN 'Por viaje'
+                            ELSE p.tipo
+                        END as tipo_servicio
+                 FROM venta_servicio vs
+                 LEFT JOIN precios p ON vs.id_pre_servicio = p.id_precio
+                 WHERE vs.id_venta = ?";
+$stmt_servicio = $conn_mysql->prepare($sql_servicio);
+$stmt_servicio->bind_param('i', $id_venta);
+$stmt_servicio->execute();
+$servicio = $stmt_servicio->get_result();
+
 // Obtener información de facturas duplicadas para esta venta (transportista)
 $factura_transportista_duplicada_info = null;
 if ($flete->num_rows > 0) {
@@ -363,6 +444,7 @@ $total_pacas = 0;
 $total_kilos = 0;
 $total_venta = 0;
 $total_flete = 0;
+$total_servicio = 0;
 
 while ($detalle = $detalles->fetch_assoc()) {
     $total_pacas += $detalle['pacas_cantidad'];
@@ -376,6 +458,10 @@ if ($flete->num_rows > 0) {
     mysqli_data_seek($flete, 0);
 }
 
+if ($servicio->num_rows > 0) {
+    mysqli_data_seek($servicio, 0);
+}
+
 // Obtener flete
 if ($flete_data = $flete->fetch_assoc()) {
     $total_flete = $flete_data['precio_flete'];
@@ -383,7 +469,18 @@ if ($flete_data = $flete->fetch_assoc()) {
         $total_flete = $total_flete * ($total_kilos / 1000);
     }
 }
-$total_general = $total_venta - $total_flete;
+
+// Obtener servicio de almacenaje
+$servicio_data = null;
+if ($servicio_data = $servicio->fetch_assoc()) {
+    $total_servicio = floatval($servicio_data['precio_servicio']);
+    if (($servicio_data['tipo_servicio_codigo'] ?? '') === 'SVT') {
+        $total_servicio = $total_servicio * ($total_kilos / 1000);
+    }
+}
+
+$total_costos = $total_flete + $total_servicio;
+$total_general = $total_venta - $total_costos;
 
 // Obtener el primer producto (ya que solo se vende uno)
 $producto = $detalles->fetch_assoc();
@@ -419,6 +516,14 @@ if (isset($_GET['success_flete']) && $_GET['success_flete'] == 1) {
             Datos del fletero actualizados correctamente.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>';
+}
+
+if (isset($_GET['success_factura_servicio']) && $_GET['success_factura_servicio'] == 1) {
+        echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle me-2"></i>
+                        Factura de servicio actualizada correctamente.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>';
 }
 
 
@@ -937,7 +1042,82 @@ if (isset($_POST['eliminar_ticket'])) {
                                 <i class="bi bi-arrow-left"></i>
                             </button>
                             <div>
-                                <h3 class="mb-1 fw-bold text-light">Detalle de Venta</h3>
+                                <h3 class="mb-1 fw-bold text-light"><?= (($venta['tipo_zona'] ?? '') === 'SUR') ? 'Detalle de Entrega' : 'Detalle de Venta' ?></h3>
+                            <?php if (($venta['tipo_zona'] ?? '') === 'SUR' && !empty($servicio_data)): ?>
+                            <div class="modal fade" id="modalFacturaServicio" tabindex="-1" aria-labelledby="modalFacturaServicioLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <form method="POST" action="">
+                                            <div class="modal-header bg-primary text-white">
+                                                <h5 class="modal-title" id="modalFacturaServicioLabel">
+                                                    <i class="bi bi-receipt me-2"></i>Factura de Servicio de Almacenaje
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <?php if (isset($error_factura_servicio)): ?>
+                                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                                    <?= htmlspecialchars($error_factura_servicio) ?>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                                </div>
+                                                <?php endif; ?>
+
+                                                <div class="mb-3">
+                                                    <label for="factura_servicio" class="form-label">
+                                                        <i class="bi bi-file-earmark-text me-1"></i>Número de Factura de Servicio
+                                                    </label>
+                                                    <input type="text"
+                                                           class="form-control <?= isset($error_factura_servicio) ? 'is-invalid' : '' ?>"
+                                                           id="factura_servicio"
+                                                           name="factura_servicio"
+                                                           value="<?= htmlspecialchars($servicio_data['factura_servicio'] ?? '') ?>"
+                                                           placeholder="Ej: FS-2026-000123">
+                                                    <?php if (isset($error_factura_servicio)): ?>
+                                                    <div class="invalid-feedback">
+                                                        <?= htmlspecialchars($error_factura_servicio) ?>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                    <div class="form-text">Número de factura emitida por el almacén por concepto de servicio.</div>
+                                                </div>
+
+                                                <div class="card border-0 bg-body-tertiary mb-3">
+                                                    <div class="card-body p-3">
+                                                        <div class="row g-2">
+                                                            <div class="col-md-6">
+                                                                <small class="text-muted d-block">Venta</small>
+                                                                <strong><?= htmlspecialchars($venta['folio_compuesto']) ?></strong>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <small class="text-muted d-block">Prestador</small>
+                                                                <strong><?= htmlspecialchars($venta['nombre_almacen'] ?? 'Almacén') ?></strong>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <small class="text-muted d-block">Tipo de servicio</small>
+                                                                <strong><?= htmlspecialchars($servicio_data['tipo_servicio'] ?? 'N/A') ?></strong>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <small class="text-muted d-block">Costo del servicio</small>
+                                                                <strong>$<?= number_format($total_servicio, 2) ?></strong>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                                                </button>
+                                                <button type="submit" name="actualizar_factura_servicio" class="btn btn-primary">
+                                                    <i class="bi bi-save me-2"></i>Guardar Factura
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
                             </div>
                         </div>
                         <div class="d-flex gap-2">
@@ -968,7 +1148,7 @@ if (isset($_POST['eliminar_ticket'])) {
                                     <i class="bi bi-cart-check text-primary fs-2"></i>
                                 </div>
                                 <div>
-                                    <h4 class="mb-1 fw-bold">Venta #<?= htmlspecialchars($venta['folio_compuesto']) ?></h4>
+                                    <h4 class="mb-1 fw-bold"><?= (($venta['tipo_zona'] ?? '') === 'SUR') ? 'Entrega' : 'Venta' ?> #<?= htmlspecialchars($venta['folio_compuesto']) ?></h4>
                                     <div class="text-muted small">
                                         <i class="bi bi-calendar me-1"></i>
                                         <?= htmlspecialchars($venta['fecha_formateada']) ?>
@@ -996,8 +1176,11 @@ if (isset($_POST['eliminar_ticket'])) {
                                 </div>
                                 <div class="col-md-3 mb-2 mb-md-0">
                                     <div class="border-start border-3 border-info ps-3">
-                                        <small class="text-muted d-block">Costo Flete</small>
-                                        <strong class="d-block text-info">$<?= number_format($total_flete, 2) ?></strong>
+                                        <small class="text-muted d-block">Costos Logísticos</small>
+                                        <strong class="d-block text-info">$<?= number_format($total_costos, 2) ?></strong>
+                                        <?php if (($venta['tipo_zona'] ?? '') === 'SUR' && $total_servicio > 0): ?>
+                                        <small class="text-muted d-block">Flete: $<?= number_format($total_flete, 2) ?> | Servicio: $<?= number_format($total_servicio, 2) ?></small>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -1291,9 +1474,9 @@ if (isset($_POST['eliminar_ticket'])) {
         </div>
 
         <!-- Columna 3: Información de flete -->
-        <div class="col-lg-4">
+        <div class="col-lg-4 d-flex flex-column gap-3">
             <?php if ($flete->num_rows > 0 && $flete_data): ?>
-            <div class="card border-0 shadow h-100">
+            <div class="card border-0 shadow">
             <div class="card-header bg-transparent border-bottom py-2">
                 <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
@@ -1540,7 +1723,7 @@ if (isset($_POST['eliminar_ticket'])) {
                 </div>
                 </div>
             <?php else: ?>
-            <div class="card border-0 shadow h-100">
+            <div class="card border-0 shadow">
             <div class="card-body d-flex flex-column justify-content-center align-items-center text-center p-5">
                 <div class="bg-info bg-opacity-10 rounded-3 p-4 mb-3">
                 <i class="bi bi-truck text-info fs-1"></i>
@@ -1551,6 +1734,95 @@ if (isset($_POST['eliminar_ticket'])) {
                 <i class="bi bi-plus-circle me-2"></i>Agregar Datos de Transporte
                 </button>
             </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (($venta['tipo_zona'] ?? '') === 'SUR'): ?>
+            <div class="card border-0 shadow">
+                <div class="card-header bg-transparent border-bottom py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-building text-primary me-2"></i>Servicio de Almacenaje
+                        </h5>
+                        <?php if (!empty($servicio_data)): ?>
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFacturaServicio">
+                            <i class="bi bi-receipt me-1"></i>
+                            <?= !empty($servicio_data['factura_servicio']) ? 'Editar Factura' : 'Agregar Factura' ?>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Prestador del servicio</small>
+                        <div class="d-flex align-items-center mt-1">
+                            <div class="bg-primary bg-opacity-10 rounded-2 p-2 me-2">
+                                <i class="bi bi-shop text-primary"></i>
+                            </div>
+                            <div>
+                                <strong class="d-block"><?= htmlspecialchars($venta['nombre_almacen'] ?? 'Almacén') ?></strong>
+                                <small class="text-muted">Código: <?= htmlspecialchars($venta['cod_almacen'] ?? 'N/A') ?></small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($servicio_data)): ?>
+                    <div class="border rounded p-3 bg-primary bg-opacity-10 mb-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Tipo de servicio</small>
+                                <span class="badge bg-primary bg-opacity-25 text-primary"><?= htmlspecialchars($servicio_data['tipo_servicio'] ?? 'N/A') ?></span>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Costo total</small>
+                                <strong class="text-primary">$<?= number_format($total_servicio, 2) ?></strong>
+                            </div>
+                        </div>
+
+                        <?php if (($servicio_data['tipo_servicio_codigo'] ?? '') === 'SVT'): ?>
+                        <div class="mt-2 pt-2 border-top">
+                            <small class="text-muted d-block">Precio por tonelada</small>
+                            <strong>$<?= number_format(floatval($servicio_data['precio_servicio'] ?? 0), 2) ?></strong>
+                        </div>
+                        <?php elseif (($servicio_data['tipo_servicio_codigo'] ?? '') === 'SVV'): ?>
+                        <div class="mt-2 pt-2 border-top">
+                            <small class="text-muted d-block">Precio por viaje</small>
+                            <strong>$<?= number_format(floatval($servicio_data['precio_servicio'] ?? 0), 2) ?></strong>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Factura servicio</small>
+                        <?php if (!empty($servicio_data['factura_servicio'])): ?>
+                        <strong><?= htmlspecialchars($servicio_data['factura_servicio']) ?></strong>
+                        <?php else: ?>
+                        <span class="text-muted">Pendiente</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if (!empty($servicio_data['folioser'])): ?>
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Folio CR Servicio</small>
+                        <?php if (!empty($servicio_data['aliasser'])): ?>
+                        <a href="<?= $link.urlencode($servicio_data['aliasser']).'-'.$servicio_data['folioser'] ?>" target="_blank" class="btn btn-sm btn-primary rounded-5 mt-1">
+                            <i class="bi bi-file-earmark-text me-1"></i>
+                            <?= htmlspecialchars($servicio_data['aliasser']) ?> - <?= htmlspecialchars($servicio_data['folioser']) ?>
+                        </a>
+                        <?php else: ?>
+                        <strong><?= htmlspecialchars($servicio_data['folioser']) ?></strong>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                    <?php else: ?>
+                    <div class="text-center py-3">
+                        <div class="bg-light rounded-3 p-3 mb-2">
+                            <i class="bi bi-info-circle text-muted fs-4"></i>
+                        </div>
+                        <p class="mb-0 text-muted">No hay servicio de almacenaje registrado para esta venta SUR.</p>
+                    </div>
+                    <?php endif; ?>
+                </div>
             </div>
             <?php endif; ?>
         </div>
@@ -1570,15 +1842,18 @@ if (isset($_POST['eliminar_ticket'])) {
                     <!-- Resumen ejecutivo -->
                     <div class="row g-3 mt-2">
                         <div class="col-12">
-                            <div class="brounded-3 p-3 border border-subtle">
+                            <div class="rounded-3 p-3 border border-subtle">
                                 <div class="row g-3 text-center">
                                     <div class="col-md-3">
                                         <h6 class="text-muted small mb-1">
                                             <i class="bi bi-arrow-down-short text-danger"></i> Costo Total
                                         </h6>
                                         <h4 class="fw-bold text-danger mb-0">
-                                            $<?= number_format($total_flete, 2) ?>
+                                            $<?= number_format($total_costos, 2) ?>
                                         </h4>
+                                        <?php if (($venta['tipo_zona'] ?? '') === 'SUR' && $total_servicio > 0): ?>
+                                        <small class="text-muted d-block mt-1">Flete: $<?= number_format($total_flete, 2) ?> / Servicio: $<?= number_format($total_servicio, 2) ?></small>
+                                        <?php endif; ?>
                                     </div>
                                     <div class="col-md-3">
                                         <h6 class="text-muted small mb-1">
@@ -2256,20 +2531,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    const modalFletero = document.getElementById('modalFletero');
-    if (modalFletero) {
-        modalFletero.addEventListener('shown.bs.modal', function () {
-            const facturaInput = modalFletero.querySelector('#factura_transportista');
-            const errorAlert = modalFletero.querySelector('.alert-danger');
+    const modalFleteroFactura = document.getElementById('modalFletero');
+    if (modalFleteroFactura) {
+        modalFleteroFactura.addEventListener('shown.bs.modal', function () {
+            const facturaInput = modalFleteroFactura.querySelector('#factura_transportista');
+            const errorAlert = modalFleteroFactura.querySelector('.alert-danger');
             
             if (errorAlert && facturaInput) {
                 facturaInput.focus();
                 facturaInput.select();
             } else {
-                const firstInput = modalFletero.querySelector('input[type="text"]');
+                const firstInput = modalFleteroFactura.querySelector('input[type="text"]');
                 if (firstInput) {
                     firstInput.focus();
                 }
+            }
+        });
+    }
+
+    const modalFacturaServicio = document.getElementById('modalFacturaServicio');
+    if (modalFacturaServicio) {
+        modalFacturaServicio.addEventListener('shown.bs.modal', function () {
+            const facturaServicioInput = modalFacturaServicio.querySelector('#factura_servicio');
+            const errorAlert = modalFacturaServicio.querySelector('.alert-danger');
+
+            if (errorAlert && facturaServicioInput) {
+                facturaServicioInput.focus();
+                facturaServicioInput.select();
+            } else if (facturaServicioInput) {
+                facturaServicioInput.focus();
             }
         });
     }
@@ -2309,9 +2599,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    const facturaServicioInput = document.getElementById('factura_servicio');
+    if (facturaServicioInput) {
+        facturaServicioInput.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid')) {
+                this.classList.remove('is-invalid');
+                const invalidFeedback = this.nextElementSibling;
+                if (invalidFeedback && invalidFeedback.classList.contains('invalid-feedback')) {
+                    invalidFeedback.style.display = 'none';
+                }
+            }
+        });
+    }
     
     // Confirmación antes de enviar si hay factura duplicada
-    const submitButtons = document.querySelectorAll('button[name="actualizar_flete"], button[name="actualizar_factura_venta"]');
+    const submitButtons = document.querySelectorAll('button[name="actualizar_flete"], button[name="actualizar_factura_venta"], button[name="actualizar_factura_servicio"]');
     submitButtons.forEach(submitButton => {
         const form = submitButton.closest('form');
         form.addEventListener('submit', function(e) {
@@ -2323,6 +2626,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 warningAlert = form.querySelector('.alert-warning.mt-2');
             } else if (submitButton.name === 'actualizar_factura_venta') {
                 facturaInput = document.getElementById('factura_venta');
+                warningAlert = form.querySelector('.alert-warning.mt-2');
+            } else if (submitButton.name === 'actualizar_factura_servicio') {
+                facturaInput = document.getElementById('factura_servicio');
                 warningAlert = form.querySelector('.alert-warning.mt-2');
             }
             
@@ -2347,6 +2653,14 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 // Solo lo esencial
 document.addEventListener('DOMContentLoaded', function() {
+    <?php if (isset($error_factura_servicio) && ($venta['tipo_zona'] ?? '') === 'SUR' && !empty($servicio_data)): ?>
+    const modalFacturaServicioOnError = document.getElementById('modalFacturaServicio');
+    if (modalFacturaServicioOnError) {
+        const instanciaModalServicio = new bootstrap.Modal(modalFacturaServicioOnError);
+        instanciaModalServicio.show();
+    }
+    <?php endif; ?>
+
     // Auto-validar si se guardó una factura nueva
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('success_factura') && urlParams.get('success_factura') == '1') {
