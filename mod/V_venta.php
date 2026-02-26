@@ -219,6 +219,7 @@ $sql_venta = "SELECT v.*,
                      DATE_FORMAT(v.fecha_venta, '%d/%m/%Y') as fecha_formateada,
                      DATE_FORMAT(v.created_at, '%d/%m/%Y %H:%i') as fecha_creacion_formateada,
                      DATE_FORMAT(v.fecha_factura, '%d/%m/%Y') as fecha_factura_formateada,
+                     c.fac_rem as factura_remision,
                      DATE_FORMAT(v.factura_actualizada, '%d/%m/%Y %H:%i') as factura_actualizada_formateada,
                      DATE_FORMAT(v.fecha_validacion_factura, '%d/%m/%Y %H:%i') as fecha_validacion_formateada,
                      v.factura_valida,
@@ -600,11 +601,13 @@ function construirURLFactura($factura_numero, $fecha_factura, $planta_zona, $tip
 }
 function validarFacturaVenta($id_venta, $conn_mysql) {
     // Obtener datos básicos de la venta
-    $sql = "SELECT v.factura_venta, v.fecha_factura, v.factura_valida,
-                   v.url_factura_pdf, z.PLANTA as planta_zona
-            FROM ventas v
-            LEFT JOIN zonas z ON v.zona = z.id_zone
-            WHERE v.id_venta = ?";
+        $sql = "SELECT v.factura_venta, v.fecha_factura, v.factura_valida,
+                 v.url_factura_pdf, z.PLANTA as planta_zona,
+                 c.fac_rem as factura_remision
+             FROM ventas v
+             LEFT JOIN zonas z ON v.zona = z.id_zone
+             LEFT JOIN clientes c ON v.id_cliente = c.id_cli
+             WHERE v.id_venta = ?";
     
     $stmt = $conn_mysql->prepare($sql);
     if (!$stmt) return false;
@@ -621,12 +624,13 @@ function validarFacturaVenta($id_venta, $conn_mysql) {
         return false;
     }
     
-    // Construir URL
+    // Construir URL usando la preferencia del cliente (factura o remisión)
+    $tipo_doc = !empty($venta['factura_remision']) ? $venta['factura_remision'] : 'FAC';
     $url = construirURLFactura(
         $venta['factura_venta'],
         $venta['fecha_factura'],
         $venta['planta_zona'],
-        'FAC' // Por defecto factura, no remisión
+        $tipo_doc
     );
     
     if (empty($url)) return false;
