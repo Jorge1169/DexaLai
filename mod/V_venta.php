@@ -75,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Procesar actualización de factura de servicio de almacenaje
     if (isset($_POST['actualizar_factura_servicio'])) {
         $factura_servicio = trim($_POST['factura_servicio'] ?? '');
+        $factura_servicio_anterior = '';
 
         // Verificar que la venta tenga servicio asociado
         $sql_check_servicio_existente = "SELECT id_venta_servicio FROM venta_servicio WHERE id_venta = ? LIMIT 1";
@@ -87,6 +88,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             if (!$res_servicio_existente || $res_servicio_existente->num_rows === 0) {
                 $error_factura_servicio = "No se encontró un registro de servicio de almacenaje para esta venta.";
+            } else {
+                $row_servicio_existente = $res_servicio_existente->fetch_assoc();
+                if (!empty($row_servicio_existente['id_venta_servicio'])) {
+                    $sql_factura_servicio_actual = "SELECT factura_servicio FROM venta_servicio WHERE id_venta = ? LIMIT 1";
+                    $stmt_factura_servicio_actual = $conn_mysql->prepare($sql_factura_servicio_actual);
+                    if ($stmt_factura_servicio_actual) {
+                        $stmt_factura_servicio_actual->bind_param('i', $id_venta);
+                        $stmt_factura_servicio_actual->execute();
+                        $res_factura_servicio_actual = $stmt_factura_servicio_actual->get_result();
+                        if ($res_factura_servicio_actual && $res_factura_servicio_actual->num_rows > 0) {
+                            $row_factura_servicio_actual = $res_factura_servicio_actual->fetch_assoc();
+                            $factura_servicio_anterior = trim($row_factura_servicio_actual['factura_servicio'] ?? '');
+                        }
+                    }
+                }
             }
         }
 
@@ -115,9 +131,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         if (!isset($error_factura_servicio)) {
+            $factura_servicio_cambio = ($factura_servicio !== $factura_servicio_anterior);
+
+            $set_sql = [
+                "factura_servicio = ?",
+                "fecha_actualizacion = NOW()"
+            ];
+
+            if ($factura_servicio_cambio) {
+                $set_sql[] = "doc_factura_ser = NULL";
+                $set_sql[] = "com_factura_ser = NULL";
+                $set_sql[] = "impuestoTraslado_ser = NULL";
+                $set_sql[] = "impuestoRetenido_ser = NULL";
+                $set_sql[] = "subtotal_ser = NULL";
+                $set_sql[] = "total_ser = NULL";
+                $set_sql[] = "aliasser = NULL";
+                $set_sql[] = "folioser = NULL";
+            }
+
             $sql_update_factura_servicio = "UPDATE venta_servicio
-                                           SET factura_servicio = ?,
-                                               fecha_actualizacion = NOW()
+                                           SET " . implode(', ', $set_sql) . "
                                            WHERE id_venta = ?";
 
             $stmt_update_factura_servicio = $conn_mysql->prepare($sql_update_factura_servicio);
@@ -142,6 +175,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $nombre_chofer = $_POST['nombre_chofer'] ?? null;
         $placas_unidad = $_POST['placas_unidad'] ?? null;
         $factura_transportista = trim($_POST['factura_transportista'] ?? '');
+        $factura_transportista_anterior = '';
+
+        $sql_factura_flete_actual = "SELECT factura_transportista FROM venta_flete WHERE id_venta = ? LIMIT 1";
+        $stmt_factura_flete_actual = $conn_mysql->prepare($sql_factura_flete_actual);
+        if ($stmt_factura_flete_actual) {
+            $stmt_factura_flete_actual->bind_param('i', $id_venta);
+            $stmt_factura_flete_actual->execute();
+            $res_factura_flete_actual = $stmt_factura_flete_actual->get_result();
+            if ($res_factura_flete_actual && $res_factura_flete_actual->num_rows > 0) {
+                $row_factura_flete_actual = $res_factura_flete_actual->fetch_assoc();
+                $factura_transportista_anterior = trim($row_factura_flete_actual['factura_transportista'] ?? '');
+            }
+        }
         
         // Validar que la factura no se repita en otras ventas activas
         if (!empty($factura_transportista)) {
@@ -170,13 +216,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         // Si no hay error de factura duplicada, proceder con la actualización
         if (!isset($error_flete)) {
+            $factura_transportista_cambio = ($factura_transportista !== $factura_transportista_anterior);
+
+            $set_sql_flete = [
+                "tipo_camion = ?",
+                "nombre_chofer = ?",
+                "placas_unidad = ?",
+                "factura_transportista = ?",
+                "fecha_actualizacion = NOW()"
+            ];
+
+            if ($factura_transportista_cambio) {
+                $set_sql_flete[] = "doc_factura_ven = NULL";
+                $set_sql_flete[] = "com_factura_ven = NULL";
+                $set_sql_flete[] = "impuestoTraslado_v = NULL";
+                $set_sql_flete[] = "impuestoRetenido_v = NULL";
+                $set_sql_flete[] = "subtotal_v = NULL";
+                $set_sql_flete[] = "total_v = NULL";
+                $set_sql_flete[] = "aliasven = NULL";
+                $set_sql_flete[] = "folioven = NULL";
+            }
+
             // Actualizar datos en venta_flete
             $sql_update_flete = "UPDATE venta_flete 
-                                 SET tipo_camion = ?, 
-                                     nombre_chofer = ?, 
-                                     placas_unidad = ?, 
-                                     factura_transportista = ?,
-                                     fecha_actualizacion = NOW()
+                                 SET " . implode(', ', $set_sql_flete) . "
                                  WHERE id_venta = ?";
             
             $stmt_update = $conn_mysql->prepare($sql_update_flete);
@@ -1799,11 +1862,69 @@ if (isset($_POST['eliminar_ticket'])) {
                     <div class="mb-2">
                         <small class="text-muted d-block">Factura servicio</small>
                         <?php if (!empty($servicio_data['factura_servicio'])): ?>
-                        <strong><?= htmlspecialchars($servicio_data['factura_servicio']) ?></strong>
+                        <div class="d-flex align-items-center">
+                            <?php if (!empty($servicio_data['doc_factura_ser']) || !empty($servicio_data['com_factura_ser'])): ?>
+                            <button type="button" class="btn btn-primary btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-file-earmark-pdf"></i> <?= htmlspecialchars($servicio_data['factura_servicio']) ?>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <?php if (!empty($servicio_data['doc_factura_ser'])): ?>
+                                <li><a class="dropdown-item" href="<?= $invoiceLK . $servicio_data['doc_factura_ser'] ?>.pdf" target="_blank">Ver Factura de Servicio</a></li>
+                                <?php endif; ?>
+                                <?php if (!empty($servicio_data['com_factura_ser'])): ?>
+                                <li><a class="dropdown-item" href="<?= $invoiceLK . $servicio_data['com_factura_ser'] ?>.pdf" target="_blank">Ver Comprobante de Servicio</a></li>
+                                <?php endif; ?>
+                            </ul>
+                            <?php else: ?>
+                            <strong><?= htmlspecialchars($servicio_data['factura_servicio']) ?></strong>
+                            <?php endif; ?>
+                        </div>
                         <?php else: ?>
                         <span class="text-muted">Pendiente</span>
                         <?php endif; ?>
                     </div>
+
+                    <?php if (!empty($servicio_data['impuestoTraslado_ser']) || !empty($servicio_data['impuestoRetenido_ser']) || !empty($servicio_data['subtotal_ser']) || !empty($servicio_data['total_ser'])): ?>
+                    <div class="border rounded p-3 bg-body-tertiary mb-3">
+                        <h6 class="text-muted mb-3 d-flex align-items-center">
+                            <i class="bi bi-receipt text-secondary me-2"></i> Desglose Fiscal Servicio
+                        </h6>
+
+                        <div class="mb-2 pb-2 border-bottom border-opacity-50">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted small">Subtotal</span>
+                                <span class="fw-semibold text-secondary">$<?= number_format(floatval($servicio_data['subtotal_ser'] ?? 0), 2) ?></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-2 pb-2 border-bottom border-opacity-50">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-plus-circle text-success fs-6"></i>
+                                    <span class="text-muted small">IVA Traslado</span>
+                                </div>
+                                <span class="fw-semibold text-success">+$<?= number_format(floatval($servicio_data['impuestoTraslado_ser'] ?? 0), 2) ?></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 pb-3 border-bottom border-opacity-50">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-dash-circle text-danger fs-6"></i>
+                                    <span class="text-muted small">IVA Retenido</span>
+                                </div>
+                                <span class="fw-semibold text-danger">-$<?= number_format(floatval($servicio_data['impuestoRetenido_ser'] ?? 0), 2) ?></span>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-3 border-2" style="border-color: rgba(13,110,253,0.3); background: rgba(13,110,253,0.08);">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">Total Neto Servicio</span>
+                                <span class="fw-bold text-primary fs-5">$<?= number_format(floatval($servicio_data['total_ser'] ?? 0), 2) ?></span>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <?php if (!empty($servicio_data['folioser'])): ?>
                     <div class="mb-2">

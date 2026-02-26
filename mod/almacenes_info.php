@@ -3,6 +3,11 @@
 $zona_filtro = intval($zona_seleccionada ?? 0);
 $filtro_zona_almacenes = $zona_filtro > 0 ? " AND a.zona = {$zona_filtro}" : '';
 $filtro_zona_inventario = $zona_filtro > 0 ? " AND a.zona = {$zona_filtro}" : '';
+$es_zona_sur = $zona_filtro > 0 ? esZonaSurSinFlete($zona_filtro, $conn_mysql) : false;
+$endpoint_facturas = $es_zona_sur ? 'b_factura_sur.php' : 'b_factura_a.php';
+$endpoint_cr = $es_zona_sur ? 'b_cr_sur.php' : 'b_cr_a.php';
+$label_boton_factura = $es_zona_sur ? 'Buscar Facturas SUR' : 'Buscar Facturas';
+$label_boton_cr = $es_zona_sur ? 'Buscar C.R SUR' : 'Buscar C.R';
 
 // Obtener almacenes activos separados por bodega (direcciones)
 $sql = "SELECT a.*, z.PLANTA as nombre_zona,
@@ -34,12 +39,12 @@ $result = $conn_mysql->query($sql);
                 <button type="button" class="btn btn-sm btn-orange"
                         data-bs-toggle="modal"
                         data-bs-target="#vincularFacturasModal" <?= $perm['ACT_FAC'];?>>
-                    Buscar Facturas
+                    <?= $label_boton_factura; ?>
                 </button>
                 <button type="button" class="btn btn-sm btn-warning"
                         data-bs-toggle="modal"
                         data-bs-target="#vincularCRModal" <?= $perm['ACT_CR'];?>>
-                    Buscar C.R
+                    <?= $label_boton_cr; ?>
                 </button>
             </div>
         </div>
@@ -140,7 +145,7 @@ $result = $conn_mysql->query($sql);
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
     <div class="modal-content">
       <div class="modal-header bg-orange text-white">
-        <h1 class="modal-title fs-5" id="exampleModalLabel">Buscar Facturas</h1>
+        <h1 class="modal-title fs-5" id="exampleModalLabel"><?= $es_zona_sur ? 'Buscar Facturas SUR' : 'Buscar Facturas'; ?></h1>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="resultadoFactura">
@@ -149,7 +154,7 @@ $result = $conn_mysql->query($sql);
         <div class="alert alert-info d-flex align-items-center" role="alert">
           <i class="bi bi-info-circle-fill me-2"></i>
           <div>
-            La búsqueda de facturas se realizará en la zona seleccionada actualmente. Asegúrese de que la zona sea correcta antes de proceder.
+                        La búsqueda de facturas se realizará en la zona seleccionada actualmente. <?= $es_zona_sur ? 'En SUR se consultan transporte, servicio y pagos.' : 'Asegúrese de que la zona sea correcta antes de proceder.' ?>
           </div>    
           </div>
       </div>
@@ -170,7 +175,7 @@ $result = $conn_mysql->query($sql);
                       '</div>';
 
         $.ajax({
-            url: 'b_factura_a.php',
+            url: '<?= $endpoint_facturas; ?>',
             type: 'POST',
             data: { zona: zonaId },
             beforeSend: function() {
@@ -192,7 +197,7 @@ $result = $conn_mysql->query($sql);
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
     <div class="modal-content">
       <div class="modal-header bg-warning">
-        <h1 class="modal-title fs-5" id="exampleModalLabelCR">Buscar C.R</h1>
+        <h1 class="modal-title fs-5" id="exampleModalLabelCR"><?= $es_zona_sur ? 'Buscar C.R SUR' : 'Buscar C.R'; ?></h1>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body " id="resultadoCR">
@@ -201,7 +206,7 @@ $result = $conn_mysql->query($sql);
         <div class="alert alert-info d-flex align-items-center" role="alert">
           <i class="bi bi-info-circle-fill me-2"></i>
           <div>
-            La búsqueda de C.R se realizará en la zona seleccionada actualmente. Asegúrese de que la zona sea correcta antes de proceder.
+                        La búsqueda de C.R se realizará en la zona seleccionada actualmente. <?= $es_zona_sur ? 'En SUR se consultan transporte, servicio y pagos.' : 'Asegúrese de que la zona sea correcta antes de proceder.' ?>
           </div>    
           </div>
         </div>
@@ -222,7 +227,7 @@ $result = $conn_mysql->query($sql);
                       '</div>';
 
         $.ajax({
-            url: 'b_cr_a.php',
+            url: '<?= $endpoint_cr; ?>',
             type: 'POST',
             data: { zona: zonaId },
             beforeSend: function() {

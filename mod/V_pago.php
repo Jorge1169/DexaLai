@@ -7,6 +7,18 @@ if ($id_pago <= 0) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_factura_pago'])) {
     $factura_pago = trim($_POST['factura_pago'] ?? '');
+    $factura_pago_anterior = '';
+
+    $stmtActual = $conn_mysql->prepare("SELECT factura_pago FROM pagos WHERE id_pago = ? LIMIT 1");
+    if ($stmtActual) {
+        $stmtActual->bind_param('i', $id_pago);
+        $stmtActual->execute();
+        $resActual = $stmtActual->get_result();
+        if ($resActual && $resActual->num_rows > 0) {
+            $rowActual = $resActual->fetch_assoc();
+            $factura_pago_anterior = trim($rowActual['factura_pago'] ?? '');
+        }
+    }
 
     if ($factura_pago !== '') {
         $stmtDup = $conn_mysql->prepare("SELECT id_pago, folio FROM pagos WHERE factura_pago = ? AND status = 1 AND id_pago != ? LIMIT 1");
@@ -22,7 +34,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_factura_pa
     }
 
     if (!isset($error_factura_pago)) {
-        $stmtUpd = $conn_mysql->prepare("UPDATE pagos SET factura_pago = ?, factura_actualizada = NOW(), updated_at = NOW() WHERE id_pago = ?");
+        $facturaCambio = ($factura_pago !== $factura_pago_anterior);
+
+        $setSql = [
+            "factura_pago = ?",
+            "factura_actualizada = NOW()",
+            "updated_at = NOW()"
+        ];
+
+        if ($facturaCambio) {
+            $setSql[] = "doc_factura_pago = NULL";
+            $setSql[] = "com_factura_pago = NULL";
+            $setSql[] = "impuesto_traslado = NULL";
+            $setSql[] = "impuesto_retenido = NULL";
+            $setSql[] = "subtotal_invoice = NULL";
+            $setSql[] = "total_invoice = NULL";
+            $setSql[] = "aliaspag = NULL";
+            $setSql[] = "foliopag = NULL";
+        }
+
+        $stmtUpd = $conn_mysql->prepare("UPDATE pagos SET " . implode(', ', $setSql) . " WHERE id_pago = ?");
         if ($stmtUpd) {
             $stmtUpd->bind_param('si', $factura_pago, $id_pago);
             if ($stmtUpd->execute()) {
@@ -59,6 +90,17 @@ if (strtoupper(trim($pago['tipo_zona'] ?? '')) !== 'SUR') {
     alert("Este módulo aplica para pagos SUR", 0, "pagos");
     exit;
 }
+
+$docFacturaPago = trim($pago['doc_factura_pago'] ?? '');
+$comFacturaPago = trim($pago['com_factura_pago'] ?? '');
+$aliasCRPago = trim($pago['aliaspag'] ?? '');
+$folioCRPago = trim($pago['foliopag'] ?? '');
+$subtotalLocalPago = floatval($pago['subtotal'] ?? 0);
+$totalLocalPago = floatval($pago['total'] ?? 0);
+$subtotalInvoicePago = isset($pago['subtotal_invoice']) && $pago['subtotal_invoice'] !== null ? floatval($pago['subtotal_invoice']) : null;
+$totalInvoicePago = isset($pago['total_invoice']) && $pago['total_invoice'] !== null ? floatval($pago['total_invoice']) : null;
+$diffSubtotalPago = ($subtotalInvoicePago !== null) ? ($subtotalInvoicePago - $subtotalLocalPago) : null;
+$diffTotalPago = ($totalInvoicePago !== null) ? ($totalInvoicePago - $totalLocalPago) : null;
 
 $folioCompuesto = 'P-' . $pago['cod_zona'] . '-' . date('ym', strtotime($pago['fecha_pago'])) . str_pad((string)$pago['folio'], 4, '0', STR_PAD_LEFT);
 
@@ -105,6 +147,21 @@ while ($d = $detalles->fetch_assoc()) {
     letter-spacing: .02em;
     white-space: nowrap;
 }
+.pago-view .section-title {
+    font-size: .9rem;
+    font-weight: 700;
+    color: var(--bs-secondary-color);
+    margin-bottom: .65rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.pago-view .metric-card.compact {
+    padding: .75rem .85rem;
+}
+.pago-view .metric-value.big {
+    font-size: 1.2rem;
+}
 </style>
 
 <div class="container py-3 pago-view">
@@ -128,6 +185,7 @@ while ($d = $detalles->fetch_assoc()) {
             </div>
         </div>
         <div class="card-body">
+            <div class="section-title"><i class="bi bi-info-circle"></i>Información general</div>
             <div class="row g-3 mb-3">
                 <div class="col-12 col-md-3">
                     <div class="metric-card">
@@ -155,7 +213,23 @@ while ($d = $detalles->fetch_assoc()) {
                         <div class="info-label text-muted">Factura</div>
                         <div class="metric-value fs-6">
                             <?php if (!empty($pago['factura_pago'])): ?>
-                                <span class="badge bg-success bg-opacity-10 text-success"><?= htmlspecialchars($pago['factura_pago']) ?></span>
+                                <?php if (!empty($docFacturaPago) || !empty($comFacturaPago)): ?>
+                                    <div class="dropdown">
+                                        <button type="button" class="btn btn-success btn-sm rounded-4 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-file-earmark-pdf"></i> <?= htmlspecialchars($pago['factura_pago']) ?>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <?php if (!empty($docFacturaPago)): ?>
+                                                <li><a class="dropdown-item" href="<?= $invoiceLK . $docFacturaPago ?>.pdf" target="_blank">Ver Factura de Pago</a></li>
+                                            <?php endif; ?>
+                                            <?php if (!empty($comFacturaPago)): ?>
+                                                <li><a class="dropdown-item" href="<?= $invoiceLK . $comFacturaPago ?>.pdf" target="_blank">Ver Comprobante de Pago</a></li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="badge bg-success bg-opacity-10 text-success"><?= htmlspecialchars($pago['factura_pago']) ?></span>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <span class="badge bg-secondary bg-opacity-10 text-secondary">Pendiente</span>
                             <?php endif; ?>
@@ -164,6 +238,7 @@ while ($d = $detalles->fetch_assoc()) {
                 </div>
             </div>
 
+            <div class="section-title"><i class="bi bi-chat-left-text"></i>Concepto</div>
             <div class="row g-3 mb-3">
                 <div class="col-12">
                     <div class="metric-card">
@@ -178,38 +253,136 @@ while ($d = $detalles->fetch_assoc()) {
                 </div>
             </div>
 
+            <div class="section-title"><i class="bi bi-calculator"></i>Resumen local del pago</div>
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-2">
-                    <div class="metric-card bg-body-tertiary">
+                    <div class="metric-card compact bg-body-tertiary">
                         <div class="info-label text-muted">Tickets</div>
                         <div class="metric-value"><?= $totalTickets ?></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="metric-card bg-body-tertiary">
+                    <div class="metric-card compact bg-body-tertiary">
                         <div class="info-label text-muted">Subtotal</div>
-                        <div class="metric-value text-success">$<?= number_format((float)$pago['subtotal'], 2) ?></div>
+                        <div class="metric-value text-success">$<?= number_format($subtotalLocalPago, 2) ?></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="metric-card bg-body-tertiary">
-                        <div class="info-label text-muted">Impuestos (+)</div>
-                        <div class="metric-value">$<?= number_format((float)$pago['impuesto_traslado'], 2) ?></div>
+                    <div class="metric-card compact bg-body-tertiary">
+                        <div class="info-label text-muted">Importe acumulado tickets</div>
+                        <div class="metric-value">$<?= number_format((float)$totalImporte, 2) ?></div>
                     </div>
                 </div>
-                <div class="col-6 col-md-2">
-                    <div class="metric-card bg-body-tertiary">
-                        <div class="info-label text-muted">Retenciones (-)</div>
-                        <div class="metric-value">$<?= number_format((float)$pago['impuesto_retenido'], 2) ?></div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-2">
-                    <div class="metric-card border-primary bg-primary bg-opacity-10">
-                        <div class="info-label text-primary-emphasis">Total</div>
-                        <div class="metric-value text-primary">$<?= number_format((float)$pago['total'], 2) ?></div>
+                <div class="col-12 col-md-4">
+                    <div class="metric-card compact border-primary bg-primary bg-opacity-10">
+                        <div class="info-label text-primary-emphasis">Total local</div>
+                        <div class="metric-value big text-primary">$<?= number_format($totalLocalPago, 2) ?></div>
                     </div>
                 </div>
             </div>
+
+            <?php if (!empty($docFacturaPago) || !empty($comFacturaPago) || $subtotalInvoicePago !== null || $totalInvoicePago !== null): ?>
+            <div class="section-title"><i class="bi bi-receipt"></i>Comparativo con Invoice</div>
+            <div class="row g-3 mb-4">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-receipt me-2"></i>Desglose Fiscal Factura de Pago</h6>
+                            <?php if (!empty($pago['factura_actualizada_fmt'])): ?>
+                                <small class="text-muted">Última actualización: <?= htmlspecialchars($pago['factura_actualizada_fmt']) ?></small>
+                            <?php endif; ?>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-6 col-md-3">
+                                    <div class="metric-card compact bg-body-tertiary">
+                                        <div class="info-label text-muted">Subtotal local</div>
+                                        <div class="metric-value text-secondary">$<?= number_format($subtotalLocalPago, 2) ?></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="metric-card compact bg-body-tertiary">
+                                        <div class="info-label text-muted">Subtotal Invoice</div>
+                                        <div class="metric-value text-info">
+                                            <?= $subtotalInvoicePago !== null ? '$' . number_format($subtotalInvoicePago, 2) : '<span class="text-muted">Sin dato</span>' ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="metric-card compact bg-body-tertiary">
+                                        <div class="info-label text-muted">IVA traslado local</div>
+                                        <div class="metric-value text-success">$<?= number_format((float)$pago['impuesto_traslado'], 2) ?></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="metric-card compact bg-body-tertiary">
+                                        <div class="info-label text-muted">IVA retenido local</div>
+                                        <div class="metric-value text-danger">$<?= number_format((float)$pago['impuesto_retenido'], 2) ?></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="metric-card compact border-primary bg-primary bg-opacity-10">
+                                        <div class="info-label text-primary-emphasis">Total Neto Local</div>
+                                        <div class="metric-value text-primary">$<?= number_format($totalLocalPago, 2) ?></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="metric-card compact border-info bg-info bg-opacity-10">
+                                        <div class="info-label text-info-emphasis">Total Invoice</div>
+                                        <div class="metric-value text-info">
+                                            <?= $totalInvoicePago !== null ? '$' . number_format($totalInvoicePago, 2) : '<span class="text-muted">Sin dato</span>' ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <div class="metric-card compact border-warning bg-warning bg-opacity-10">
+                                        <div class="info-label text-warning-emphasis">Diferencias (Invoice - Local)</div>
+                                        <div class="small">
+                                            <div>
+                                                Subtotal: 
+                                                <?php if ($diffSubtotalPago === null): ?>
+                                                    <span class="text-muted">Sin dato</span>
+                                                <?php else: ?>
+                                                    <strong class="<?= abs($diffSubtotalPago) > 0.009 ? 'text-danger' : 'text-success' ?>">
+                                                        <?= ($diffSubtotalPago >= 0 ? '+' : '') . '$' . number_format($diffSubtotalPago, 2) ?>
+                                                    </strong>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div>
+                                                Total: 
+                                                <?php if ($diffTotalPago === null): ?>
+                                                    <span class="text-muted">Sin dato</span>
+                                                <?php else: ?>
+                                                    <strong class="<?= abs($diffTotalPago) > 0.009 ? 'text-danger' : 'text-success' ?>">
+                                                        <?= ($diffTotalPago >= 0 ? '+' : '') . '$' . number_format($diffTotalPago, 2) ?>
+                                                    </strong>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <?php if (!empty($folioCRPago)): ?>
+                                <div class="col-12 col-md-6">
+                                    <div class="metric-card compact border-info bg-info bg-opacity-10">
+                                        <div class="info-label text-info-emphasis">Folio C.R. Pago</div>
+                                        <?php if (!empty($aliasCRPago)): ?>
+                                            <a href="<?= $link . urlencode($aliasCRPago) . '-' . $folioCRPago ?>" target="_blank" class="btn btn-sm btn-info rounded-5">
+                                                <i class="bi bi-file-earmark-text me-1"></i>
+                                                <?= htmlspecialchars($aliasCRPago) ?> - <?= htmlspecialchars($folioCRPago) ?>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="badge bg-info bg-opacity-10 text-info"><?= htmlspecialchars($folioCRPago) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
