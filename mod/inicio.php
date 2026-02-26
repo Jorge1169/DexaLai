@@ -14,7 +14,7 @@ if ($zona_seleccionada == '0' || empty($zona_seleccionada)) {
 // ESCENARIO 2: ZONA MEO SELECCIONADA
 // ============================================================================
 if (esZonaMEOCompatible($tipoZonaActual)) {
-    mostrarDashboardMEO($conn_mysql, $zona_seleccionada);
+    mostrarDashboardMEO($conn_mysql, $zona_seleccionada, $tipoZonaActual);
     return;
 }
 
@@ -122,7 +122,11 @@ function mostrarSelectorZonaUI() {
     <?php
 }
 
-function mostrarDashboardMEO($conn_mysql, $zona_seleccionada) {
+function mostrarDashboardMEO($conn_mysql, $zona_seleccionada, $tipoZona = 'MEO') {
+    $esSur = ($tipoZona === 'SUR');
+    $labelVenta = $esSur ? 'Entrega' : 'Venta';
+    $labelVentas = $esSur ? 'Entregas' : 'Ventas';
+
     // Configuración del mes
     $mes_param = $_GET['mes'] ?? date('Y-m');
     if (!preg_match('/^\d{4}-\d{2}$/', $mes_param)) {
@@ -139,8 +143,16 @@ function mostrarDashboardMEO($conn_mysql, $zona_seleccionada) {
     $nombre_zona = obtenerNombreZonaDashboard($conn_mysql, $zona_seleccionada);
     $stats = obtenerEstadisticasMEODashboard($conn_mysql, $zona_seleccionada, $mes_param);
     $ultimasCaptaciones = obtenerUltimasCaptacionesDashboard($conn_mysql, $zona_seleccionada, 5, $mes_param);
-    $ultimasVentas = obtenerUltimasVentasDashboard($conn_mysql, $zona_seleccionada, 5, $mes_param);
+    $ultimasVentas = obtenerUltimasVentasDashboard($conn_mysql, $zona_seleccionada, 5, $mes_param, $esSur);
     $resumenMes = obtenerResumenMensualMEODashboard($conn_mysql, $zona_seleccionada, $mes_param);
+
+    // Datos de pagos (solo SUR)
+    $statsPagos = null;
+    $ultimosPagos = [];
+    if ($esSur) {
+        $statsPagos = obtenerEstadisticasPagosDashboard($conn_mysql, $zona_seleccionada, $mes_param);
+        $ultimosPagos = obtenerUltimosPagosDashboard($conn_mysql, $zona_seleccionada, 5, $mes_param);
+    }
     
     // Formatear nombre del mes
     $nombre_mes = $mes_actual->format('F Y');
@@ -151,16 +163,26 @@ function mostrarDashboardMEO($conn_mysql, $zona_seleccionada) {
         <?php mostrarHeaderMEODashboard($nombre_zona, $mes_param, $nombre_mes, $mes_actual); ?>
         
         <!-- Métricas principales -->
-        <?php mostrarMetricasPrincipalesMEODashboard($stats); ?>
+        <?php mostrarMetricasPrincipalesMEODashboard($stats, $labelVentas); ?>
         
         <!-- Resumen financiero -->
         <?php mostrarResumenFinancieroMEODashboard($stats, $nombre_mes); ?>
+
+        <!-- Pagos (solo SUR) -->
+        <?php if ($esSur && $statsPagos): ?>
+            <?php mostrarResumenPagosDashboard($statsPagos, $nombre_mes); ?>
+        <?php endif; ?>
         
         <!-- Actividad reciente -->
-        <?php mostrarActividadRecienteMEODashboard($ultimasCaptaciones, $ultimasVentas, $nombre_mes); ?>
+        <?php mostrarActividadRecienteMEODashboard($ultimasCaptaciones, $ultimasVentas, $nombre_mes, $labelVentas, $labelVenta); ?>
+
+        <!-- Últimos Pagos (solo SUR) -->
+        <?php if ($esSur && !empty($ultimosPagos)): ?>
+            <?php mostrarUltimosPagosDashboard($ultimosPagos, $nombre_mes, $conn_mysql); ?>
+        <?php endif; ?>
         
         <!-- Resumen detallado -->
-        <?php mostrarResumenDetalladoMEODashboard($resumenMes, $nombre_mes); ?>
+        <?php mostrarResumenDetalladoMEODashboard($resumenMes, $nombre_mes, $labelVentas); ?>
     </div>
     <?php
 }
@@ -449,16 +471,18 @@ function obtenerUltimasCaptacionesDashboard($conn_mysql, $zona_id, $limit = 5, $
     return $captaciones;
 }
 
-function obtenerUltimasVentasDashboard($conn_mysql, $zona_id, $limit = 5, $mes = null) {
+function obtenerUltimasVentasDashboard($conn_mysql, $zona_id, $limit = 5, $mes = null, $esSur = false) {
     $where_mes = $mes ? "AND DATE_FORMAT(v.fecha_venta, '%Y-%m') = ?" : "";
     $params = [$zona_id];
     if ($mes) $params[] = $mes;
     
+    $prefijoFolio = $esSur ? 'E-' : 'V-';
+
     // CORREGIDO: Consulta con cálculo correcto de kilos
     $query = "
         SELECT 
             v.id_venta,
-            CONCAT('V-', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) as folio,
+            CONCAT('$prefijoFolio', z.cod, '-', DATE_FORMAT(v.fecha_venta, '%y%m'), LPAD(v.folio, 4, '0')) as folio,
             DATE_FORMAT(v.fecha_venta, '%d/%m/%Y') as fecha,
             c.nombre as cliente,
             COALESCE(SUM(vd.total_kilos), 0) as kilos,
@@ -698,12 +722,12 @@ function mostrarHeaderMEODashboard($nombre_zona, $mes_param, $nombre_mes, $mes_a
     <?php
 }
 
-function mostrarMetricasPrincipalesMEODashboard($stats) {
+function mostrarMetricasPrincipalesMEODashboard($stats, $labelVentas = 'Ventas') {
     $metricas = [
         ['titulo' => 'Total Captaciones', 'valor' => $stats['total_captaciones'], 'icono' => 'inbox-fill', 'color' => 'primary', 'link' => 'captacion'],
-        ['titulo' => 'Total Ventas', 'valor' => $stats['total_ventas'], 'icono' => 'cart-check', 'color' => 'success', 'link' => 'ventas'],
+        ['titulo' => 'Total ' . $labelVentas, 'valor' => $stats['total_ventas'], 'icono' => 'cart-check', 'color' => 'success', 'link' => 'ventas'],
         ['titulo' => 'Material Captado', 'valor' => number_format($stats['total_kilos_captados'], 2), 'icono' => 'boxes', 'color' => 'warning', 'link' => 'captacion'],
-        ['titulo' => 'Material Vendido', 'valor' => number_format($stats['total_kilos_vendidos'], 2), 'icono' => 'truck', 'color' => 'info', 'link' => 'ventas']
+        ['titulo' => 'Material Entregado', 'valor' => number_format($stats['total_kilos_vendidos'], 2), 'icono' => 'truck', 'color' => 'info', 'link' => 'ventas']
     ];
     ?>
     <div class="row mb-4 g-3">
@@ -786,7 +810,7 @@ function mostrarResumenFinancieroMEODashboard($stats, $nombre_mes) {
     <?php
 }
 
-function mostrarActividadRecienteMEODashboard($captaciones, $ventas, $nombre_mes) {
+function mostrarActividadRecienteMEODashboard($captaciones, $ventas, $nombre_mes, $labelVentas = 'Ventas', $labelVenta = 'Venta') {
     ?>
     <div class="row mb-4">
         <!-- Últimas Captaciones -->
@@ -851,7 +875,7 @@ function mostrarActividadRecienteMEODashboard($captaciones, $ventas, $nombre_mes
             </div>
         </div>
 
-        <!-- Últimas Ventas -->
+        <!-- Últimas Entregas/Ventas -->
         <div class="col-lg-6 mb-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header d-flex align-items-center justify-content-between py-3">
@@ -860,7 +884,7 @@ function mostrarActividadRecienteMEODashboard($captaciones, $ventas, $nombre_mes
                             <i class="bi bi-cart text-success fs-4"></i>
                         </div>
                         <div>
-                            <h6 class="mb-0 fw-semibold">Últimas Ventas</h6>
+                            <h6 class="mb-0 fw-semibold">Últimas <?= $labelVentas ?></h6>
                             <small class="text-muted">Mes: <?= htmlspecialchars($nombre_mes) ?></small>
                         </div>
                     </div>
@@ -905,8 +929,8 @@ function mostrarActividadRecienteMEODashboard($captaciones, $ventas, $nombre_mes
                             <div class="mb-3">
                                 <i class="bi bi-cart display-4 text-muted"></i>
                             </div>
-                            <p class="mb-1 text-muted">No hay ventas en <?= htmlspecialchars($nombre_mes) ?></p>
-                            <small class="text-muted">Las ventas registradas aparecerán aquí.</small>
+                            <p class="mb-1 text-muted">No hay <?= strtolower($labelVentas) ?> en <?= htmlspecialchars($nombre_mes) ?></p>
+                            <small class="text-muted">Las <?= strtolower($labelVentas) ?> registradas aparecerán aquí.</small>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -916,7 +940,7 @@ function mostrarActividadRecienteMEODashboard($captaciones, $ventas, $nombre_mes
     <?php
 }
 
-function mostrarResumenDetalladoMEODashboard($resumenMes, $nombre_mes) {
+function mostrarResumenDetalladoMEODashboard($resumenMes, $nombre_mes, $labelVentas = 'Ventas') {
     ?>
     <div class="row mb-4">
         <div class="col-12">
@@ -947,7 +971,7 @@ function mostrarResumenDetalladoMEODashboard($resumenMes, $nombre_mes) {
                                         <i class="bi bi-cart-check fs-4"></i>
                                     </div>
                                     <div>
-                                        <small class="text-muted d-block">Salidas (Ventas)</small>
+                                        <small class="text-muted d-block">Salidas (<?= $labelVentas ?>)</small>
                                         <h4 class="mb-0 text-success fw-bold"><?= $resumenMes['salidas_ventas'] ?></h4>
                                     </div>
                                 </div>
@@ -987,7 +1011,7 @@ function mostrarResumenDetalladoMEODashboard($resumenMes, $nombre_mes) {
                                     <i class="bi bi-speedometer2 fs-3 text-success"></i>
                                 </div>
                                 <div class="fs-5 fw-semibold text-success"><?= $resumenMes['promedio_ventas_dia'] ?></div>
-                                <small class="text-muted">Ventas / día</small>
+                                <small class="text-muted"><?= $labelVentas ?> / día</small>
                             </div>
                         </div>
 
@@ -1007,7 +1031,7 @@ function mostrarResumenDetalladoMEODashboard($resumenMes, $nombre_mes) {
                                     <i class="bi bi-currency-dollar fs-3 text-info"></i>
                                 </div>
                                 <div class="fs-5 fw-semibold text-info">$<?= number_format($resumenMes['valor_promedio_venta'], 2) ?></div>
-                                <small class="text-muted">Valor promedio venta</small>
+                                <small class="text-muted">Valor promedio <?= strtolower($labelVentas) ?></small>
                             </div>
                         </div>
                     </div>
@@ -1379,6 +1403,246 @@ function mostrarResumenMesNORDashboard($stats) {
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+// ============================================================================
+// FUNCIONES DE DATOS PAGOS (SUR)
+// ============================================================================
+
+function obtenerEstadisticasPagosDashboard($conn_mysql, $zona_id, $mes) {
+    $stats = [
+        'total_pagos' => 0,
+        'pagos_con_factura' => 0,
+        'pagos_sin_factura' => 0,
+        'monto_total' => 0,
+        'total_tickets_pagados' => 0
+    ];
+
+    $query = "
+        SELECT 
+            COUNT(*) as total_pagos,
+            SUM(CASE WHEN p.factura_pago IS NOT NULL AND p.factura_pago != '' THEN 1 ELSE 0 END) as con_factura,
+            SUM(CASE WHEN p.factura_pago IS NULL OR p.factura_pago = '' THEN 1 ELSE 0 END) as sin_factura,
+            COALESCE(SUM(p.total), 0) as monto_total
+        FROM pagos p
+        WHERE p.zona = ? 
+        AND p.status = 1 
+        AND DATE_FORMAT(p.fecha_pago, '%Y-%m') = ?
+    ";
+
+    $stmt = $conn_mysql->prepare($query);
+    $stmt->bind_param("ss", $zona_id, $mes);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+
+    $stats['total_pagos'] = (int)($data['total_pagos'] ?? 0);
+    $stats['pagos_con_factura'] = (int)($data['con_factura'] ?? 0);
+    $stats['pagos_sin_factura'] = (int)($data['sin_factura'] ?? 0);
+    $stats['monto_total'] = (float)($data['monto_total'] ?? 0);
+
+    // Total de tickets pagados
+    $queryTickets = "
+        SELECT COUNT(pd.id_pago_detalle) as total_tickets
+        FROM pagos_detalle pd
+        INNER JOIN pagos p ON pd.id_pago = p.id_pago
+        WHERE p.zona = ? AND p.status = 1 AND pd.status = 1
+        AND DATE_FORMAT(p.fecha_pago, '%Y-%m') = ?
+    ";
+    $stmt2 = $conn_mysql->prepare($queryTickets);
+    $stmt2->bind_param("ss", $zona_id, $mes);
+    $stmt2->execute();
+    $res2 = $stmt2->get_result();
+    $data2 = $res2->fetch_assoc();
+    $stats['total_tickets_pagados'] = (int)($data2['total_tickets'] ?? 0);
+
+    return $stats;
+}
+
+function obtenerUltimosPagosDashboard($conn_mysql, $zona_id, $limit = 5, $mes = null) {
+    $where_mes = $mes ? "AND DATE_FORMAT(p.fecha_pago, '%Y-%m') = ?" : "";
+    $params = [$zona_id];
+    if ($mes) $params[] = $mes;
+
+    $query = "
+        SELECT 
+            p.id_pago,
+            p.folio,
+            p.fecha_pago,
+            DATE_FORMAT(p.fecha_pago, '%d/%m/%Y') as fecha_fmt,
+            p.total,
+            p.factura_pago,
+            z.cod as cod_zona,
+            prov.rs as proveedor,
+            (SELECT COUNT(*) FROM pagos_detalle pd WHERE pd.id_pago = p.id_pago AND pd.status = 1) as num_tickets
+        FROM pagos p
+        LEFT JOIN zonas z ON p.zona = z.id_zone
+        LEFT JOIN proveedores prov ON p.id_prov = prov.id_prov
+        WHERE p.zona = ? AND p.status = 1
+        $where_mes
+        ORDER BY p.fecha_pago DESC, p.id_pago DESC
+        LIMIT ?
+    ";
+
+    $params[] = $limit;
+    $stmt = $conn_mysql->prepare($query);
+    $stmt->bind_param(str_repeat("s", count($params)), ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $pagos = [];
+    while ($row = $result->fetch_assoc()) {
+        $pagos[] = $row;
+    }
+
+    return $pagos;
+}
+
+// ============================================================================
+// COMPONENTES VISUALES PAGOS (SUR)
+// ============================================================================
+
+function mostrarResumenPagosDashboard($statsPagos, $nombre_mes) {
+    ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow">
+                <div class="card-header border-0 py-3">
+                    <h5 class="mb-0"><i class="bi bi-cash-coin me-2 text-success"></i>Pagos a Proveedores</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="card border border-primary-subtle bg-primary-subtle hover-lift">
+                                <div class="card-body text-center p-3">
+                                    <h3 class="text-primary mb-1"><?= $statsPagos['total_pagos'] ?></h3>
+                                    <p class="text-primary-emphasis mb-0 small">Pagos del Mes</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card border border-success-subtle bg-success-subtle hover-lift">
+                                <div class="card-body text-center p-3">
+                                    <h3 class="text-success mb-1">$<?= number_format($statsPagos['monto_total'], 2) ?></h3>
+                                    <p class="text-success-emphasis mb-0 small">Monto Total</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card border border-info-subtle bg-info-subtle hover-lift">
+                                <div class="card-body text-center p-3">
+                                    <h3 class="text-info mb-1"><?= $statsPagos['total_tickets_pagados'] ?></h3>
+                                    <p class="text-info-emphasis mb-0 small">Tickets Pagados</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card border border-success-subtle bg-success-subtle hover-lift">
+                                <div class="card-body text-center p-3">
+                                    <h3 class="text-success mb-1"><?= $statsPagos['pagos_con_factura'] ?></h3>
+                                    <p class="text-success-emphasis mb-0 small">Con Factura</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card border border-warning-subtle bg-warning-subtle hover-lift">
+                                <div class="card-body text-center p-3">
+                                    <h3 class="text-warning mb-1"><?= $statsPagos['pagos_sin_factura'] ?></h3>
+                                    <p class="text-warning-emphasis mb-0 small">Sin Factura</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+function mostrarUltimosPagosDashboard($pagos, $nombre_mes, $conn_mysql) {
+    ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header d-flex align-items-center justify-content-between py-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-success-subtle rounded-circle p-2 d-flex align-items-center justify-content-center" style="width:46px;height:46px;">
+                            <i class="bi bi-cash-coin text-success fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-semibold">Últimos Pagos</h6>
+                            <small class="text-muted">Mes: <?= htmlspecialchars($nombre_mes) ?></small>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="?p=N_pago" class="btn btn-sm btn-success">
+                            <i class="bi bi-plus-circle me-1"></i> Nuevo Pago
+                        </a>
+                        <a href="?p=pagos" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-list me-1"></i> Ver todos
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($pagos)): ?>
+                        <div class="list-group list-group-flush">
+                            <?php foreach ($pagos as $pago): 
+                                $folioPago = 'P-' . ($pago['cod_zona'] ?? '') . '-' . date('ym', strtotime($pago['fecha_pago'])) . str_pad((string)($pago['folio'] ?? '0'), 4, '0', STR_PAD_LEFT);
+                                $tieneFactura = !empty($pago['factura_pago']);
+                            ?>
+                            <div class="p-2 rounded-3 my-2 py-3 border border-success-subtle d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="bg-success-subtle rounded p-2 d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                                        <i class="bi bi-cash-coin text-success fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold"><?= htmlspecialchars($folioPago) ?></div>
+                                        <div class="text-muted small"><?= $pago['fecha_fmt'] ?> · <?= htmlspecialchars($pago['proveedor'] ?? 'Sin proveedor') ?></div>
+                                        <div class="mt-1">
+                                            <span class="badge bg-info-subtle text-info-emphasis me-1">
+                                                <i class="bi bi-ticket-perforated me-1"></i><?= $pago['num_tickets'] ?> tickets
+                                            </span>
+                                            <?php if ($tieneFactura): ?>
+                                                <span class="badge bg-success-subtle text-success-emphasis">
+                                                    <i class="bi bi-check-circle me-1"></i>Facturado
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning-subtle text-warning-emphasis">
+                                                    <i class="bi bi-exclamation-circle me-1"></i>Sin factura
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-semibold text-success mb-2">$<?= number_format((float)($pago['total'] ?? 0), 2) ?></div>
+                                    <button onclick="window.open('?p=V_pago&id=<?= $pago['id_pago'] ?>', '_blank')" class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-eye me-1"></i> Ver
+                                    </button>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-5">
+                            <div class="mb-3">
+                                <i class="bi bi-cash-coin display-4 text-muted"></i>
+                            </div>
+                            <p class="mb-1 text-muted">No hay pagos en <?= htmlspecialchars($nombre_mes) ?></p>
+                            <small class="text-muted">Los pagos registrados aparecerán aquí.</small>
+                            <div class="mt-3">
+                                <a href="?p=N_pago" class="btn btn-sm btn-success">
+                                    <i class="bi bi-plus-circle me-1"></i> Crear Primer Pago
+                                </a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
