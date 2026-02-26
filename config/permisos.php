@@ -65,6 +65,7 @@ define('MODULOS_PERMISOS', [
     'N_transportista' => 'TRANSPORTES_CREAR',
     'N_recoleccion' => 'RECOLECCION_CREAR',
     'N_captacion' => 'CAPTACION_CREAR',
+    'N_pago' => 'CAPTACION_CREAR',
     'N_venta' => 'VENTAS_CREAR',
     'N_compra' => 'PROVEEDORES_CREAR', // Compras usa mismo permiso que proveedores
     'N_usuario' => 'ADMIN',
